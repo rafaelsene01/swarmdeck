@@ -223,9 +223,23 @@ Consequências:
 
 Se o passthrough vier a fazer falta (repasse direto de VT em Win11 22H2+), as opções são fork do `portable-pty` ou uma PR upstream — decisão para quando houver sintoma concreto, não agora.
 
+## ⚠️ Handshake de DSR no Windows (descoberto em 28/07/2026, ao implementar T4)
+
+`portable-pty` cria o ConPTY com `PSUEDOCONSOLE_INHERIT_CURSOR`. Esse flag faz o ConPTY, logo na abertura, emitir `ESC[6n` — a consulta DSR de posição de cursor — e **bloquear o processo filho até receber a resposta** `ESC[<linha>;<coluna>R`.
+
+Consequência para o produto: **o frontend é obrigado a responder ao DSR.** Se o caminho `master → Channel → xterm.js → pty_write → master` estiver quebrado em qualquer ponto, o terminal não trava com erro — ele simplesmente **nunca produz saída**, e o processo filho nunca termina. É uma falha silenciosa que parece "terminal lento".
+
+- Em produção o xterm.js responde sozinho, desde que a saída chegue nele **e** o retorno do teclado esteja ligado antes da primeira escrita.
+- Em teste não existe terminal, então `tests/session.rs` emula a resposta (`pump_until` / `pump_until_exit`).
+
+Isso foi descoberto do jeito caro: a suíte ficou 20 minutos pendurada sem nenhuma mensagem antes de o `wait` sem prazo ser trocado por um com limite.
+
+**Impacto no T7 (`TerminalPane`)**: o `Channel` de saída e o `pty_write` do teclado precisam estar ligados **antes** de o processo começar a produzir — não depois, num `useEffect` posterior.
+
 ## Riscos
 
 - **4 threads bloqueantes de leitura** é aceitável no alvo atual. Se o limite de terminais subir muito, isso vira um pool.
+- **Se o front deixar de responder ao DSR**, todo terminal no Windows nasce mudo. Sem teste automatizado que pegue isso hoje — o teste de integração emula a resposta, então não prova que o front a envia.
 - **Sem `PASSTHROUGH_MODE`**, sequências VT de programas no Windows 11 22H2+ passam pelo tradutor do ConPTY em vez de irem diretas. Na prática isso raramente aparece; se aparecer, o sintoma é artefato de renderização em TUIs complexas.
 
 ---

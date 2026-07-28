@@ -131,6 +131,24 @@ impl PtySession {
         Ok(code)
     }
 
+    /// Espera o filho terminar, desistindo depois de `timeout`.
+    ///
+    /// O shutdown do app usa isto: dar um prazo para a saída limpa e só então
+    /// partir para `kill`. Um `wait` sem prazo pendura o encerramento se o
+    /// filho ignorar o fechamento do PTY.
+    pub fn wait_timeout(&mut self, timeout: std::time::Duration) -> Option<u32> {
+        let deadline = std::time::Instant::now() + timeout;
+        while std::time::Instant::now() < deadline {
+            if let Ok(Some(status)) = self.child.try_wait() {
+                let code = status.exit_code();
+                *self.state.lock().expect("state mutex envenenado") = SessionState::Exited(code);
+                return Some(code);
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        None
+    }
+
     /// Encerra o processo filho.
     pub fn kill(&mut self) -> Result<(), SessionError> {
         self.child

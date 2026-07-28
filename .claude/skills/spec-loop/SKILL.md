@@ -84,7 +84,7 @@ Paralelizar é o objetivo, mas colisão custa mais do que a economia. Uma task e
 
 1. **Conjuntos de arquivos disjuntos.** Leia o campo de arquivos da task. Interseção não vazia → ondas diferentes.
 
-   **Task que não declara seus arquivos vai sozinha.** O perfil diz se este projeto declara ou não; quando não declara, você não tem como provar disjunção, e supor que duas tasks não se cruzam é exatamente o erro que a onda existe para evitar. Serialize — e **escreva no journal que serializou por falta de arquivos declarados**, senão a run parece lenta sem motivo e ninguém conserta a causa, que é a spec.
+   **Task com `Declara arquivos = não` no inventário vai sozinha.** Sem essa lista você não tem como provar disjunção, e supor que duas tasks não se cruzam é exatamente o erro que a onda existe para evitar. Serialize — e **escreva no journal que serializou por falta de arquivos declarados**, senão a run parece lenta sem motivo e ninguém conserta a causa, que é a spec.
 2. **Sem dependência declarada ainda aberta.**
 3. **Nenhuma é `uat-agent`.** Dirigir o produto é sempre sozinho: o processo costuma ser instância única, a porta de desenvolvimento é única, e o teste manual toca estado real.
 4. **Nenhuma toca o território compartilhado listado no `TRIAGE.md`** — o padrão típico é migração numerada, arquivos de tradução espelhados, arquivo gerado, registro central, lockfile. O motivo de cada um está no perfil; se dois agentes escreverem lá, o dano costuma ser **silencioso**, não um build quebrado.

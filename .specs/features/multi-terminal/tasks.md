@@ -10,7 +10,10 @@
 | T1 Scaffolding | ✅ Done | — (gate build) |
 | T2 Camada de banco | ✅ Done | 5 integration (plano: 4) |
 | T3 Throttle | ✅ Done | 5 unit (plano: 5) |
-| T4–T11 | ⬜ Pending | — |
+| T4 PtySession | ✅ Done | 5 integration (plano: 5) |
+| T5–T11 | ⬜ Pending | — |
+
+**Total atual: 15 testes passando** (5 unit + 10 integration).
 
 **Desvios registrados:**
 - **T1**: `crates/*` saiu do workspace Cargo — Cargo falha ao carregar glob que não casa com nenhum diretório. Entra em `mcp-task-server/T6`, com o sidecar.
@@ -215,6 +218,7 @@ T7, T8, T9 → T10 → T11
 **Done when**:
 - [ ] No mount abre o `Channel` e escreve tudo que chega em `Terminal.write()`
 - [ ] Teclado encaminhado via `pty_write`
+- [ ] ⚠️ **Saída e teclado ligados antes do primeiro byte do processo.** O ConPTY bloqueia o filho até o terminal responder ao DSR (`ESC[6n`). Se o retorno não estiver ligado a tempo, o terminal nasce mudo e a falha é silenciosa. Ver `design.md` → "Handshake de DSR no Windows"
 - [ ] `ResizeObserver` → `fit()` → `pty_resize` com debounce de 100ms
 - [ ] No unmount descarta listeners e o addon
 - [ ] Gate passa: `cargo build && npm run build`

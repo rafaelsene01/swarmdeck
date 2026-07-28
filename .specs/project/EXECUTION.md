@@ -96,8 +96,28 @@ Por `codebase/TESTING.md`:
 
 ---
 
+## Faixa transversal — `release-distribution`
+
+As 21 tarefas de `features/release-distribution/tasks.md` **não entram nas ondas acima**: elas não competem por arquivo com nenhuma tarefa do M1/M2 e têm ritmo próprio.
+
+| Bloco | Relação com as ondas |
+|---|---|
+| **A — Validação** (`rd/T1–T3`, `rd/T20`, `rd/T21`) | Pode rodar **em paralelo a qualquer onda**. Toca só `scripts/`, `.github/` e o `Cargo.toml` da raiz. Quanto antes entrar, mais cedo as ondas seguintes ganham um check vermelho quando quebram algo |
+| **B — Empacotamento** (`rd/T4`, `rd/T5`) | Idem. `rd/T5` é passo humano e é gate de `rd/T9` e `rd/T10` |
+| **C — Release** (`rd/T6–T12`) | Só faz sentido depois da **onda 7** (fim do M1) — antes disso não há o que valha a pena instalar |
+| **D — Update no app** (`rd/T13–T19`) | Depois da onda 7. `rd/T13` (`paths.rs`) idealmente **antes** de `mt/T11` (persistência de layout), que é o primeiro consumidor de caminho de dados |
+
+**Dois pontos de contato reais, e é só isso:**
+
+1. **`rd/T13` × `mt/T11`** — `mt/T11` persiste o layout e precisa saber onde o banco mora. Se `rd/T13` vier antes, `mt/T11` só consome `paths::db_path`. Se vier depois, `rd/T13` terá que reformar o caminho que `mt/T11` montou. **Recomendado: `rd/T13` antes da onda 7.**
+2. **`rd/T14` × `mcp/T1`** — as duas criam uma migração e as duas assumiriam o número `002`. Quem executar primeiro fica com a `002`; a outra pega a seguinte e **atualiza o próprio `tasks.md`** no mesmo commit. Registrado como Todo no `STATE.md`.
+
+Nenhuma tarefa com gate `pipeline` (`rd/T2`, `rd/T6`, `rd/T9–T12`, `rd/T19`, `rd/T21`) é paralelizável com outra do mesmo gate: todas disputam a mesma branch e o mesmo histórico de execuções do GitHub Actions.
+
+---
+
 ## Ferramentas por tarefa
 
-Todas as 37 tarefas declaram **MCP: NENHUM · Skill: NENHUMA**.
+Todas as 37 tarefas do M1/M2 declaram **MCP: NENHUM · Skill: NENHUMA**.
 
 Não é omissão. As tarefas são escrita de Rust e React com testes locais — nenhum MCP instalado neste ambiente (`superbullet-ai`, `godot-ai`) tem relação com o trabalho, e nenhuma skill instalada se aplica. Se algum servidor MCP útil for adicionado depois (por exemplo, um de documentação de crates), revisar esta seção antes de executar.

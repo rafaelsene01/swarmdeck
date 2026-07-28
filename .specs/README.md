@@ -25,8 +25,9 @@ Clone funcional do CodeAgentSwarm, especificado por **engenharia reversa da UI**
 | Limpeza de conversas | M4 | 5 | [conversation-cleanup](features/conversation-cleanup/spec.md) |
 | Notificações de desktop | M4 | 6 | [notifications](features/notifications/spec.md) |
 | Onboarding Agent | M5 | 6 | [onboarding-agent](features/onboarding-agent/spec.md) |
+| Release e distribuição | Transversal | 36 | [release-distribution](features/release-distribution/spec.md) |
 
-**Total: 12 features, 76 requisitos rastreáveis.** Nenhum mapeado para tarefas ainda — a fase Tasks não foi executada.
+**Total: 13 features, 112 requisitos rastreáveis.**
 
 ## Estado do pipeline
 
@@ -34,7 +35,7 @@ Clone funcional do CodeAgentSwarm, especificado por **engenharia reversa da UI**
 SPECIFY ✅ →  DESIGN 🟡 →  TASKS 🟡 →  EXECUTE ⬜
 ```
 
-**Tasks concluídas para M1 + M2** — 37 tarefas atômicas, 12 paralelizáveis.
+**Tasks concluídas para M1 + M2 e para a faixa transversal de entrega** — 58 tarefas atômicas.
 
 - **Ordem de execução global**: [project/EXECUTION.md](project/EXECUTION.md) — o único lugar com as dependências *entre* features
 - **Estratégia de teste**: [codebase/TESTING.md](codebase/TESTING.md) — matriz de cobertura e avaliação de paralelismo
@@ -47,20 +48,21 @@ SPECIFY ✅ →  DESIGN 🟡 →  TASKS 🟡 →  EXECUTE ⬜
 | mcp-task-server | 9 | [tasks.md](features/mcp-task-server/tasks.md) |
 | terminal-statuses | 4 | [tasks.md](features/terminal-statuses/tasks.md) |
 | task-kanban | 6 | [tasks.md](features/task-kanban/tasks.md) |
+| release-distribution | 21 | [tasks.md](features/release-distribution/tasks.md) |
 
 🚧 **`mcp-task-server/T0` é gate de bloqueio** — confirmar o contrato de ferramentas MCP antes de qualquer tarefa do M2.
+🔑 **`release-distribution/T5` é gate de bloqueio** — sem a chave de assinatura e os secrets no repositório, nenhum build de release passa.
 
-**Design concluído** para as três features Large — as que têm decisão arquitetural real:
+**Design concluído** para as quatro features Large — as que têm decisão arquitetural real:
 
 | Feature | Design | Decisão central |
 |---|---|---|
 | multi-terminal | [design.md](features/multi-terminal/design.md) | Saída do PTY por `tauri::ipc::Channel` com throttle de 16ms |
 | mcp-task-server | [design.md](features/mcp-task-server/design.md) | Sidecar stdio + IPC local; o app é a única autoridade de escrita |
 | task-kanban | [design.md](features/task-kanban/design.md) | Janela Tauri secundária sincronizada por evento com delta |
+| release-distribution | [design.md](features/release-distribution/design.md) | Validar e publicar em arquivos separados; `paths.rs` é a única autoridade sobre onde os dados moram |
 
 As 9 features restantes são pequenas o bastante para pular Design e ir direto a Tasks.
-
-Próximo passo: **Tasks** — quebrar M1 e M2 em tarefas atômicas com critério de verificação.
 
 ## Nota sobre origem
 

@@ -7,6 +7,21 @@ Inventário derivado da varredura de UI de 28/07/2026. Ver `.specs/research/UI-I
 
 ---
 
+## Transversal — Entrega e distribuição
+
+**Não é um milestone**: é a faixa que atravessa todos eles. Está aqui porque uma parte entra **agora**, antes do M1 fechar, e o resto depende de existir um app que valha a pena instalar.
+
+**Release e distribuição** — PLANNED → `.specs/features/release-distribution/`
+
+| Bloco | O que entrega | Entra quando |
+|---|---|---|
+| **A — Validação** | `ci.yml`: build, testes, `fmt --check` e Conventional Commits em todo push e PR | **Agora.** Não depende de nenhuma feature |
+| **B — Empacotamento** | Versão derivada, alvos de bundle, NSIS `currentUser`, chave de assinatura | Agora (a chave é passo humano) |
+| **C — Release** | `release.yml` com disparo manual `major/minor/patch`: versão, CHANGELOG, tag, `.msi`/`-setup.exe`/`.deb`/`.AppImage`/zip portátil, e reversão automática de run interrompido | Depois de A e B |
+| **D — Update no app** | Aviso de versão nova, download com progresso, atualização nos modos instalado e portátil | Depende do M1 estar utilizável |
+
+---
+
 ## M1 — Núcleo do terminal
 
 **Meta:** Abrir o app e ter dois agentes reais rodando lado a lado, cada um no seu diretório. Sem isso, nada mais do produto faz sentido.
