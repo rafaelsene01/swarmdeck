@@ -1,0 +1,17 @@
+[workspace]
+# `crates/*` entra em mcp-task-server/T6, junto com o sidecar swarmdeck-mcp.
+# Cargo falha se o glob não casar com nenhum diretório existente, então ele
+# não pode ser declarado antes do primeiro crate existir.
+members = ["src-tauri"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+uuid = { version = "1", features = ["v7", "serde"] }

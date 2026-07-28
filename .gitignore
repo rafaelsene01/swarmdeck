@@ -1,0 +1,16 @@
+node_modules/
+dist/
+target/
+*.local
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Schemas gerados pelo tauri-build
+src-tauri/gen/schemas/
+
+# Banco local do app
+*.db
+*.db-shm
+*.db-wal
