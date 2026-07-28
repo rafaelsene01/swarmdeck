@@ -12,7 +12,7 @@
 | **quick** | `cargo test --lib && npm run test` | Tarefa que toca uma camada com teste unitário |
 | **full** | `cargo test && npm run test` | Tarefa que toca IPC, banco ou integra componentes |
 | **build** | `cargo build && npm run build` | Tarefa de scaffolding ou config que não produz lógica testável |
-| **scripts** | `npm run test:scripts` | Tarefa que toca os scripts de release em `scripts/*.mjs` |
+| **scripts** | `npm run test:scripts` — ⚠️ **este script ainda não existe** | Tarefa que toca os scripts de release em `scripts/*.mjs`. Medido na triagem 001: o `package.json` tem apenas `dev, build, preview, test, test:watch, tauri`, e a pasta `scripts/` não existe. Quem executar a **primeira** tarefa com este gate (`release-distribution/T1`, escritor único da versão) cria `scripts/` e o script `test:scripts` **antes** de rodar o gate; até lá, o gate é inaplicável, não "passou". As outras com este gate são `rd/T7` e `rd/T8`. |
 | **pipeline** | execução real no GitHub Actions | Tarefa que entrega workflow ou job de CI/release. YAML não tem teste local que prove alguma coisa — a prova é o run verde (ou vermelho no caso certo) |
 
 `cargo test --lib` roda só os testes unitários in-crate (rápido). `cargo test` inclui `tests/` — os de integração, que tocam disco e socket. `npm run test:scripts` roda `node --test scripts/`, o test runner nativo do Node 24 — sem framework adicional para uma pasta de quatro arquivos.

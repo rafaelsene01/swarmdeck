@@ -2,7 +2,9 @@
 
 As tarefas vivem em `features/<feature>/tasks.md`. Este documento é o único lugar que mostra as **dependências entre features** — que os arquivos individuais só referenciam de passagem.
 
-**37 tarefas.** 12 podem rodar em paralelo; 25 são sequenciais.
+**38 tarefas.** 13 podem rodar em paralelo; 25 são sequenciais.
+
+*(Corrigido na triagem 001 — 28/07/2026. Dizia "37 tarefas, 12 paralelas", mas a contagem de headers `### T` nos seis `tasks.md` de M1/M2 dá 38, e os marcadores `[P]` dão 13 — que é exatamente a lista enumerada no fim deste documento. A conta 12+25=37 fechava sozinha e por isso ninguém notou.)*
 
 ---
 
@@ -92,7 +94,7 @@ Por `codebase/TESTING.md`:
 - Tarefas Vitest são livremente paralelizáveis entre si
 - Uma tarefa `cargo test` e uma Vitest podem coexistir: suítes distintas, sem estado compartilhado
 
-**12 tarefas paralelizáveis**: `mt/T7-T9`, `ag/T3-T4`, `pr/T3-T4`, `mcp/T8`, `ts/T3-T4`, `kb/T3-T5`.
+**13 tarefas paralelizáveis**: `mt/T7-T9`, `ag/T3-T4`, `pr/T3-T4`, `mcp/T8`, `ts/T3-T4`, `kb/T3-T5`. *(A lista sempre teve 13 itens; o número escrito dizia 12. Conferido por `grep '\[P\]'` na triagem 001.)*
 
 ---
 

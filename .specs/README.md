@@ -35,7 +35,7 @@ Clone funcional do CodeAgentSwarm, especificado por **engenharia reversa da UI**
 SPECIFY ✅ →  DESIGN 🟡 →  TASKS 🟡 →  EXECUTE ⬜
 ```
 
-**Tasks concluídas para M1 + M2 e para a faixa transversal de entrega** — 58 tarefas atômicas.
+**Tasks concluídas para M1 + M2 e para a faixa transversal de entrega** — 59 tarefas atômicas. *(Corrigido na triagem 001: dizia 58, mas a tabela logo abaixo sempre somou 59, e a contagem de headers confirma 59.)*
 
 - **Ordem de execução global**: [project/EXECUTION.md](project/EXECUTION.md) — o único lugar com as dependências *entre* features
 - **Estratégia de teste**: [codebase/TESTING.md](codebase/TESTING.md) — matriz de cobertura e avaliação de paralelismo

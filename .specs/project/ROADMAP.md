@@ -1,7 +1,7 @@
 # Roadmap — SwarmDeck
 
 **Milestone atual:** M1 — Núcleo do terminal
-**Status:** Planning
+**Status:** In Progress — corrigido na triagem 001 (28/07/2026). Dizia "Planning" enquanto `multi-terminal/T1–T4` já estavam entregues, com 15 testes passando e código em `src-tauri/src/{db,terminal}/`.
 
 Inventário derivado da varredura de UI de 28/07/2026. Ver `.specs/research/UI-INVENTORY.md` para as evidências (screenshots) de cada item.
 
@@ -29,7 +29,7 @@ Inventário derivado da varredura de UI de 28/07/2026. Ver `.specs/research/UI-I
 
 ### Features
 
-**Multi-terminal em grid** — PLANNED → `.specs/features/multi-terminal/`
+**Multi-terminal em grid** — IN PROGRESS (T1–T4 de 11 entregues) → `.specs/features/multi-terminal/`
 - Grid de até 4 terminais com divisórias arrastáveis
 - PTY real por terminal (shell nativo do SO)
 - Header por terminal: título, número, badge de status, ações
