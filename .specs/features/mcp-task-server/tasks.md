@@ -42,7 +42,11 @@ T3 → T8 [P]
 
 ### T0: Confirmar o contrato de ferramentas MCP 🚧 BLOQUEIO
 
-**O quê**: Confirmar os nomes e assinaturas reais das ferramentas MCP contra a implementação de referência, e congelar o contrato num documento.
+**O quê**: Escrever o `TOOL-CONTRACT.md` congelando os nomes e assinaturas das ferramentas MCP.
+
+> **✅ DECISÃO DO USUÁRIO — triagem 001, 28/07/2026.** A pergunta "congelar os nomes inferidos ou validar antes contra a implementação real?" foi feita e respondida: **congelar os inferidos**. A fonte do contrato é o `CLAUDE.md` global do usuário; **não** há validação prévia contra a implementação de referência. Quem executar esta task escreve o documento a partir dessa fonte e **não precisa perguntar nada** — o risco aceito está registrado como AD no `STATE.md` (28/07/2026, "Contrato de ferramentas MCP congelado").
+>
+> Isto revoga o `Depende de: validação externa` implícito e o Todo correspondente no `STATE.md`. O "Done when" abaixo foi reescrito de acordo.
 **Onde**: `.specs/features/mcp-task-server/TOOL-CONTRACT.md` (novo)
 **Depende de**: nenhuma
 **Reusa**: instruções globais do usuário como ponto de partida
@@ -51,9 +55,9 @@ T3 → T8 [P]
 **Ferramentas**: MCP: NENHUM · Skill: NENHUMA
 
 **Done when**:
-- [ ] Cada ferramenta tem nome, parâmetros e formato de retorno confirmados
-- [ ] Divergências entre o inferido e o real estão documentadas
-- [ ] O bloqueio correspondente em `STATE.md` está marcado como resolvido
+- [ ] Cada ferramenta tem nome, parâmetros e formato de retorno **escritos** no `TOOL-CONTRACT.md`, com o `CLAUDE.md` global citado como fonte
+- [ ] ~~Divergências entre o inferido e o real estão documentadas~~ — **sem objeto**: não há comparação com o real, por decisão do usuário (triagem 001). Em lugar disso, o documento abre com um aviso de que o contrato é inferido e de qual é o procedimento se um nome se provar errado
+- [x] ~~O bloqueio correspondente em `STATE.md` está marcado como resolvido~~ — **feito na triagem 001**, antes desta task rodar
 
 **Tests**: none *(documento, não código)* · **Gate**: none
 

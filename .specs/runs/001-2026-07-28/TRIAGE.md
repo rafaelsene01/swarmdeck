@@ -1,8 +1,10 @@
 # Triagem 001 — 28/07/2026
 
-**Status:** em andamento
-**Revisão ao fechar:** `dffd9f0` (git)
-**Perguntas em aberto:** 2 ← o Status não pode ser "pronta" enquanto isto for > 0
+**Status:** pronta
+**Revisão ao fechar:** `d8a6ebe` (git) — medições feitas em `dffd9f0`; ver o aviso abaixo
+**Perguntas em aberto:** 0
+
+> ⚠️ **Este repositório commita sozinho.** Durante esta triagem o HEAD andou duas vezes sem que ninguém pedisse: `dffd9f0` → `d8a6ebe`, e o commit `d8a6ebe` contém exatamente as correções da Fase 1 que eu tinha acabado de escrever. Consequência para a `spec-loop`: **o teste de frescor por HEAD dá falso positivo de "triagem velha" neste repositório.** A regra aqui é mais fina — a triagem só envelhece se `src/` ou `src-tauri/src/` mudarem. Confira com `git diff --stat d8a6ebe -- src src-tauri/src`; se vier vazio, a classificação abaixo continua válida por mais que o HEAD tenha andado.
 
 ---
 
@@ -70,20 +72,22 @@
 
 | Item | Feature | Escopo/gate | Declara arquivos | Classificação | Pronto | Por quê (se não) |
 |---|---|---|---|---|---|---|
-| T5–T11 (7) | multi-terminal | rust quick/full | sim | `code` | **sim** | T7–T9 são `[P]` entre si |
-| T1–T4 (4) | agent-selection | rust + vitest | sim | `code` | **sim** | T3/T4 `[P]`; T1 depende de `mt/T5` |
-| T1, T3, T4, T7, T8, T13–T18, T20 (12) | release-distribution | scripts/build/quick/full | sim | `code` | **sim** | T7/T8/T20 `[P]`; T1 precisa criar `scripts/` antes do gate |
-| formatar os 7 arquivos que o `cargo fmt --check` acusa | — (achado da auditoria) | rust fmt | não | `code` | **sim** | pré-requisito de `rd/T2`, senão o primeiro CI nasce vermelho |
-| marcador `SPEC:` ausente no código de `mt/T1–T4` | — (achado da auditoria) | rust build | não | `code` | **sim** | a regra do repositório exige; nenhum arquivo tem |
-| **T0** | mcp-task-server | — | n/a | **`needs-decision`** | **não** | contrato de ferramentas MCP: os nomes foram *inferidos* do `CLAUDE.md` do usuário, não de doc oficial. `STATE.md` registra como bloqueio **Aberto** |
-| T1–T8 (8) | mcp-task-server | rust full | sim | `code` | **não** | atrás de `T0` |
-| T1–T4 (4) | projects | rust + vitest | sim | `code` | **não** | dependem de `mcp/T1` (migração), atrás de `T0` |
-| T1–T4 (4) | terminal-statuses | rust + vitest | sim | `code` | **não** | dependem de `mcp/T4`, atrás de `T0` |
-| T1–T6 (6) | task-kanban | rust + vitest | sim | `code` | **não** | dependem de `mcp/T5`, atrás de `T0` |
+| T5–T11 (7) | multi-terminal | rust quick/full | sim | `code` | **sim** | T7–T9 são `[P]` entre si. Única feature `In Progress` |
+| formatar os 7 arquivos que o `cargo fmt --check` acusa | — (achado da auditoria) | rust fmt | não | `code` | **sim** | os arquivos são do território de `multi-terminal`; pré-requisito de `rd/T2`, senão o primeiro CI nasce vermelho |
+| marcador `SPEC:` ausente no código de `mt/T1–T4` | — (achado da auditoria) | rust build | não | `code` | **sim** | mesma feature; a regra do repositório exige e nenhum arquivo tem |
+| T1–T4 (4) | agent-selection | rust + vitest | sim | `code` | **não** | `tasks.md` em `Draft` — decisão 2 |
+| T1, T3, T4, T7, T8, T13–T18, T20 (12) | release-distribution | scripts/build/quick/full | sim | `code` | **não** | `tasks.md` em `Draft` — decisão 2 |
+| **T0** | mcp-task-server | — | n/a | `code` *(era `needs-decision`)* | **não** | decisão 1 respondida: o contrato está congelado e T0 é redigível sem perguntar. Mas o `tasks.md` está em `Draft` — decisão 2 |
+| T1–T8 (8) | mcp-task-server | rust full | sim | `code` | **não** | `Draft` + dependem de `T0` |
+| T1–T4 (4) | projects | rust + vitest | sim | `code` | **não** | `Draft` + dependem de `mcp/T1` |
+| T1–T4 (4) | terminal-statuses | rust + vitest | sim | `code` | **não** | `Draft` + dependem de `mcp/T4` |
+| T1–T6 (6) | task-kanban | rust + vitest | sim | `code` | **não** | `Draft` + dependem de `mcp/T5` |
 | T5 | release-distribution | — | sim | `human-only` | não | chave de assinatura + secrets do repositório |
 | T2, T6, T9, T10, T11, T12, T19, T21 (8) | release-distribution | **pipeline** | sim | `human-only` | não | a prova é um run real do GitHub Actions — exige push e conta. O YAML é redigível por agente; **a task não fecha sem o run** |
 
-**Por rótulo:** `code` pronto **24** · `code` atrás de decisão **22** · `needs-decision` **1** · `human-only` **9** · `blocked` 0 · `moot` 0 (o único, o Todo do layout, foi riscado na Fase 1).
+**Por rótulo, depois das duas decisões:** `code` **pronto para a `spec-loop`: 7 tarefas + 2 itens de auditoria** · `code` retido por `Draft`: **39** · `needs-decision`: **0** · `human-only`: **9** · `blocked`: 0 · `moot`: 0 (o único, o Todo do layout, foi riscado na Fase 1).
+
+> A decisão 2 é o que separa 7 de 24. Sem ela, `agent-selection` e `release-distribution` entrariam na fila. Para liberá-las, o mantenedor troca `**Status**: Draft` → `In Progress` no `tasks.md` da feature e roda uma triagem nova.
 
 ---
 
@@ -93,8 +97,12 @@
 
 | # | Pergunta | Por que só o usuário responde | Resposta | Data | Onde ficou gravada |
 |---|---|---|---|---|---|
-| 1 | O contrato de ferramentas MCP (`mcp-task-server/T0`) pode ser congelado com os nomes inferidos do `CLAUDE.md` global, ou precisa ser validado contra a implementação real antes? | Os nomes são um contrato com agentes externos que já rodam com prompts existentes. Errar quebra os prompts do usuário, e nenhum arquivo deste repositório contém a lista oficial — a fonte é a instalação do usuário. `STATE.md` registra como bloqueio **Aberto**. | *(pendente)* | — | — |
-| 2 | Os `tasks.md` estão todos com `**Status**: Draft` (6 de 7). Isso autoriza execução, ou Draft significa "ainda não revisado por mim"? | É o significado que o usuário dá ao próprio marcador de ciclo de vida. Executar 24 tarefas a partir de um plano que ele considera rascunho é retrabalho caro; não executar nada por excesso de zelo trava a run. Nada no repositório define o termo. | *(pendente)* | — | — |
+| 1 | O contrato de ferramentas MCP (`mcp-task-server/T0`) pode ser congelado com os nomes inferidos do `CLAUDE.md` global, ou precisa ser validado contra a implementação real antes? | Os nomes são um contrato com agentes externos que já rodam com prompts existentes. Errar quebra os prompts do usuário, e nenhum arquivo deste repositório contém a lista oficial — a fonte é a instalação do usuário. `STATE.md` registrava como bloqueio **Aberto**. | **Congelar os nomes inferidos**, sem validação prévia | 28/07/2026 | `features/mcp-task-server/tasks.md` § T0 (bloco "✅ DECISÃO DO USUÁRIO" + `Done when` reescrito) · `project/STATE.md` (bloqueio → Resolvido, Todo riscado, **AD nova** com o trade-off) |
+| 2 | Os `tasks.md` estão com `**Status**: Draft` (6 de 7). Isso autoriza execução, ou Draft significa "ainda não revisado por mim"? | É o significado que o usuário dá ao próprio marcador de ciclo de vida. Executar 24 tarefas a partir de um plano que ele considera rascunho é retrabalho caro; não executar nada por excesso de zelo trava a run. Nada no repositório define o termo. | **Só `multi-terminal`** (o único `In Progress`); Draft bloqueia execução automatizada | 28/07/2026 | `project/STATE.md` — **AD nova** definindo que `Draft` bloqueia a `spec-loop` e como o mantenedor libera uma feature |
+
+**Teste do contrato aplicado a cada resposta** — *um agente que leia só a spec, sem esta conversa, consegue implementar sem perguntar?*
+- **Resposta 1: sim.** O bloco em `T0` diz o que congelar, de qual fonte, e que não há validação. Um implementador frio escreve o `TOOL-CONTRACT.md` sem voltar ao usuário.
+- **Resposta 2: sim, e é executável por máquina.** A regra virou um critério objetivo — `**Status**: In Progress` no `tasks.md` — que a `spec-loop` confere sozinha.
 
 ---
 

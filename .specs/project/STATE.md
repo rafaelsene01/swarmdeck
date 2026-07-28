@@ -23,6 +23,8 @@
 | 28/07/2026 | Escopo do updater: **pipeline completo** — assinatura, zip portátil e patch do `latest.json` | Escolha do usuário em 28/07/2026, ciente do custo: exige `tauri-plugin-updater` no app, geração do par de chaves e cadastro de secrets antes do primeiro release funcionar. O público-alvo roda em máquina corporativa onde instalador pede administrador; sem o portátil, esse público fica de fora. |
 | 28/07/2026 | Versão do app **derivada** de `package.json` pelo `tauri.conf.json`, e `mainBinaryName` fixado em `SwarmDeck` | Uma cópia a menos para sincronizar, e um modo de falha barulhento (caminho inválido quebra o build). O binário hoje sai `swarmdeck.exe` enquanto o `productName` é `SwarmDeck` — divergência que apareceria dentro do zip portátil. |
 | 28/07/2026 | **Um único módulo** (`paths.rs`) decide onde os dados moram | O modo portátil grava ao lado do executável e o instalado usa `app_data_dir()`. Com dois pontos de decisão, a diferença vaza. Como nada no código resolve caminho ainda, isso nasce certo em vez de ser reforma. |
+| 28/07/2026 | **Contrato de ferramentas MCP congelado a partir do `CLAUDE.md` global**, sem validação prévia contra a implementação de referência | Escolha do usuário na triagem 001, ciente do trade-off apresentado: destrava `T0` e as 22 tarefas de M2 imediatamente, contra o risco de um nome divergir e quebrar em silêncio os prompts que ele já usa. O custo do erro é contido: o `rmcp` gera o schema a partir das assinaturas Rust, então renomear no código é barato — o caro é o prompt espalhado. Se um nome se provar errado depois, o conserto é rename + nota nesta tabela, não redesenho. |
+| 28/07/2026 | **`Status: Draft` num `tasks.md` bloqueia execução automatizada** | Escolha do usuário na triagem 001. A `spec-loop` só executa feature cujo `tasks.md` esteja `In Progress` — hoje, só `multi-terminal`. Draft passa a significar "ainda não revisado pelo mantenedor", não "rascunho de forma". Consequência medida: a fila da run 001 cai de 24 para 7 tarefas. Para liberar uma feature, o mantenedor troca o `**Status**` dela e uma triagem nova reabre a fila. |
 | 28/07/2026 | `cargo fmt --check` entra no CI agora; `clippy -D warnings` fica em P3 | `fmt` foi **medido** nesta sessão e passava (exit 0). Clippy não foi medido — ligar sem medir transformaria "introduzir CI" numa refatoração de escopo desconhecido. **⚠️ Remedido na triagem 001 (28/07/2026): `cargo fmt --check` agora sai com exit 1, 7 arquivos com diff** — o código de `terminal/session.rs` entrou depois da medição original. A decisão continua válida; o que envelheceu foi o número. Formatar é pré-requisito de `release-distribution/T1`, senão o primeiro CI nasce vermelho. |
 
 ---
@@ -32,7 +34,7 @@
 | Item | Impacto | Estado |
 |---|---|---|
 | Features PRO atrás de paywall (Git, History, Permissions, Shortcuts, Labels, Turbo) | UI real não observável — não dá para especificar fielmente | **Aceito.** Fora do v1. Só a matriz de features e as descrições curtas do paywall foram registradas em UI-INVENTORY.md. |
-| Protocolo MCP do original é um contrato com agentes externos | Se as ferramentas do clone não baterem com os nomes esperados, prompts existentes quebram | **Aberto.** Os nomes de ferramentas foram inferidos das instruções globais do usuário (`CLAUDE.md`), não de documentação oficial. Validar antes de implementar. |
+| Protocolo MCP do original é um contrato com agentes externos | Se as ferramentas do clone não baterem com os nomes esperados, prompts existentes quebram | **Resolvido em 28/07/2026 (triagem 001), por decisão do usuário.** Os nomes inferidos do `CLAUDE.md` global viram o contrato — sem validação prévia contra a implementação de referência. Ver a AD abaixo e `mcp-task-server/T0`. |
 
 ---
 
@@ -48,7 +50,7 @@
 
 ## Todos
 
-- [ ] Confirmar os nomes exatos das ferramentas MCP contra a implementação real, antes de codificar o servidor
+- [x] ~~Confirmar os nomes exatos das ferramentas MCP contra a implementação real, antes de codificar o servidor~~ — **revogado por decisão do usuário na triagem 001 (28/07/2026)**: o contrato congela os nomes inferidos, sem validação prévia. `T0` deixa de ser "confirmar contra a referência" e passa a ser "escrever o `TOOL-CONTRACT.md` a partir do `CLAUDE.md` global". O risco aceito está na AD.
 - [ ] Capturar as superfícies pendentes listadas no fim de `UI-INVENTORY.md`
 - [x] ~~Decidir formato de persistência do layout do grid (JSON em disco vs tabela SQLite)~~ — **sem objeto desde `multi-terminal/T2`**: a migração `001_terminal_layout.sql` criou a tabela `terminal_layout` e o código já a consome. Ficou SQLite. Riscado na triagem 001 (28/07/2026); a decisão foi tomada no código, não aqui.
 - [x] ~~Verificar se `portable-pty` cobre resize e sinais no Windows~~ — confirmado: `MasterPty::resize(PtySize)` cobre, e ConPTY é suportado. **Novo item:** confirmar em qual versão do crate o flag `PSEUDOCONSOLE_PASSTHROUGH_MODE` é exposto (exige Win11 22H2+, precisa de fallback)
