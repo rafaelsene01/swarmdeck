@@ -139,7 +139,7 @@ T7, T8, T9 → T10 → T11
 - [ ] `resize()` propaga ao kernel
 - [ ] Saída do processo é lida pela thread dedicada
 - [ ] Processo que termina vira `Exited(code)`; spawn que falha vira `Failed(msg)`
-- [ ] Flags do ConPTY aplicadas no Windows com detecção de versão para `PASSTHROUGH_MODE`
+- [x] ~~Flags do ConPTY aplicadas com detecção de versão~~ — **removido do escopo em 28/07/2026.** `portable-pty` 0.9.0 já aplica `RESIZE_QUIRK` e `WIN32_INPUT_MODE` hardcoded, e `PASSTHROUGH_MODE` não é configurável de fora. Nada a implementar. Ver `design.md` → "Nota sobre os flags do ConPTY".
 - [ ] Gate passa: `cargo test`
 - [ ] Contagem: 5 testes passam (spawn ok, echo round-trip, resize, exit code, comando inexistente falha)
 

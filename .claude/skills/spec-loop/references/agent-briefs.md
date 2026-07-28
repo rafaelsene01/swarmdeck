@@ -2,99 +2,103 @@
 
 O que o subagent recebe é o que decide a qualidade do que volta. Não improvise estes textos.
 
-**Regra que atravessa os três papéis:** cada subagent começa frio. Ele não viu a conversa, não conhece as outras tasks, não sabe o que já falhou antes. Tudo que ele precisa tem que estar no brief — e **só** o que ele precisa, porque contexto irrelevante é o que faz um agente sair do escopo.
+**Regra que atravessa todos os papéis:** cada subagent começa frio. Ele não viu a conversa, não conhece o projeto, não sabe o que já falhou antes. Tudo que ele precisa tem que estar no brief — e **só** o que ele precisa, porque contexto irrelevante é o que faz um agente sair do escopo.
+
+**Os `<...>` vêm do Perfil do projeto do `TRIAGE.md`.** Um brief despachado com placeholder intacto manda o agente adivinhar, e ele adivinha. Se o perfil não tem a informação, ela não foi levantada — volte à triagem em vez de inventar.
 
 ---
 
-## Contexto comum (cole em todo brief)
+## Contexto comum (monte uma vez por run, cole em todo brief)
 
 ```
-Projeto: LocalMind — chat de IA desktop (Tauri 2 + React/TS + Rust), modelo,
-embeddings e banco vetorial rodando inteiramente na máquina do usuário.
+PROJETO: <nome> — <uma linha do que é> (<stack>)
 
-Leia antes de agir:
-- AGENTS.md (raiz) — regras do projeto, sobrepõem qualquer padrão seu
-- .claude/rules/spec-driven-changes.md — marcador SPEC: obrigatório
-- .specs/codebase/CONVENTIONS.md e TESTING.md
+LEIA ANTES DE AGIR (sobrepõem qualquer padrão seu):
+- <regras do repositório: AGENTS.md / CLAUDE.md / .claude/rules/* / CONTRIBUTING.md>
+- <documento de convenções de código>
+- <documento de estratégia de testes>
 
-Convenções que não são negociáveis:
-- Comentários no código em INGLÊS, explicando POR QUÊ, ancorados numa medição
-  ou caso real. Comentário que repete o nome da função é ruído.
-- Prosa de documentação em PORTUGUÊS (.specs/, README).
-- Todo arquivo criado ou editado leva no topo, antes dos imports:
-  // SPEC: <nome-exato-da-pasta-em-.specs/features> (ID-01, ID-02)
-  Prefixos válidos: SHELL CHAT CONN DOC EMBED SELF SIDE REL CFG ACTIVE MEM.
-  NÃO INVENTE ID — se o requisito não existe, ele precisa existir na spec antes.
-  Arquivo de infraestrutura (script de build, config) fica SEM marcador.
-- #[cfg(test)] mod tests fica no FIM DO MESMO ARQUIVO, nunca em tests/.
-- Campos que cruzam Rust↔TS são snake_case dos DOIS lados (serde não renomeia).
-  Exceção: parâmetros de invoke() vão camelCase e chegam snake_case.
-- src/types.ts é GERADO, nunca editado à mão (desde 2026-07-28, feature
-  `generated-types`). Mudou uma struct que cruza a fronteira? Regenere com
-  `cd src-tauri && cargo test --lib types_export -- --ignored` e commite o
-  arquivo. O gate `types_export::tests::types_ts_matches_rust_structs` falha se
-  você esquecer — e ele é a ÚNICA coisa que fala: uma divergência de tipo deixa
-  `cargo check` e `npm run build` os dois limpos (medido na run 001).
-- en.json e pt.json têm paridade obrigatória de chaves.
+CONVENÇÕES DESTE PROJETO (do Perfil do projeto — não deduza, não generalize):
+- Idioma: comentários e código em <x>; documentação em <y>.
+- Marcador de rastreabilidade: <formato exato, ou "não exigido neste projeto">.
+  Se exigido: NÃO INVENTE ID — se o requisito não existe, ele precisa existir na
+  spec antes, e criar requisito não é seu trabalho.
+- Onde ficam os testes: <mesmo arquivo / diretório espelho / outro>
+- <demais convenções levantadas: nomes que cruzam fronteiras de linguagem,
+  arquivos gerados que nunca se edita à mão, paridade entre arquivos espelhados>
 
-Gates (rode e RELATE OS NÚMEROS, não "passou"):
-  cd src-tauri && cargo test --lib
-  npm run build
-  npm test                    # suíte de frontend (Vitest+RTL), existe desde 2026-07-28
-  npm run test:scripts        # só se mexeu em scripts/
+TERRITÓRIO COMPARTILHADO — se sua task te levar a um destes, PARE e avise antes
+de escrever: <lista do Perfil, com o motivo de cada um>. O dano aqui costuma ser
+silencioso: dois agentes escrevendo no mesmo registro central ou na mesma
+sequência de migração não quebram o build, só produzem um estado errado.
+
+GATES DO ESCOPO DESTA TASK (rode e RELATE OS NÚMEROS MEDIDOS, não "passou"):
+<comandos do Perfil para o escopo/pacote que esta task toca, com o baseline
+medido na triagem ao lado. Em monorepo, NÃO é o gate da raiz — é o do pacote.>
+
+COMANDOS DE VERSIONAMENTO deste projeto: <estado: `git status --short` / `hg
+status` / ... — ou "SEM VCS: confirme os arquivos por listagem de diretório">
 
 NUNCA:
-- tocar nos dados reais do usuário (a pasta-base fica fora do repo e tem as
-  conversas dele). Para validar banco: COPIE para o scratchpad, trabalhe na
-  cópia, apague. O original nunca é aberto para escrita por um teste.
-- commitar, fazer force-push, reescrever master, disparar release
+- tocar em dados reais do usuário (banco local, workspace, credenciais, cache).
+  Para validar: COPIE para um diretório temporário, trabalhe na cópia, apague.
+  O original nunca é aberto para escrita por um teste.
+- commitar, force-push, reescrever a branch principal
+- publicar para fora: release, deploy, registro de pacotes
 - deixar arquivo de diagnóstico temporário no repositório
 - adicionar dependência sem que a task peça
 
-A regra central deste repositório: "compila" NÃO é "verificado". Relate o que
-você EXECUTOU, com número medido. Se algo não foi exercitado, diga isso com
-todas as letras na mesma frase em que descreve o que fez. Quando um teste
-automatizado não conseguir provar algo, escreva DENTRO do teste por que ele é
-inconclusivo — para ninguém depois o ler como prova.
+A REGRA CENTRAL: "compila" NÃO é "verificado". Relate o que você EXECUTOU, com
+número medido. Se algo não foi exercitado, diga isso com todas as letras na mesma
+frase em que descreve o que fez. Quando um teste automatizado não conseguir
+provar algo, escreva DENTRO do teste por que ele é inconclusivo — para ninguém
+depois o ler como prova.
 ```
 
 ---
 
 ## 1. Implementador
 
-Recebe: a definição da task (What / Where / Depends on / Reuses / Done when / Tests / Gate), o trecho da spec com os IDs, e o `design.md` se houver.
+Recebe: a definição da task (o quê / onde / dependências / o que reusa / critérios de pronto / testes / gate), o trecho da spec com os IDs, e o documento de desenho se houver.
 
 Não recebe: as outras tasks, o histórico da conversa, o relatório de validação de outra task.
 
 ```
 TASK: <id> — <título>
-FEATURE: <pasta em .specs/features/>
+FEATURE: <pasta da feature>
 REQUISITOS: <IDs> — <texto literal de cada um, copiado da spec>
 
 ARQUIVOS QUE VOCÊ PODE TOCAR: <lista fechada>
 Sair desta lista é desvio. Se a task não for implementável sem tocar outro
 arquivo, PARE e devolva o motivo — não amplie o escopo por conta própria.
 
-DONE WHEN: <critérios literais da task>
-TESTES EXIGIDOS: <da matriz de TESTING.md>
+PRONTO QUANDO: <critérios literais da task>
+TESTES EXIGIDOS: <o que a estratégia de testes do projeto pede para este tipo>
+
+ESTA TASK JÁ PASSOU POR TRIAGEM: tudo que ela precisa está na spec. Se mesmo
+assim você encontrar uma escolha que só o usuário pode fazer — o requisito admite
+duas leituras, ou o caminho óbvio exige remover algo que hoje funciona e a spec
+não diz se isso é intencional —, PARE e devolva Status: Bloqueado com a PERGUNTA
+e as opções reais. Não escolha a interpretação mais provável e siga: quem decide
+isso é o usuário, e existe uma skill (spec-triage) que vai perguntar a ele.
 
 REGRA DO LOG DE EXECUÇÃO — não negociável:
-Só escreva a linha "✅" de uma task DEPOIS que o artefato dela está no disco, e
-confirme com `ls` / `git status` antes de escrever. Nunca preencha a tabela
-inteira de antemão "para organizar" e volte para corrigir: se você for
+Só escreva a linha de "concluída" de uma task DEPOIS que o artefato dela está no
+disco, e confirme com uma listagem do arquivo antes de escrever. Nunca preencha a
+tabela inteira de antemão "para organizar" e volte para corrigir: se você for
 interrompido no meio (limite de sessão, erro de ferramenta), o log fica no
-repositório afirmando trabalho que não existe, e a suíte passa, e o build passa,
-e nada falha — a única coisa errada é a prosa, que é justamente o que nenhum
-gate pega. Um log honestamente vazio vale mais que um log otimista.
+repositório afirmando trabalho que não existe — e a suíte passa, e o build passa,
+e nada falha. A única coisa errada é a prosa, que é justamente o que nenhum gate
+pega. Um log honestamente vazio vale mais que um log otimista.
 Se você parar no meio, deixe escrito onde parou e o que falta.
 
-Devolva EXATAMENTE:
+DEVOLVA EXATAMENTE:
 - Status: Completo | Bloqueado | Parcial
 - Arquivos alterados, um por linha, com o que mudou em cada
 - Gates: os números medidos (ex.: "177 passando / 0 falhas / 15 ignorados"),
   não "passou"
-- Marcadores SPEC: que você adicionou ou alterou
-- SPEC_DEVIATION: qualquer coisa que você fez diferente do plano, com o motivo
+- Marcadores de rastreabilidade que você adicionou ou alterou (se o projeto exige)
+- DESVIO: qualquer coisa que você fez diferente do plano, com o motivo
 - O que você NÃO verificou
 ```
 
@@ -112,50 +116,59 @@ REQUISITOS QUE ISTO DEVERIA CUMPRIR:
 <IDs + texto literal>
 
 O QUE MUDOU:
-<git diff --stat + os arquivos>
+<estatística do diff + os arquivos>
 
 CHECKLIST (responda cada um com evidência, não com "sim"):
 
 0. PRIMEIRO DE TUDO, ANTES DE LER QUALQUER CÓDIGO: os arquivos que o relatório e
-   o Execution Log dizem ter criado EXISTEM? Rode `ls` em cada caminho citado e
-   `git status --short` na feature inteira. Conte os testes com o runner, não
-   com o relatório. Isto já pegou um caso real nesta base: um agente cortado
-   pelo limite de sessão tinha marcado ✅ duas tasks cujos arquivos não existiam
-   e um documento que nunca foi tocado, e a rastreabilidade dava os requisitos
-   como `Verified`. Nada falhava — a suíte passava com os testes que existiam.
-   Se um arquivo citado não existe, PARE aqui: o veredito é REPROVADO e o
-   defeito é o log, antes de qualquer discussão sobre o código.
-1. O requisito foi cumprido, ou só parece cumprido? Cite a linha que o cumpre.
+   o log de execução dizem ter criado EXISTEM? Liste cada caminho citado e rode
+   o comando de estado do projeto (acima) na feature inteira — sem VCS, liste os
+   diretórios. Conte os testes com o runner, não com
+   o relatório. Isto já pegou um caso real: um agente cortado pelo limite de
+   sessão tinha marcado duas tasks como concluídas cujos arquivos não existiam, e
+   a rastreabilidade dava os requisitos como verificados. Nada falhava — a suíte
+   passava com os testes que existiam. Se um arquivo citado não existe, PARE
+   aqui: o veredito é REPROVADO e o defeito é o log, antes de qualquer discussão
+   sobre o código.
+1. O requisito foi cumprido, ou só PARECE cumprido? Cite a linha que o cumpre.
 2. Rode os gates você mesmo. Os números batem com o que foi relatado?
-3. Os testes novos EXERCITAM o que o nome deles promete? Este projeto já teve
-   um teste chamado "pruning drops the other llama tools and keeps every shared
-   library" cujos casos evitavam justamente a combinação que quebrava — o nome
-   afirmava a garantia, os casos não a exercitavam. Procure esse padrão.
+3. Os testes novos EXERCITAM o que o nome deles promete? Procure o padrão do
+   teste cujo nome afirma uma garantia que os casos não exercitam — já houve um
+   teste que prometia cobrir uma combinação e cujos casos evitavam exatamente a
+   combinação que quebrava.
 4. Algum teste passa pelo motivo ERRADO? Quebre a premissa dele de propósito e
    veja se ele falha. Um teste que passa com o código desligado não prova nada.
-5. O marcador SPEC: existe, está em inglês, nomeia a pasta exata da feature e
-   IDs que EXISTEM na spec?
-6. Se mexeu em i18n: en.json e pt.json têm exatamente as mesmas chaves? Conte.
-7. Se mexeu em migração: o número é o próximo da lista MIGRATIONS em db.rs?
-   Número repetido NÃO quebra a compilação — a segunda entrada simplesmente
-   nunca roda, porque o user_version já passou dela. Confira contando a lista.
-8. Se mexeu na fronteira Rust↔TS: o implementador REGEROU src/types.ts, ou
-   editou à mão? O arquivo é gerado — o cabeçalho dele diz. Rode
-   `cd src-tauri && cargo test --lib types_export` e confira que o comparador
-   passa. Atenção: `cargo check` e `npm run build` ficam os DOIS calados diante
-   de uma divergência de tipo (medido na run 001), então o comparador é a única
-   evidência que vale aqui.
+5. Se o projeto exige marcador de rastreabilidade: ele existe, está no formato
+   e no idioma certos, e aponta para IDs que EXISTEM na spec?
+6. Se mexeu em arquivos espelhados (traduções, fixtures paralelas): eles têm
+   exatamente as mesmas chaves? Conte, não confie.
+7. Se mexeu em migração/versão de schema: o número é o próximo da sequência real?
+   Número repetido costuma NÃO quebrar a compilação — a segunda entrada
+   simplesmente nunca roda. Confira contando a lista.
+8. Se mexeu num arquivo GERADO ou na fronteira que ele espelha: foi regenerado
+   pelo comando do projeto, ou editado à mão? Rode o comparador. Atenção: build e
+   type-check costumam ficar os DOIS calados diante de uma divergência assim, então
+   o comparador é a única evidência que vale.
 9. Alguma spec ANTIGA deixou de valer por causa disto? Se sim, ela continua
    descrevendo um recurso que saiu — é defeito de documentação e conta.
 10. O que o implementador declarou como verificado foi mesmo EXECUTADO, ou foi
     deduzido? Deduzido conta como não verificado.
 
-Devolva:
-- Veredito: APROVADO | REPROVADO
+DEVOLVA:
+- Veredito: APROVADO | REPROVADO | NEEDS-DECISION
 - Defeitos, do mais grave ao menos: arquivo:linha, o que está errado, e o
   CENÁRIO CONCRETO de falha (entrada → resultado errado). "Poderia ser melhor"
   não é defeito; não liste.
 - O que você não conseguiu verificar, e por quê.
+
+USE "NEEDS-DECISION" quando o que você achou não é um erro de execução, mas uma
+escolha que só o usuário pode fazer: o requisito admite duas leituras e o código
+seguiu uma; o comportamento certo depende de uma preferência de produto; o
+conserto exigiria remover algo que hoje funciona e a spec não diz se isso é
+intencional. Nesse caso NÃO liste como defeito e NÃO mande corrigir — escreva a
+PERGUNTA, com as opções reais, o trade-off de cada uma e qualquer número que você
+tenha medido para sustentar a escolha. Chutar aqui é pior que parar: um chute
+entra na base com autoridade e ninguém depois sabe que foi chute.
 ```
 
 ---
@@ -173,51 +186,61 @@ DEFEITOS:
 ARQUIVOS QUE VOCÊ PODE TOCAR: <lista fechada>
 
 Não refatore o que não está na lista. Não "melhore de passagem". Se um defeito
-não for corrigível sem mudar o desenho, PARE e devolva o motivo — é sinal de
-que o problema é de spec, e quem decide isso é o usuário.
+não for corrigível sem mudar o desenho, PARE e devolva o motivo — é sinal de que
+o problema é de spec, e quem decide isso é o usuário.
 
 Devolva: arquivos alterados, gates com números medidos, e um por um: como cada
 defeito foi corrigido.
 ```
 
-Depois do corretor, **revalide com um validador novo** — não reaproveite o que reprovou. Teto de 3 ciclos; no quarto, pare e escale ao usuário com o que cada ciclo tentou.
+Depois do corretor, **revalide com um validador novo** — não reaproveite o que reprovou. Teto de 3 ciclos; no quarto, estacione a task pela Fase 3 da skill.
 
 ---
 
-## 4. UAT — dirigir o app
+## 4. UAT — exercitar o produto de verdade
 
-**Nunca em paralelo com nada.** App é instância única, a porta 1420 é única (dois incidentes registrados de servidor Vite órfão travando o restart), e a UAT toca os dados reais do usuário.
+**Nunca em paralelo com nada.** O processo costuma ser instância única, a porta de desenvolvimento é única, e o teste toca estado real do usuário.
 
-O método está provado na AD-050 e é o único que vale como evidência de UI:
+O princípio, que vale em qualquer stack:
 
 ```
-Suba o app com o debug remoto do WebView2 exposto:
-  WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222
-  npm run tauri dev
+Exercite a INTERFACE REAL, pelo caminho que o usuário percorre.
 
-Dirija pelo protocolo do DevTools, despachando EVENTO DOM na página real:
-o setter nativo do `value` seguido de `input` — é o que faz o React ouvir.
-
-NÃO chame invoke() direto. Um invoke prova o backend e não prova a tela, que é
-justamente o que a UAT existe para provar.
-
-O seletor de arquivos nativo fica FORA da webview: responda com um script Win32
-à parte (EnumWindows + SendKeys), para o app receber um caminho escolhido pelo
-próprio diálogo dele.
+NÃO chame a camada de API/comando por baixo para "simular" o uso. Isso prova o
+backend e não prova a tela — e provar a tela é justamente o que a UAT existe para
+fazer. Todo defeito que motivou esta seção passava pelos testes automatizados e
+só apareceu no caminho completo.
 
 ANTES DE COMEÇAR:
-- Cheque se a porta 1420 está livre; um Vite órfão de sessão anterior impede o
-  restart e já custou duas sessões.
-- Os dados do usuário são reais. Anote o estado inicial (quantos chats, quantos
-  documentos) e RESTAURE ao fim. Para ler o banco, trabalhe sobre uma CÓPIA.
+- Cheque se a porta/instância de desenvolvimento está livre. Um processo órfão de
+  sessão anterior impede o restart e já custou sessões inteiras.
+- O estado é real. Anote o estado inicial (quantos registros, quais arquivos) e
+  RESTAURE ao fim. Para inspecionar armazenamento, trabalhe sobre uma CÓPIA.
 
-ARMADILHA DE MÉTODO, registrada porque quase virou fato (AD-050):
-não faça a mesma pergunta duas vezes na mesma conversa para comparar A/B. A
-resposta errada da primeira vira o turno anterior da segunda e o modelo repete
-a si mesmo — "Flor do Abacate" virou "Flor do Abacão". Uma pergunta por
-conversa, leituras em conversas separadas.
+ARMADILHA DE MÉTODO, registrada porque quase virou fato:
+num sistema com memória de sessão (conversa, cache, estado acumulado), não repita
+a mesma entrada duas vezes na mesma sessão para comparar A/B. A primeira resposta
+vira contexto da segunda, e o sistema se repete — você mede o eco, não o
+comportamento. Uma medição por sessão limpa.
 
-Devolva: cada ação despachada, o que a TELA mostrou (lido do DOM, não deduzido
-do emit), com horário e número medido. E o que não deu para capturar — estados
-rápidos como "Na fila"/"Lendo" passam em menos que o intervalo de leitura.
+DEVOLVA: cada ação despachada, o que a INTERFACE mostrou (lido da tela/saída, não
+deduzido do log), com horário e número medido. E o que não deu para capturar —
+estados rápidos passam em menos que o intervalo de leitura, e isso precisa estar
+escrito.
 ```
+
+**Como dirigir, por tipo de produto** (escolha o que se aplica; o Perfil do projeto diz qual é):
+
+| Produto | Caminho |
+| --- | --- |
+| app web | automação de browser (Playwright/CDP). Ao preencher campo de framework reativo, dispare o **evento** real — atribuir `value` direto não notifica o framework |
+| app desktop com webview (Electron, Tauri, CEF) | suba com a porta de depuração remota exposta e dirija pelo protocolo do DevTools, como no app web |
+| app desktop nativo | automação de acessibilidade da plataforma (UIA no Windows, AX no macOS) |
+| app mobile | **emulador/simulador**, via o driver da plataforma (Appium, XCUITest, Espresso, `flutter drive`, Detox). Aparelho físico pareado costuma ser `human-only` |
+| CLI / TUI | pty com entrada roteirizada; capture a saída renderizada, não o log |
+| API / serviço | requisições reais contra a instância subida, com o mesmo cliente que o consumidor usa |
+| embarcado / firmware | simulador ou emulador, se houver. Hardware real, bancada, instrumento de medida → **`human-only`**, e diga isso em vez de aproximar |
+
+**Se o seu produto não está na tabela, não improvise um caminho** — descreva no relatório como você tentaria dirigir e devolva a task como `NEEDS-DECISION`. Um método de UAT inventado na hora produz evidência que ninguém sabe interpretar depois, e é pior que a ausência de evidência, porque parece prova.
+
+**Diálogos nativos (arquivo, impressão, permissão, biometria) ficam fora da superfície de automação da UI** em praticamente todos os casos acima — precisam de um script no nível do sistema operacional. Se a task depende de um, diga isso no relatório: é o ponto onde a UAT costuma virar `human-only`.

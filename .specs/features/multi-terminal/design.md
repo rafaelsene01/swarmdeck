@@ -197,15 +197,36 @@ CREATE TABLE terminal_layout (
 | Estado do layout | Tabela SQLite, não `tauri-plugin-store` | O app já carrega SQLite para tarefas. Um mecanismo de persistência a menos, e permite consultar layout junto de projeto/terminal na mesma transação |
 | Identificador | UUID v7 | Ordenável por tempo de criação — dá ordem estável de terminais de graça |
 | Threads de leitura | Uma thread bloqueante por PTY | A API do `portable-pty` é síncrona. Ponte para async custaria complexidade sem ganho com no máximo 4 sessões |
-| Flags do ConPTY | Habilitar as três (resize quirk, win32 input, passthrough) | Sem elas há artefato visual de resize e input quebrado no Windows — a plataforma de desenvolvimento |
+| Flags do ConPTY | **Nada a fazer — o crate já resolve** | ⚠️ Corrigido em 28/07/2026 após ler o código de `portable-pty` 0.9.0. Ver nota abaixo. |
 | Reanexar a PTY após reiniciar | Não suportado | Impossível: o processo morre com o app. Só o layout e o `cwd` são restaurados (decidido na spec) |
 
 ---
 
+## Nota sobre os flags do ConPTY (corrigido em 28/07/2026)
+
+A pesquisa inicial dizia que "criação moderna de ConPTY exige `PSEUDOCONSOLE_RESIZE_QUIRK`, `WIN32_INPUT_MODE` e `PASSTHROUGH_MODE`", e o design original tratava isso como trabalho nosso. **Ler o código do crate desmentiu.** Em `portable-pty-0.9.0/src/win/psuedocon.rs`:
+
+```rust
+(CONPTY.CreatePseudoConsole)(
+    size, input, output,
+    PSUEDOCONSOLE_INHERIT_CURSOR
+    | PSEUDOCONSOLE_RESIZE_QUIRK
+    | PSEUDOCONSOLE_WIN32_INPUT_MODE,
+    &mut con,
+)
+```
+
+Consequências:
+- **`RESIZE_QUIRK` e `WIN32_INPUT_MODE` já vêm ligados**, hardcoded. Não há nada a implementar.
+- **`PASSTHROUGH_MODE` não é setado e não é configurável** — a assinatura de `PsuedoCon::new` não aceita flags. Habilitá-lo exigiria fork do crate.
+- A detecção de versão de Windows que o design previa **não tem onde ser aplicada** e foi removida do escopo do T4.
+
+Se o passthrough vier a fazer falta (repasse direto de VT em Win11 22H2+), as opções são fork do `portable-pty` ou uma PR upstream — decisão para quando houver sintoma concreto, não agora.
+
 ## Riscos
 
-- **`PSEUDOCONSOLE_PASSTHROUGH_MODE` exige Windows 11 22H2+.** Precisa de detecção em runtime com fallback nas versões antigas. Verificar em qual versão do `portable-pty` esse flag é exposto antes de depender dele.
 - **4 threads bloqueantes de leitura** é aceitável no alvo atual. Se o limite de terminais subir muito, isso vira um pool.
+- **Sem `PASSTHROUGH_MODE`**, sequências VT de programas no Windows 11 22H2+ passam pelo tradutor do ConPTY em vez de irem diretas. Na prática isso raramente aparece; se aparecer, o sintoma é artefato de renderização em TUIs complexas.
 
 ---
 
