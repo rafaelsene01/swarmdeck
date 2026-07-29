@@ -17,6 +17,14 @@
 
 `cargo test --lib` roda só os testes unitários in-crate (rápido). `cargo test` inclui `tests/` — os de integração, que tocam disco e socket. `npm run test:scripts` roda `node --test scripts/`, o test runner nativo do Node 24 — sem framework adicional para uma pasta de quatro arquivos.
 
+**Sobre o `Verify` que exige o app rodando (`uat-agent`):** algumas tarefas passam no gate automatizado e ainda assim não estão provadas — o gate diz que compila e que os testes passam, não que a coisa funciona na tela. Nelas o campo `Verify` descreve um passo com o app aberto (digitar e ver eco, minimizar e conferir que a saída não sumiu, reabrir e conferir o layout). **Por decisão do usuário na triagem 002 (28/07/2026), quem executa a tarefa também executa esse `Verify`, dirigindo o app.** Três regras valem, e estão detalhadas em `features/multi-terminal/tasks.md`:
+
+1. **Nenhuma dupla `uat-agent` roda em paralelo**, mesmo que ambas estejam marcadas `[P]` — o `[P]` mede colisão de arquivo, não disputa pela mesma janela, pelo mesmo banco e pelo mesmo PTY.
+2. **Reler o screenshot antes de afirmar.** § Lições do `STATE.md` mede que clique nesta janela é instável — alguns registram só como *hover*. Retry com espera maior resolve.
+3. **Verificação não confirmada não fecha a tarefa.** "Não consegui confirmar" é resultado válido e deve ser registrado com a evidência; um ✅ inventado não é.
+
+Hoje isso atinge `multi-terminal/T6, T7, T9, T10, T11`. É plausível que as features ainda em `Draft` tenham tarefas da mesma natureza — classificar ao liberá-las.
+
 **Sobre o gate `pipeline`:** ele é o único gate que depende de push e de conta do GitHub. Uma tarefa com esse gate não está pronta quando o YAML parseia; está pronta quando o run apareceu na aba Actions com o resultado esperado. Vale para o `ci.yml` (run verde) e para o `release.yml` (release publicada, ou o `cleanup` desfazendo tudo quando o cenário testado é a falha).
 
 ---

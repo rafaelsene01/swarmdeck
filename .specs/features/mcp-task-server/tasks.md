@@ -40,7 +40,7 @@ T3 → T8 [P]
 
 ## Tarefas
 
-### T0: Confirmar o contrato de ferramentas MCP 🚧 BLOQUEIO
+### T0: Escrever o contrato de ferramentas MCP 🚧 BLOQUEIO
 
 **O quê**: Escrever o `TOOL-CONTRACT.md` congelando os nomes e assinaturas das ferramentas MCP.
 

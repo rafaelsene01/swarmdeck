@@ -32,8 +32,10 @@ Clone funcional do CodeAgentSwarm, especificado por **engenharia reversa da UI**
 ## Estado do pipeline
 
 ```
-SPECIFY ✅ →  DESIGN 🟡 →  TASKS 🟡 →  EXECUTE ⬜
+SPECIFY ✅ →  DESIGN 🟡 →  TASKS 🟡 →  EXECUTE 🟡
 ```
+
+*(`EXECUTE` corrigido de ⬜ para 🟡 na triagem 002 — 28/07/2026. O marcador dizia "não começou" enquanto `multi-terminal/T1–T4` já estavam entregues, com 15 testes passando. É a mesma divergência que a triagem 001 corrigiu no `ROADMAP.md`; este segundo lugar passou.)*
 
 **Tasks concluídas para M1 + M2 e para a faixa transversal de entrega** — 59 tarefas atômicas. *(Corrigido na triagem 001: dizia 58, mas a tabela logo abaixo sempre somou 59, e a contagem de headers confirma 59.)*
 
@@ -50,7 +52,7 @@ SPECIFY ✅ →  DESIGN 🟡 →  TASKS 🟡 →  EXECUTE ⬜
 | task-kanban | 6 | [tasks.md](features/task-kanban/tasks.md) |
 | release-distribution | 21 | [tasks.md](features/release-distribution/tasks.md) |
 
-🚧 **`mcp-task-server/T0` é gate de bloqueio** — confirmar o contrato de ferramentas MCP antes de qualquer tarefa do M2.
+🚧 **`mcp-task-server/T0` é gate de bloqueio** — **escrever** o `TOOL-CONTRACT.md` antes de qualquer tarefa do M2. *(Corrigido na triagem 002: dizia "confirmar o contrato", verbo que sobreviveu à decisão do usuário na triagem 001. Não há confirmação contra a implementação de referência — os nomes inferidos do `CLAUDE.md` global **são** o contrato. Ver a AD de 28/07/2026 no `STATE.md`.)*
 🔑 **`release-distribution/T5` é gate de bloqueio** — sem a chave de assinatura e os secrets no repositório, nenhum build de release passa.
 
 **Design concluído** para as quatro features Large — as que têm decisão arquitetural real:

@@ -120,6 +120,8 @@ Nenhuma tarefa com gate `pipeline` (`rd/T2`, `rd/T6`, `rd/T9–T12`, `rd/T19`, `
 
 ## Ferramentas por tarefa
 
-Todas as 37 tarefas do M1/M2 declaram **MCP: NENHUM · Skill: NENHUMA**.
+Todas as 38 tarefas do M1/M2 declaram **MCP: NENHUM · Skill: NENHUMA**.
+
+*(Corrigido na triagem 002 — 28/07/2026. Ainda dizia 37: a triagem 001 corrigiu o número no topo e na lista de paralelizáveis, mas **não** aqui, e registrou "corrigido nos dois lugares" quando eram três. Reconferido: `grep -cE '^### T' nos seis `tasks.md` de M1/M2` = 38.)*
 
 Não é omissão. As tarefas são escrita de Rust e React com testes locais — nenhum MCP instalado neste ambiente (`superbullet-ai`, `godot-ai`) tem relação com o trabalho, e nenhuma skill instalada se aplica. Se algum servidor MCP útil for adicionado depois (por exemplo, um de documentação de crates), revisar esta seção antes de executar.

@@ -25,6 +25,23 @@
 
 ---
 
+## ✅ DECISÃO DO USUÁRIO — triagem 002, 28/07/2026
+
+**Pergunta:** as tarefas cujo `Verify` exige o app rodando são verificadas por um agente, ou pelo mantenedor?
+**Resposta: o agente dirige o app.** `T6`, `T7`, `T9`, `T10` e `T11` são **`uat-agent`** — quem as executa roda o app, executa o `Verify` descrito na própria task e só então a considera pronta. Não precisa perguntar nada ao usuário.
+
+Três regras que vêm junto, e que **não são negociáveis**:
+
+1. **Nenhuma tarefa `uat-agent` roda em paralelo com outra `uat-agent`.** Isto **sobrepõe o marcador `[P]`** de `T7` e `T9`: as duas dirigem a mesma janela do app, e o `[P]` delas vale apenas contra tarefas que **não** tocam o app. Na prática, na Fase 3 só `T8` (`code`, sem app) pode rodar ao lado de uma delas. Duas instâncias do app disputando o mesmo banco e o mesmo PTY produzem falha que não se reproduz.
+
+2. **Clique nesta janela é instável — reler antes de afirmar.** `STATE.md` § Lições registra a medição: alguns cliques registram só como *hover* e a seção não troca. Portanto, todo `Verify` visual **relê o screenshot para confirmar que a ação aconteceu**, em vez de assumir que o clique pegou. Retry com espera maior resolve. Um `Verify` que não pôde ser confirmado por leitura é **falha**, não sucesso.
+
+3. **Verificação não confirmada não fecha a task.** Se o app não subir, ou se o passo visual não puder ser lido com confiança depois de retry, a task fica aberta com a evidência do que se viu — nunca marcada como verificada. Registrar "não consegui confirmar" é um resultado válido; inventar um ✅ não é.
+
+*Trade-off aceito pelo usuário:* a fila executável sobe de 4 para 9 itens, contra o risco de a instabilidade de clique produzir um "verificado" que ninguém viu. A regra 2 é o que contém esse risco; a regra 3 é o que impede que ele vire silêncio.
+
+---
+
 ## Plano de execução
 
 ### Fase 1 — Fundação (sequencial)
@@ -37,12 +54,15 @@ T1 → T2 → T3
 T3 → T4 → T5 → T6
 ```
 
-### Fase 3 — Frontend (paralelo)
+### Fase 3 — Frontend (paralelo **parcial** — ver a decisão da triagem 002)
 ```
-          ┌→ T7  [P]
-T6 ───────┼→ T8  [P]
-          └→ T9  [P]
+          ┌→ T7  [P] 🖥️ uat-agent ─┐
+T6 ───────┼→ T8  [P] ✅ code       │ T7 e T9 NÃO rodam juntas
+          └→ T9  [P] 🖥️ uat-agent ─┘
 ```
+⚠️ O `[P]` das três é real **apenas quanto a arquivos** — elas não colidem em disco. Mas `T7` e `T9`
+dirigem a **mesma janela do app**, e pela decisão da triagem 002 nenhuma dupla `uat-agent` roda em
+paralelo. Combinação válida: `T8` ao lado de `T7` **ou** de `T9`, nunca `T7` + `T9`.
 
 ### Fase 4 — Integração (sequencial)
 ```
