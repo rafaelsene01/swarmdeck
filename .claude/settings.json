@@ -20,5 +20,9 @@
       "Bash(yarn add:*)",
       "Bash(pip install:*)"
     ]
-  }
+  },
+  "mcpServers": {
+    "context7": { "command": "npx", "args": ["-y", "@context7/mcp"] }
+  },
+  "mcpServersDenyAll": true
 }
