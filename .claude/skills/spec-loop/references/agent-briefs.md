@@ -6,6 +6,15 @@ O que o subagent recebe é o que decide a qualidade do que volta. Não improvise
 
 **Os `<...>` vêm do Perfil do projeto do `TRIAGE.md`.** Um brief despachado com placeholder intacto manda o agente adivinhar, e ele adivinha. Se o perfil não tem a informação, ela não foi levantada — volte à triagem em vez de inventar.
 
+**Quais briefs a run usa depende do modo escolhido na Fase 0.5 da skill:**
+
+| Modo | Briefs em uso |
+| --- | --- |
+| `validado` | 1 (implementador), 2 (validador), 3 (corretor), 4 (UAT, quando o item é `uat-agent`) |
+| `direto` | 1 (implementador) e 4 (UAT, quando o item é `uat-agent`). Os briefs 2 e 3 não são despachados |
+
+O brief 1 **não muda** entre os modos. Em `direto` ele continua exigindo gates com número medido, o log honesto e o `Status: Bloqueado` com pergunta — é justamente quando ninguém vai revisar depois que essas exigências mais importam. Não afrouxe o brief porque a run é rápida.
+
 ---
 
 ## Contexto comum (monte uma vez por run, cole em todo brief)

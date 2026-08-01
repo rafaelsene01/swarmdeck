@@ -1,6 +1,6 @@
 ---
 name: spec-loop
-description: Executa o que a triagem já marcou como pronto em qualquer projeto — despacha subagents em paralelo, cada execução seguida de uma validação adversarial por um agente diferente, com correção em loop. Nunca pergunta ao usuário: item que exige decisão humana é estacionado, marcado na spec e devolvido para a skill spec-triage. Mantém um journal que permite retomar numa sessão nova. Use quando o pedido for "execute o que falta", "continue de onde parou", "valide o que foi implementado" ou variações.
+description: Executa o que a triagem já marcou como pronto em qualquer projeto — despacha subagents em paralelo, em modo validado (cada execução seguida de uma validação adversarial por um agente diferente, com correção em loop) ou em modo direto (só implementação, seguindo até o fim da fila). Pergunta o modo uma única vez, antes da primeira onda, e nunca mais interrompe: item que exige decisão humana é estacionado, marcado na spec e devolvido para a skill spec-triage. Mantém um journal que permite retomar numa sessão nova. Use quando o pedido for "execute o que falta", "continue de onde parou", "valide o que foi implementado" ou variações.
 ---
 
 # spec-loop — execução e validação orquestradas
@@ -13,6 +13,8 @@ Esta skill é **orquestradora e não-bloqueante**. Ela executa; ela não decide 
 | **spec-loop** (esta) | executa os itens que a triagem marcou como prontos, com validação adversarial em loop | **não reconcilia, não classifica, não pergunta** |
 
 **A regra que define esta skill:** ela só toca item que já é executável sem intervenção humana. Se durante a execução ou a validação aparecer uma decisão que só o usuário pode tomar, o item é **estacionado e a spec dele é atualizada** com a pergunta — nunca executado no chute, nunca perguntado no meio da onda. A Fase 3 diz como.
+
+**A única pergunta que esta skill faz** é a da Fase 0.5: em que modo a run vai rodar. Ela acontece **antes da primeira onda**, uma vez, e não se repete. Depois disso a run é não-bloqueante do começo ao fim da fila — é o que separa uma escolha de estratégia (barata antes de começar) de uma interrupção no meio da execução (cara, porque para trabalho já em voo).
 
 Quem executa esta skill **não edita código, não roda gate, não dirige o produto**: planeja ondas, despacha subagents, lê o que eles devolvem e decide o próximo passo. Toda mudança de arquivo passa por um subagent.
 
@@ -78,6 +80,44 @@ E monte a fila, que é exatamente esta e nada além dela:
 
 ---
 
+## Fase 0.5 — O modo da run (a única pergunta desta skill)
+
+Com a fila montada e **antes de despachar qualquer subagent**, pergunte ao usuário em que modo a run vai correr. Use a ferramenta de pergunta estruturada (`AskUserQuestion`) com estas duas opções — e o número de itens da fila na pergunta, porque é o que dá escala à escolha:
+
+| Modo | O ciclo por task | Quando faz sentido |
+| --- | --- | --- |
+| **`validado`** (padrão) | implementador → **validador adversarial** (agente diferente) → corretor → revalidar | o resultado vai para a base e ninguém vai reler task por task. É o modo que as três coisas da seção acima existem para sustentar |
+| **`direto`** | só implementador, com os gates do escopo. Sem validador, sem ciclo de correção | você vai revisar o diff inteiro depois, ou quer varrer a fila toda rápido para ver onde ela quebra |
+
+**Os dois modos vão até o fim da fila.** "Finalizar" aqui significa **esgotar todos os itens prontos para execução de todas as specs**, onda após onda, sem parar entre elas para pedir confirmação — é isto que esta skill orquestra. O que a escolha muda é só o ciclo *dentro* de cada task, nunca até onde a run vai. Uma run em modo `direto` que para no meio da fila para relatar não cumpriu o que foi pedido.
+
+**Não pergunte se o usuário já disse.** "roda direto", "sem validar", "só implementa" → `direto`. "valida cada uma", "com validação", "rodada adversarial" → `validado`. Perguntar o que já foi respondido gasta uma interação e irrita.
+
+**Se a resposta não vier** (usuário ausente, invocação automatizada, `/loop`): assuma **`validado`**. O padrão precisa ser o modo caro, porque o barato produz um resultado que *parece* igual — o mesmo diff, os mesmos gates verdes — e a diferença só aparece depois, quando o defeito chega na base. Um padrão inseguro que se parece com o seguro é a pior escolha de padrão possível.
+
+**O modo escolhido é fato registrado, não detalhe de conversa.** Grave-o no journal (Fase 4) e no relatório final. Numa sessão de retomada, o modo vem do journal — não pergunte de novo.
+
+### O que o modo `direto` NÃO desliga
+
+O modo direto tira o validador. Ele não tira nada mais, e confundir isso é o jeito de transformar uma run rápida numa run inútil:
+
+- **Os gates do escopo continuam obrigatórios.** O implementador roda e relata número medido. `direto` é "sem segundo agente", não "sem verificação".
+- **A Fase 3 continua valendo.** Implementador que devolve `Bloqueado` com uma pergunta é estacionado do mesmo jeito, e a spec dele é atualizada do mesmo jeito. Não existe modo que autorize chutar decisão do usuário.
+- **Os itens `uat-agent` da fila continuam rodando**, sozinhos, como sempre. Eles são trabalho enfileirado, não a etapa de validação que o modo desligou.
+- **As regras de território compartilhado e de onda continuam valendo** (Fase 1). Elas protegem contra dano silencioso entre agentes paralelos, e isso não tem relação com validar.
+
+### O preço, e como ele aparece no relatório
+
+Em modo `direto`, **nada na run foi verificado por um agente independente**. Toda evidência tem uma única origem: o agente que escreveu o código, relatando sobre o próprio trabalho. As duas primeiras coisas da seção "As três coisas que esta skill existe para impedir" ficam **descobertas** — inclusive o relatório otimista, que nenhum gate pega.
+
+Isso vai no relatório final **com todas as letras**, na frase que descreve o que foi feito — não numa nota de rodapé:
+
+> *Run em modo `direto`: 9 tasks implementadas, gates do escopo medidos pelo próprio implementador. **Nenhuma passou por validação independente** — o que está escrito aqui sobre cada task é o autorrelato de quem a escreveu.*
+
+Um relatório de run `direto` que não diz isso está afirmando mais confiança do que a run produziu, que é exatamente o defeito que esta skill existe para não cometer.
+
+---
+
 ## Fase 1 — Ondas de paralelismo
 
 Paralelizar é o objetivo, mas colisão custa mais do que a economia. Uma task entra na onda com outra **só se todas as condições valerem**:
@@ -96,6 +136,8 @@ Despache as tasks de uma onda em **uma única mensagem** com múltiplas chamadas
 ---
 
 ## Fase 2 — O loop de execução e validação
+
+O ciclo abaixo é o do **modo `validado`**. Em modo `direto`, ele para na primeira caixa: implementador → journal → próxima task, onda após onda, até a fila acabar. Pule direto para a subseção "Modo `direto`" no fim desta fase.
 
 Para cada task da onda:
 
@@ -122,6 +164,21 @@ Para cada task da onda:
 **Teto de 3 ciclos por task.** Se um defeito sobrevive a três correções, o problema é de spec ou de desenho, não de código — e isso é decisão do usuário. Estacione pela Fase 3.
 
 Os briefs de cada papel estão em [references/agent-briefs.md](references/agent-briefs.md). Não improvise, e **preencha os placeholders com o Perfil do projeto**: o que o subagent recebe é o que decide a qualidade do que volta.
+
+### Modo `direto` — a fila inteira, sem o segundo agente
+
+```
+IMPLEMENTADOR → journal → próxima task → próxima onda → ... → fila vazia
+```
+
+O ciclo por task acaba quando o implementador devolve. Sem validador, sem corretor, sem teto de ciclos — não há ciclo.
+
+O que muda na condução da run:
+
+- **Não pare entre ondas.** Monte a próxima onda pela Fase 1 e despache. A run só termina quando a fila esvazia (ou quando o que sobrou está todo estacionado). Relatório parcial no meio da fila não é o produto desta skill.
+- **Leia o que o implementador devolve, mesmo sem validar.** `Status: Bloqueado` → Fase 3. `Status: Parcial` → journal com o que ficou faltando, e siga. `DESVIO` declarado → registre no journal; ele é a única pista que sobrou de que algo saiu do plano.
+- **Arquivo citado que não existe ainda te obriga a parar aquela task.** É o item 0 do checklist do validador, e é a única verificação dele que você faz sozinho, porque custa uma listagem e pega o modo de falha mais caro que já aconteceu: task marcada como concluída cujo artefato não está no disco. Não vale delegar essa checagem ao mesmo agente que escreveu o relatório.
+- **O journal marca `Validação: — (modo direto)`**, nunca campo em branco. Branco depois se lê como "não anotei"; `— (modo direto)` se lê como "não houve, e foi de propósito".
 
 ---
 
@@ -175,6 +232,7 @@ O template abaixo está em português porque esta skill está; **o journal sai n
 # Run NNN — <data>
 
 **Status:** em andamento | pausada | concluída
+**Modo:** validado | direto — <escolhido pelo usuário em <hora> | padrão, sem resposta>
 **Triagem que autorizou:** TRIAGE.md desta pasta, revisão <valor>
 **Orquestrador:** sessão iniciada em <hora>
 
@@ -183,6 +241,7 @@ O template abaixo está em português porque esta skill está; **o journal sai n
 
 ## Execução
 | Task | Onda | Implementador | Gates | Validação | Ciclos | Status |
+(em modo direto, "Validação" é sempre `— (modo direto)` e "Ciclos" é `0`)
 
 ## Devolvido para triagem
 | Task | Pergunta | Onde ficou gravada | Estado do código |
@@ -201,6 +260,10 @@ tocados com mtime>
 
 **Retomar:** ler o journal mais recente com `Status: em andamento` ou `pausada`, rodar o comando de estado do perfil, comparar com o checkpoint registrado. Divergência significa que algo mudou fora da skill — reconcilie antes de continuar. Confira também que o `TRIAGE.md` da pasta continua valendo (Fase 0). Depois siga da primeira task sem `Status: concluída`.
 
+**O modo vem do journal, não de uma pergunta nova.** Numa retomada, leia o campo `Modo` e continue nele — perguntar de novo produziria uma run com metade das tasks validadas e metade não, e um relatório que não consegue dizer honestamente o que foi verificado. Se o usuário quiser trocar de modo, ele diz; então registre a troca no journal com a task a partir da qual ela vale, porque o relatório vai precisar separar as duas metades.
+
+**Se o journal não tiver o campo `Modo`** (journal antigo, ou escrito antes desta regra), trate as tasks já concluídas como **não validadas** e registre isso em "Não verificado". Presumir que houve validação porque o journal não diz o contrário é inventar evidência.
+
 **Sem VCS, a retomada é frágil e você precisa dizer isso:** sem diff, você não consegue distinguir o que esta run escreveu do que alguém escreveu entre as sessões. Retome mesmo assim, mas trate cada task já marcada como concluída como **não reverificada** e registre isso na seção "Não verificado".
 
 **Sem commits**, a menos que o usuário peça — e a menos que as regras do repositório digam outra coisa. A retomada se apoia no journal + o estado da árvore, não no histórico. Ao fim da run, **sugira** a mensagem de commit; não execute.
@@ -209,7 +272,8 @@ tocados com mtime>
 
 ## Nunca faça (vale para todo subagent despachado)
 
-- **Não pergunte ao usuário no meio da execução.** Estacione pela Fase 3. A única pergunta legítima desta skill é a do fim: "posso commitar?".
+- **Não pergunte ao usuário no meio da execução.** Estacione pela Fase 3. As únicas perguntas legítimas desta skill são a do começo — o modo da run, Fase 0.5 — e a do fim: "posso commitar?". Entre uma e outra, a run não interrompe o usuário por nada.
+- **Não pare a run antes de esvaziar a fila.** Nenhum modo autoriza entregar metade das specs e perguntar se continua. Item que não dá para executar é estacionado (Fase 3) e a fila segue.
 - **Não execute item `needs-decision`, `human-only` ou `blocked`.** Se ele está fora da fila, ele está fora.
 - **Não toque em dados reais do usuário.** Se o projeto tem estado local (banco, workspace, cache, credenciais), **copie** para um diretório temporário, trabalhe na cópia, apague. O original nunca é aberto para escrita por um teste.
 - **Não commite, não force-push, não reescreva a branch principal** sem o usuário pedir. Desfazer é um commit de reversão, nunca reescrita de histórico.
@@ -224,6 +288,7 @@ tocados com mtime>
 
 Relate o que foi **executado**, não o que deveria funcionar, e diga a origem de cada evidência:
 
+- **em que modo a run rodou**, na primeira linha. Se foi `direto`, a frase da Fase 0.5 vai junto: nenhuma task passou por validação independente, e o que está escrito sobre cada uma é autorrelato de quem a escreveu;
 - **o que rodou**, com número medido (contagem de teste, tempo, bytes) — nunca adjetivo;
 - **quem provou o quê**: gate automatizado, validador adversarial, ou uso real do produto. As três têm forças diferentes e o leitor precisa saber qual foi;
 - **quais specs foram atualizadas** e o que ficou pendente nelas;

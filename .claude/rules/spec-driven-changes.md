@@ -48,6 +48,12 @@ Regras do marcador:
 - Editou um arquivo e o escopo mudou? **Atualize o marcador no mesmo commit.** Marcador desatualizado é pior que marcador ausente: ele mente com autoridade.
 - Arquivo que implementa requisito de mais de uma feature lista as duas: `// SPEC: chat-messaging (CHAT-11), documents-rag (DOC-07)`.
 
+**Exceção — marcador localizado em arquivo compartilhado.** Um arquivo que é território de várias features e cujo conteúdo *não é*, no todo, implementação de requisito — um manifesto de workspace (`Cargo.toml`), um ponto de entrada que só monta o app (`src-tauri/src/lib.rs`) — leva o marcador **imediatamente acima do bloco que implementa o requisito**, e não no topo. Um marcador no topo desses arquivos mentiria sobre todo o resto do conteúdo, e o item 3 já diz que marcador que mente com autoridade é pior que marcador ausente.
+
+Duas condições, as duas obrigatórias: o bloco marcado precisa ser **delimitável** (uma seção de TOML, um `.setup()`, uma função), e o `grep -rn "SPEC:"` precisa continuar achando o arquivo — por isso o formato da linha não muda, só a posição. Se o arquivo inteiro existe por causa de uma feature só, essa exceção não vale: marcador no topo.
+
+*(Aberta em 31/07/2026, na run 003. O `Verifier` apontou `Cargo.toml:19` e `src-tauri/src/lib.rs:19` como desvio real da regra; o usuário aceitou o argumento e mandou escrever a exceção, em vez de deixar a regra dizendo uma coisa e o código fazendo outra.)*
+
 **Arquivos sem sintaxe de comentário** (`en.json`, `pt.json`, `tauri.conf.json`) não recebem marcador — a rastreabilidade deles vive na tabela da spec, e é lá que ela precisa ser atualizada.
 
 **Arquivo de infraestrutura que não implementa requisito nenhum** (um script de build, um config) fica sem marcador. Não force um ID só para preencher a linha; se você não consegue nomear o requisito, provavelmente falta spec — veja o item 4.
