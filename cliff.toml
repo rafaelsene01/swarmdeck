@@ -1,0 +1,67 @@
+# SPEC: release-distribution (REL-05)
+#
+# Configuração do git-cliff — gera o CHANGELOG a partir de Conventional
+# Commits desde a última tag `v*`. Adaptado de `local-mind/cliff.toml`:
+# os grupos saem em português, para bater com o idioma do repositório.
+
+[changelog]
+header = """
+# Changelog
+
+Todas as mudanças notáveis deste projeto são documentadas aqui.
+"""
+body = """
+{% if version %}\
+    ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+    ## [Não lançado]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | striptags | trim | upper_first }}
+    {% for commit in commits %}
+        - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
+            {% if commit.breaking %}[**quebra compatibilidade**] {% endif %}\
+            {{ commit.message | upper_first }}
+    {% endfor %}
+{% endfor %}
+"""
+trim = true
+# Uma release sem commit nenhum ainda precisa gerar seção — ver caso de
+# borda da spec: disparo manual sem commit desde a última tag continua
+# publicando release, só que com CHANGELOG vazio.
+render_always = true
+footer = ""
+
+[git]
+conventional_commits = true
+# Commit não convencional (ex.: o commit inicial do repositório) não quebra
+# a geração — ele só cai no grupo catch-all "Outros" em vez de ser excluído.
+filter_unconventional = false
+require_conventional = false
+split_commits = false
+commit_preprocessors = []
+protect_breaking_commits = false
+commit_parsers = [
+  { message = "^feat", group = "<!-- 0 -->Funcionalidades" },
+  { message = "^fix", group = "<!-- 1 -->Correções" },
+  { message = "^docs", group = "<!-- 2 -->Documentação" },
+  { message = "^refactor", group = "<!-- 3 -->Refatorações" },
+  { message = "^perf", group = "<!-- 4 -->Performance" },
+  { message = "^test", group = "<!-- 5 -->Testes" },
+  { message = "^build", group = "<!-- 6 -->Build" },
+  { message = "^ci", group = "<!-- 7 -->CI" },
+  { message = "^chore\\(release\\):", skip = true },
+  { message = "^chore", group = "<!-- 8 -->Manutenção" },
+  { message = "^style", group = "<!-- 9 -->Estilo" },
+  { message = ".*", group = "<!-- 10 -->Outros" },
+]
+# Não excluir commits que nenhum parser casou — eles caem no catch-all
+# acima. Excluir aqui apagaria silenciosamente o histórico não convencional.
+filter_commits = false
+tag_pattern = "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+skip_tags = ""
+ignore_tags = ""
+topo_order = false
+topo_order_commits = true
+sort_commits = "oldest"
+recurse_submodules = false

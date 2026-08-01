@@ -15,3 +15,11 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
 uuid = { version = "1", features = ["v7", "serde"] }
+
+# SPEC: release-distribution (REL-35)
+# Perfil enxuto para o binário distribuído: remove símbolos de debug e liga
+# LTO/codegen-units=1 para o linker enxugar código morto entre crates.
+[profile.release]
+strip = true
+lto = "thin"
+codegen-units = 1

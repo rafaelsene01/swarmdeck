@@ -2,7 +2,7 @@
 
 **Design**: `.specs/features/release-distribution/design.md`
 **Testing**: `.specs/codebase/TESTING.md`
-**Status**: Draft
+**Status**: In Progress
 **Milestone**: Transversal — Fase A (T1–T3, T21) não depende de nenhuma feature e pode entrar hoje; Fase C em diante só faz sentido quando o M1 produzir um app que valha a pena instalar.
 
 | Bloco | Tarefas | Entra quando |
