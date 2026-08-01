@@ -205,9 +205,9 @@ Levantados por inspeção direta, não deduzidos — cada um muda uma decisão d
 |---|---|---|---|
 | REL-01 | P1: Release só por `workflow_dispatch` com select de incremento | Design | Pending |
 | REL-02 | P1: Push/tag/agendamento nunca publicam | Design | Pending |
-| REL-03 | P1: Versão da última tag + incremento, gravada nos 4 arquivos que a duplicam | Design | Pending |
-| REL-04 | P1: Sem tag anterior, base é o `package.json` | Design | Pending |
-| REL-05 | P1: CHANGELOG dos Conventional Commits desde a última tag | Design | Pending |
+| REL-03 | P1: Versão da última tag + incremento, gravada nos 4 arquivos que a duplicam | Execute | Implemented (T1, `npm run test:scripts` 11/11) |
+| REL-04 | P1: Sem tag anterior, base é o `package.json` | Execute | Implemented (T1, `npm run test:scripts` 11/11) |
+| REL-05 | P1: CHANGELOG dos Conventional Commits desde a última tag | Execute | Implemented — parcial: `cliff.toml` criado e os 9 tipos mapeados (T3); a geração real depende de `git-cliff` rodar em `T6`, ainda pendente |
 | REL-06 | P1: Commit `chore(release)`, tag e GitHub Release no mesmo run | Design | Pending |
 | REL-07 | P1: Guarda de branch e de tag existente, antes de escrever | Design | Pending |
 | REL-08 | P1: Run interrompido desfaz tag, rascunho e commit de versão | Design | Pending |
@@ -218,9 +218,9 @@ Levantados por inspeção direta, não deduzidos — cada um muda uma decisão d
 | REL-13 | P1: Build de Linux em `ubuntu-22.04` | Design | Pending |
 | REL-14 | P1: `.zip` portátil de Windows com marcador | Design | Pending |
 | REL-15 | P1: Portátil assinado com a mesma chave, `.sig` anexado | Design | Pending |
-| REL-16 | P1: Modo portátil grava dados ao lado do executável | Design | Pending |
-| REL-17 | P1: Modo instalado usa `app_data_dir`; resolução centralizada num módulo só | Design | Pending |
-| REL-18 | P1: Rodar do zip em pasta gravável, sem elevação | Design | Pending |
+| REL-16 | P1: Modo portátil grava dados ao lado do executável | Execute | Implemented (T13, `cargo test --lib` 11/11) |
+| REL-17 | P1: Modo instalado usa `app_data_dir`; resolução centralizada num módulo só | Execute | Implemented (T13, `cargo test --lib` 11/11) |
+| REL-18 | P1: Rodar do zip em pasta gravável, sem elevação | Execute | Implemented — parcial: detecção de pasta somente-leitura (`is_writable`) coberta por `T13`; a montagem real do zip é `T7`, ainda pendente |
 | REL-19 | P1: Verificação silenciosa no boot, sem bloquear a UI | Design | Pending |
 | REL-20 | P1: Aviso não bloqueante com versão, notas e 3 ações | Design | Pending |
 | REL-21 | P1: Nada é exibido quando não há versão nova | Design | Pending |
@@ -237,10 +237,10 @@ Levantados por inspeção direta, não deduzidos — cada um muda uma decisão d
 | REL-32 | P2: Seção "Atualizações" com versão e modo | Design | Pending |
 | REL-33 | P2: "Verificar agora" informa o resultado nos dois casos | Design | Pending |
 | REL-34 | P2: Toggle persistido; desligado = zero rede no boot; ligado por padrão | Design | Pending |
-| REL-35 | P3: `strip` + LTO com redução medida e comparada à meta de 20MB | — | Pending |
+| REL-35 | P3: `strip` + LTO com redução medida e comparada à meta de 20MB | Execute | Implemented (T20, medição registrada em `STATE.md`, meta de <20MB atingida) |
 | REL-36 | P3: `clippy -D warnings` no CI após limpeza | — | Pending |
 
-**Cobertura:** 36 requisitos, 0 mapeados para tarefas até o `tasks.md` desta feature ser aprovado.
+**Cobertura:** 36 requisitos, 36 mapeados para tarefas em `tasks.md` (ver "Cobertura de requisitos" nesse arquivo). Desta correção, 6 ficaram `Implemented` com evidência de gate verde (REL-03, REL-04, REL-16, REL-17, REL-18, REL-35) e 1 `Implemented` parcial (REL-05, aguardando `T6`); os demais 29 permanecem `Pending` — código ainda não escrito ou gate `pipeline` bloqueado por push humano (`T2`, `T21`).
 
 ---
 

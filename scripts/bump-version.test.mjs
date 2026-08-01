@@ -55,6 +55,27 @@ test("setWorkspaceVersion rewrites only the version inside [workspace.package]",
   assert.match(result, /uuid = \{ version = "1", features = \["v7", "serde"\] \}/);
 });
 
+test("setWorkspaceVersion leaves a version key in another section intact", () => {
+  const source = [
+    "[workspace]",
+    'members = ["src-tauri"]',
+    "",
+    "[workspace.package]",
+    'version = "0.1.0"',
+    'edition = "2021"',
+    "",
+    "[package]",
+    'name = "swarmdeck-mcp"',
+    'version = "9.9.9"',
+    "",
+  ].join("\n");
+
+  const result = setWorkspaceVersion(source, "0.2.0");
+
+  assert.match(result, /\[workspace\.package\][\s\S]*?version = "0\.2\.0"/);
+  assert.match(result, /\[package\][\s\S]*?version = "9\.9\.9"/);
+});
+
 test("setWorkspaceVersion fails explicitly when [workspace.package] has no version key", () => {
   const source = ["[workspace]", 'members = ["src-tauri"]', "", "[workspace.package]", 'edition = "2021"'].join(
     "\n",

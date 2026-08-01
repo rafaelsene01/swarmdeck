@@ -47,6 +47,12 @@ T12 ─────────────────────────�
 
 ---
 
+## Desvios de execução
+
+- **T1 — `test:scripts` não podia ser `"node --test scripts/"`.** O `Done when` original exigia essa string literal, mas no Node 24 (fixado em `.github/workflows/ci.yml:27` e confirmado localmente com `node --version` → `v24.12.0`) o argumento posicional de `node --test` é tratado como **glob**, não como diretório: `node --test scripts/` casa a própria pasta `scripts` como se fosse um arquivo de teste e falha com `MODULE_NOT_FOUND: Cannot find module 'D:\ide\scripts'` (reproduzido nesta correção, `npm run test:scripts` → exit 1). A correção usa a forma glob explícita, `node --test "scripts/**/*.test.mjs"`, que restringe a busca aos arquivos `*.test.mjs` dentro de `scripts/` — 10/10 testes passam. Ficou decidido não usar `node --test` sem argumento posicional (que também funcionaria) porque essa forma varreria qualquer pasta de teste que o projeto ganhe fora de `scripts/` no futuro; o glob mantém o gate `scripts` restrito ao escopo da tarefa.
+
+---
+
 ## Tarefas
 
 ### T1: Escritor único da versão
@@ -58,14 +64,14 @@ T12 ─────────────────────────�
 **Requisito**: REL-03, REL-04, REL-30
 
 **Done when**:
-- [ ] `bumpVersion("0.1.0", "patch") === "0.1.1"`, idem `minor` e `major`
-- [ ] `setWorkspaceVersion` altera **só** a `version` dentro de `[workspace.package]` — um TOML com dependências versionadas passa intacto no resto
-- [ ] `setJsonVersion` cobre `package.json` e o `packages[""].version` do `package-lock.json`
-- [ ] `--dry-run` imprime só a versão, sem escrever arquivo
-- [ ] Versão fora de `X.Y.Z` e incremento desconhecido falham com erro explícito
-- [ ] `package.json` ganha `"test:scripts": "node --test scripts/"`
-- [ ] Gate passa: `npm run test:scripts`
-- [ ] Contagem de testes: 10 unit
+- [x] `bumpVersion("0.1.0", "patch") === "0.1.1"`, idem `minor` e `major`
+- [x] `setWorkspaceVersion` altera **só** a `version` dentro de `[workspace.package]` — um TOML com dependências versionadas passa intacto no resto
+- [x] `setJsonVersion` cobre `package.json` e o `packages[""].version` do `package-lock.json`
+- [x] `--dry-run` imprime só a versão, sem escrever arquivo
+- [x] Versão fora de `X.Y.Z` e incremento desconhecido falham com erro explícito
+- [x] `package.json` ganha `"test:scripts": "node --test \"scripts/**/*.test.mjs\""` — ver Desvios de execução: a forma sem argumento posicional não funciona no Node 24
+- [x] Gate passa: `npm run test:scripts`
+- [x] Contagem de testes: 11 unit — inclui o caso de `setWorkspaceVersion` que mata o mutante `inWorkspacePackage = true` (correção pós-Verifier)
 
 **Tests**: unit · **Gate**: scripts
 
@@ -76,6 +82,8 @@ T12 ─────────────────────────�
 ---
 
 ### T2: Workflow de CI
+
+> 🚧 **BLOQUEADA.** Gate `pipeline` — depende de push humano ao GitHub para produzir um run real na aba Actions. Nenhum item do `Done when` abaixo tem essa evidência ainda; permanece com todas as caixas desmarcadas até o disparo real.
 
 **O quê**: `.github/workflows/ci.yml` com os três jobs (frontend, rust, commits), concorrência com cancelamento e nenhuma capacidade de publicar.
 **Onde**: `.github/workflows/ci.yml`
@@ -108,10 +116,10 @@ T12 ─────────────────────────�
 **Requisito**: REL-05
 
 **Done when**:
-- [ ] `git cliff --config cliff.toml --unreleased` gera saída sem erro no histórico atual
-- [ ] Tipos `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore` mapeados para grupos legíveis
-- [ ] Commits de merge e o commit inicial não convencional não quebram a geração
-- [ ] Gate passa: `cargo build && npm run build` (nada de código muda; o gate confirma que a árvore segue sã)
+- [ ] `git cliff --config cliff.toml --unreleased` gera saída sem erro no histórico atual — **sem evidência**: `git-cliff` não está instalado neste ambiente de execução, não foi rodado
+- [x] Tipos `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore` mapeados para grupos legíveis — confirmado por leitura de `cliff.toml:44-56`, os 9 tipos mais `style` e o catch-all `Outros`
+- [ ] Commits de merge e o commit inicial não convencional não quebram a geração — **sem evidência**: mesma limitação, não executado
+- [x] Gate passa: `cargo build && npm run build` (nada de código muda; o gate confirma que a árvore segue sã) — `cargo build` finished dev profile; `npm run build` (`tsc --noEmit && vite build`) ✓ built in 964ms, 31/07/2026
 
 **Tests**: none · **Gate**: build
 
@@ -130,13 +138,13 @@ T12 ─────────────────────────�
 **Requisito**: REL-10, REL-11
 
 **Done when**:
-- [ ] `"version": "../package.json"` — o build falha com mensagem clara se o caminho for inválido
-- [ ] `mainBinaryName: "SwarmDeck"` — o executável deixa de sair como `swarmdeck.exe`
-- [ ] `bundle.targets` explícito: `["msi", "nsis", "deb", "appimage"]`
-- [ ] `bundle.createUpdaterArtifacts: true`
-- [ ] `bundle.windows.nsis.installMode: "currentUser"`
-- [ ] `src-tauri/capabilities/default.json` criado com `core:default`
-- [ ] Gate passa: `cargo build && npm run build`
+- [x] `"version": "../package.json"` — confirmado em `src-tauri/tauri.conf.json:4`; comportamento de falha em caminho inválido não foi exercitado (não há evidência de teste desse caso)
+- [x] `mainBinaryName: "SwarmDeck"` — confirmado em `src-tauri/tauri.conf.json:5`
+- [x] `bundle.targets` explícito: `["msi", "nsis", "deb", "appimage"]` — confirmado em `src-tauri/tauri.conf.json:31`
+- [x] `bundle.createUpdaterArtifacts: true` — confirmado em `src-tauri/tauri.conf.json:32`
+- [x] `bundle.windows.nsis.installMode: "currentUser"` — confirmado em `src-tauri/tauri.conf.json:35`
+- [x] `src-tauri/capabilities/default.json` criado com `core:default` — confirmado em `src-tauri/capabilities/default.json:6`
+- [x] Gate passa: `cargo build && npm run build` — `cargo build` finished dev profile; `npm run build` ✓ built in 964ms, 31/07/2026
 
 **Tests**: none · **Gate**: build
 
@@ -338,14 +346,14 @@ T12 ─────────────────────────�
 **Requisito**: REL-16, REL-17, REL-18
 
 **Done when**:
-- [ ] `flavor(dir)` devolve `Portable` quando existe `.portable` ao lado do executável, `Installed` caso contrário
-- [ ] `data_dir` devolve `<exe_dir>/data` no portátil e `app_data_dir()` no instalado
-- [ ] `db_path` devolve `data_dir()/swarmdeck.sqlite` e cria o diretório se faltar
-- [ ] `is_writable` reprova diretório somente-leitura
-- [ ] Nenhum outro ponto do código monta caminho de dados — `grep` por `app_data_dir` fora deste módulo retorna vazio
-- [ ] Arquivo abre com `// SPEC: release-distribution (REL-16, REL-17, REL-18)`
-- [ ] Gate passa: `cargo test --lib && npm run test`
-- [ ] Contagem de testes: 6 unit
+- [x] `flavor(dir)` devolve `Portable` quando existe `.portable` ao lado do executável, `Installed` caso contrário — `src-tauri/src/paths.rs:122-134` (2 testes)
+- [x] `data_dir` devolve `<exe_dir>/data` no portátil e `app_data_dir()` no instalado — testado via `resolve_data_dir` em `paths.rs:137-160` (2 testes)
+- [x] `db_path` devolve `data_dir()/swarmdeck.sqlite` e cria o diretório se faltar — `paths.rs:163-179`
+- [x] `is_writable` reprova diretório somente-leitura — `paths.rs:182-194`
+- [x] Nenhum outro ponto do código monta caminho de dados — `grep -rn app_data_dir src-tauri/src` retorna só `paths.rs`
+- [x] Arquivo abre com `// SPEC: release-distribution (REL-16, REL-17, REL-18)` — `paths.rs:1`
+- [x] Gate passa: `cargo test --lib && npm run test` — `cargo test --lib`: 11 passed (6 em `paths::tests`), 0 failed; `npm run test`: verde-porém-vazio, 31/07/2026
+- [x] Contagem de testes: 6 unit — confirmado (6 testes em `paths::tests`)
 
 **Tests**: unit · **Gate**: quick
 
@@ -490,10 +498,10 @@ T12 ─────────────────────────�
 **Requisito**: REL-35
 
 **Done when**:
-- [ ] `strip = true`, `lto = "thin"`, `codegen-units = 1`
-- [ ] Tamanho do binário medido **duas vezes** — com e sem o perfil, em `CARGO_TARGET_DIR` separado — e a diferença registrada em bytes no `STATE.md`
-- [ ] O número é comparado à meta de **binário < 20MB** do `PROJECT.md`, e a conclusão (atingida ou não) fica escrita
-- [ ] Gate passa: `cargo build && npm run build`
+- [x] `strip = true`, `lto = "thin"`, `codegen-units = 1` — `Cargo.toml:22-25`
+- [x] Tamanho do binário medido **duas vezes** — com e sem o perfil, em `CARGO_TARGET_DIR` separado — e a diferença registrada em bytes no `STATE.md` — `.specs/project/STATE.md:67`: sem perfil 9.849.344 bytes, com perfil 7.805.440 bytes, redução de 2.043.904 bytes (~20,8%)
+- [x] O número é comparado à meta de **binário < 20MB** do `PROJECT.md`, e a conclusão (atingida ou não) fica escrita — `STATE.md:67` registra meta atingida nos dois casos
+- [x] Gate passa: `cargo build && npm run build` — `cargo build` finished dev profile; `npm run build` ✓ built in 964ms, 31/07/2026
 
 **Tests**: none · **Gate**: build
 
@@ -502,6 +510,8 @@ T12 ─────────────────────────�
 ---
 
 ### T21: Clippy no CI
+
+> 🚧 **BLOQUEADA.** Gate `pipeline` — depende de push humano ao GitHub para produzir um run real na aba Actions, e depende de `T2` já estar publicado. Nenhum item do `Done when` abaixo tem essa evidência ainda; permanece com todas as caixas desmarcadas até o disparo real.
 
 **O quê**: zerar os warnings existentes e acrescentar o job de lint.
 **Onde**: código Rust conforme necessário, `.github/workflows/ci.yml`

@@ -11,9 +11,17 @@
 | T2 Camada de banco | ✅ Done | 5 integration (plano: 4) |
 | T3 Throttle | ✅ Done | 5 unit (plano: 5) |
 | T4 PtySession | ✅ Done | 5 integration (plano: 5) |
-| T5–T11 | ⬜ Pending | — |
+| T5 TerminalManager | ✅ Done | 6 integration (plano: 6) |
+| T6 Comandos Tauri | ✅ Done (gate build) — **Verify visual NÃO CONFIRMADO** | — (none, invólucro fino) |
+| T7 TerminalPane | ✅ Done (gate build) — **Verify visual NÃO CONFIRMADO** | — (none) |
+| T8 GridLayout | ✅ Done | 5 unit (plano: 5) |
+| T9 TerminalHeader | ✅ Done (gate build) — **Verify visual NÃO CONFIRMADO** | — (none, apresentacional) |
+| T10 Max/min/fechar | ✅ Done (gate quick) — **Verify visual NÃO CONFIRMADO** | 4 unit (plano: 4) |
+| T11 Persistência | ✅ Done (gate full) — **Verify visual NÃO CONFIRMADO** | 4 integration (plano: 4) |
 
-**Total atual: 15 testes passando** (5 unit + 10 integration).
+**Total atual: 40 testes passando** — `cargo test` = 31 (11 lib + 5 db + 4 layout + 6 manager + 5 session); `npm run test` = 9 (5 GridLayout + 4 terminals). Ver relatório de execução para a saída bruta de cada gate.
+
+**Verify visual pendente (T6, T7, T9, T10, T11):** por AD registrada em `STATE.md` (31/07/2026), o ambiente desta run não oferece screenshot nem clique na janela do app — a decisão da triagem 002 ("o agente dirige o app") é inexecutável aqui. Cada uma dessas tarefas passou no gate automatizado declarado, mas o passo `Verify` com o app aberto **não foi executado nem confirmado**. Fica como pendência humana explícita — ver o relatório de execução para o que falta observar em cada uma.
 
 **Desvios registrados:**
 - **T1**: `crates/*` saiu do workspace Cargo — Cargo falha ao carregar glob que não casa com nenhum diretório. Entra em `mcp-task-server/T6`, com o sidecar.

@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "test:scripts": "node --test scripts/",
+    "test:scripts": "node --test \"scripts/**/*.test.mjs\"",
     "tauri": "tauri"
   },
   "dependencies": {

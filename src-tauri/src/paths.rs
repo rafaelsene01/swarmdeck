@@ -53,7 +53,9 @@ pub fn flavor(exe_dir: &Path) -> Flavor {
 
 fn current_exe_dir() -> Result<PathBuf, PathError> {
     let exe = std::env::current_exe().map_err(PathError::CurrentExe)?;
-    exe.parent().map(Path::to_path_buf).ok_or(PathError::NoExeDir)
+    exe.parent()
+        .map(Path::to_path_buf)
+        .ok_or(PathError::NoExeDir)
 }
 
 /// Núcleo testável de `data_dir`: recebe o diretório do executável e uma
@@ -68,7 +70,10 @@ fn resolve_data_dir(
         Flavor::Portable => exe_dir.join("data"),
         Flavor::Installed => installed_dir()?,
     };
-    fs::create_dir_all(&dir).map_err(|source| PathError::CreateDataDir { path: dir.clone(), source })?;
+    fs::create_dir_all(&dir).map_err(|source| PathError::CreateDataDir {
+        path: dir.clone(),
+        source,
+    })?;
     Ok(dir)
 }
 
@@ -159,12 +164,18 @@ mod tests {
         let exe_dir = tempfile::tempdir().unwrap();
         fs::write(exe_dir.path().join(PORTABLE_MARKER), b"").unwrap();
         let expected_dir = exe_dir.path().join("data");
-        assert!(!expected_dir.exists(), "pré-condição: a pasta data ainda não existe");
+        assert!(
+            !expected_dir.exists(),
+            "pré-condição: a pasta data ainda não existe"
+        );
 
         let resolved = resolve_db_path(exe_dir.path(), || unreachable!()).unwrap();
 
         assert_eq!(resolved, expected_dir.join(DB_FILE_NAME));
-        assert!(expected_dir.is_dir(), "resolve_db_path deve criar o diretório de dados");
+        assert!(
+            expected_dir.is_dir(),
+            "resolve_db_path deve criar o diretório de dados"
+        );
     }
 
     #[test]
@@ -176,7 +187,10 @@ mod tests {
         let result = is_writable(path);
         allow_write(path);
 
-        assert!(!result, "diretório somente-leitura deveria reprovar is_writable");
+        assert!(
+            !result,
+            "diretório somente-leitura deveria reprovar is_writable"
+        );
     }
 
     #[cfg(unix)]
