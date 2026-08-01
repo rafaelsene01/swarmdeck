@@ -56,11 +56,7 @@ fn shell_cmd(script: &str) -> CommandBuilder {
 /// processo filho**. Em produção quem responde é o xterm.js; aqui não existe
 /// terminal nenhum, então o teste precisa responder. Sem isso o filho nunca
 /// emite nada e nunca encerra.
-fn pump_until(
-    session: &mut PtySession,
-    timeout: Duration,
-    pred: impl Fn(&str) -> bool,
-) -> String {
+fn pump_until(session: &mut PtySession, timeout: Duration, pred: impl Fn(&str) -> bool) -> String {
     let deadline = Instant::now() + timeout;
     let mut acc = String::new();
 
@@ -106,7 +102,11 @@ fn pump_until_exit(session: &mut PtySession, timeout: Duration) -> Option<u32> {
 #[test]
 fn spawn_inicia_em_estado_running() {
     let _g = serial();
-    let cmd = shell_cmd(if cfg!(windows) { "ping -n 6 127.0.0.1" } else { "sleep 5" });
+    let cmd = shell_cmd(if cfg!(windows) {
+        "ping -n 6 127.0.0.1"
+    } else {
+        "sleep 5"
+    });
     let mut session = PtySession::spawn(size(), cmd).expect("spawn deve funcionar");
 
     assert_eq!(
@@ -140,7 +140,11 @@ fn saida_do_processo_chega_ao_buffer() {
 #[test]
 fn resize_e_aceito_pelo_kernel() {
     let _g = serial();
-    let cmd = shell_cmd(if cfg!(windows) { "ping -n 6 127.0.0.1" } else { "sleep 5" });
+    let cmd = shell_cmd(if cfg!(windows) {
+        "ping -n 6 127.0.0.1"
+    } else {
+        "sleep 5"
+    });
     let mut session = PtySession::spawn(size(), cmd).expect("spawn");
 
     session.resize(40, 120).expect("resize deve ser aceito");
@@ -178,7 +182,9 @@ fn comando_inexistente_falha_no_spawn() {
     let cmd = CommandBuilder::new("swarmdeck-binario-que-nao-existe-xyz");
     let resultado = PtySession::spawn(size(), cmd);
 
-    let erro = resultado.err().expect("spawn de binário inexistente deve falhar");
+    let erro = resultado
+        .err()
+        .expect("spawn de binário inexistente deve falhar");
     let msg = erro.to_string();
 
     assert!(

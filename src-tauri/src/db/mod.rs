@@ -15,10 +15,7 @@ pub use error::DbError;
 ///
 /// A ordem desta lista **é** a ordem de aplicação. Migrações novas entram
 /// no fim, sempre com versão maior — nunca reordenar nem reciclar número.
-const MIGRATIONS: &[(i64, &str)] = &[(
-    1,
-    include_str!("migrations/001_terminal_layout.sql"),
-)];
+const MIGRATIONS: &[(i64, &str)] = &[(1, include_str!("migrations/001_terminal_layout.sql"))];
 
 /// Conexão com o banco do app, já migrada.
 pub struct Db {

@@ -124,11 +124,17 @@ mod tests {
     #[test]
     fn flush_sem_dados_nao_gera_chunk() {
         let mut t = OutputThrottle::with_capacity(64);
-        assert!(t.flush_tick().is_none(), "tick ocioso não deve gerar tráfego");
+        assert!(
+            t.flush_tick().is_none(),
+            "tick ocioso não deve gerar tráfego"
+        );
 
         t.push(b"x");
         t.flush_tick().expect("com dados, entrega");
-        assert!(t.flush_tick().is_none(), "segundo tick seguido também é ocioso");
+        assert!(
+            t.flush_tick().is_none(),
+            "segundo tick seguido também é ocioso"
+        );
     }
 
     #[test]
