@@ -1,10 +1,10 @@
 # Triagem 005 — 02/08/2026
 
 **Status:** pronta
-**Revisão ao fechar:** `5ac0ecd` (git) — ⚠️ **ver nota de concorrência abaixo: uma sessão fora desta skill continuou commitando durante esta triagem**, então esta revisão é um instantâneo, não um ponto de repouso garantido.
+**Revisão ao fechar:** `39d3b00` (git) — a sessão concorrente descrita abaixo estabilizou e commitou; a árvore ficou limpa antes do fechamento desta triagem.
 **Perguntas em aberto:** 0
 
-> **Esta triagem rodou com outra sessão ativa no mesmo repositório, ao mesmo tempo.** Entre o fechamento da 004 (revisão `b8dc34c`) e o início desta, alguém publicou a árvore inteira em `origin/master` (`cf21c82`) fora desta skill. E **durante** esta própria triagem, o HEAD local avançou mais uma vez, para `5ac0ecd` — um fix real do bug de CI que este documento também investigou, e (ainda não commitado ao fechar) uma implementação em andamento de `release-distribution/T6–T11` (arquivos novos: `.github/workflows/release.yml`, `scripts/make-portable.mjs`, `scripts/patch-latest-json.mjs`, e o próprio `release-distribution/spec.md` já reescrito com uma tabela de rastreabilidade corrigida — trabalho de qualidade equivalente ao desta triagem, feito por outra via). Por isso esta triagem **não audita `release-distribution` T6–T11**: seria auditar um alvo em movimento, e o autor concorrente já está aplicando o mesmo rigor. Recomendação no fim deste documento.
+> **Esta triagem rodou com outra sessão ativa no mesmo repositório, ao mesmo tempo — em duas rodadas.** Rodada 1: entre o fechamento da 004 (revisão `b8dc34c`) e o início desta, alguém publicou a árvore inteira em `origin/master` (`cf21c82`) fora desta skill; **durante** esta própria triagem, o HEAD avançou de novo para `5ac0ecd` (fix real do bug de CI que este documento também investigou) e depois para `39d3b00` (a sessão concorrente terminou de implementar `release-distribution/T6–T11` — `release.yml`, `make-portable.mjs`, `patch-latest-json.mjs` — e commitou tudo junto com as próprias correções desta triagem, num único commit). Rodada 2, a pedido explícito do usuário: com a árvore já estável em `39d3b00`, esta triagem auditou `release-distribution/T6–T11` que tinha ficado de fora da varredura inicial — ver Divergências #14–#15 abaixo, os dois bugs reais mais graves encontrados nesta run inteira.
 
 ---
 
@@ -17,8 +17,8 @@
   - tasks declaram os arquivos que tocam: **sim**
 - **Controle de versão:** git — `git rev-parse --short HEAD` | `git status --short`
   - branch `master`, remote `git@github.com:rafaelsene01/swarmdeck.git`
-  - **HEAD avançou 3 vezes durante esta única sessão de triagem**: `cf21c82` (início) → `5ac0ecd` (fix concorrente do bug de CI) — ver nota de concorrência acima
-  - `origin/master` em `cf21c82` (confirmado por `git fetch`); `5ac0ecd` e o trabalho em andamento de `release-distribution` **não foram publicados** até o fechamento desta triagem
+  - **HEAD avançou 4 vezes durante esta única sessão de triagem**: `cf21c82` (início) → `5ac0ecd` (fix concorrente do bug de CI) → `39d3b00` (sessão concorrente termina `release-distribution/T6–T11` e commita junto com as correções desta triagem) — ver nota de concorrência acima
+  - `origin/master` em `cf21c82` (confirmado por `git fetch` no início da sessão); `5ac0ecd` e `39d3b00` **não foram publicados** até o fechamento desta triagem
 - **Regras do repositório:** `.claude/rules/spec-driven-changes.md` (marcador `// SPEC:` obrigatório)
 - **Idioma:** código/comentários em inglês; specs em português
 - **Gates por escopo** (medidos nesta triagem, HEAD `cf21c82`, antes do fix concorrente):
@@ -56,8 +56,11 @@ Duas fontes: leitura direta (minha) e um subagent de auditoria somente-leitura d
 | 11 | `mod.rs` sem marcador `// SPEC:` em `projects/`, `tasks/`, `commands/`, `ipc/` | 4 arquivos | Regra do repositório exige; `agents/mod.rs` (mesma onda) tem o marcador, os outros 4 não | `grep -n "SPEC:" src-tauri/src/{projects,tasks,commands,ipc}/mod.rs` → vazio | MÉDIA | ❌ — edição de código, fora do escopo desta skill. Vira item `code` no inventário |
 | 12 | 4 `spec.md` (`multi-terminal`, `agent-selection`, `projects`, `mcp-task-server`) diziam "0 requisitos mapeados para tarefas" | tabelas de Rastreabilidade | As 4 features estão com gate 100% `✅ Done`; requisitos claramente cobertos, campo `Requisito` de cada task confirma | leitura cruzada `tasks.md` × `spec.md` das 4 features | ALTA — achado meu, não do auditor; tão grave quanto os acima | ✅ |
 | 13 | `mcp-task-server` "Done" (T0–T8) sem ressalva | `tasks.md:5`, `ROADMAP.md` | `IpcServer::for_app(...).serve()` nunca é chamado em `src-tauri/src/lib.rs` — sidecar não conecta em uso real; todo o round-trip provado só contra `IpcServer` de teste | `grep -rn "IpcServer" src-tauri/src/lib.rs` → vazio; doc-comment de `for_app` já antecipava o gap | ALTA — achado do auditor | ✅ — virou `⛔ NEEDS-DECISION`, resolvida (ver Decisões) |
+| 14 | `release-distribution/T6` "Done when" — commit inclui `Cargo.toml`, `Cargo.lock` (implícito: os da raiz) | `tasks.md:195` (antigo), `release.yml:135` | O `git add` real lista `src-tauri/Cargo.toml src-tauri/Cargo.lock` — **nenhum dos dois existe**. A versão mora no `Cargo.toml` da raiz (`version.workspace = true`); `T1` já escreve lá certo, só o `git add` de `T6` ficou com o caminho do `local-mind` (referência), nunca adaptado. Sob `set -euo pipefail`, derruba `prepare` antes de qualquer commit — e `T9/T10/T11` dependem de `prepare` | 2ª auditoria (a pedido do usuário): `ls src-tauri/Cargo.lock` → não existe; `ls Cargo.lock` (raiz) → existe; leitura de `release.yml:135` | **ALTA — bloqueia toda a Fase C, não só T5/T12** | ✅ — callout de T6/T9 reescrito, REL-06 rebaixado no `spec.md`, vira item `code` prioritário no inventário |
+| 15 | `release-distribution/T7` "Done when" — bundle portátil pronto, gate `npm run test:scripts` 6/6 | `tasks.md:216-221` (antigo), `make-portable.mjs:118-119` | Os 6 testes passam `binary` explícito; o caminho **default** (o que `release.yml:225` de fato usa, sem `--binary`) resolve para `src-tauri/target/release/...`, mas o workspace Cargo builda em `<raiz>/target/release/` — nunca exercitado por nenhum teste | 2ª auditoria: `cargo build --workspace` → binário em `./target/`; `ls src-tauri/target` → não existe | **ALTA — mesma classe do #13, gate isolado verde, integração real nunca provada** | ✅ — callout de T7 reescrito, REL-14/18 rebaixados no `spec.md` |
+| 16 | ~6 citações de linha erradas em `Done when` de T6, T7, T8, T9, T10, T20 (deslocadas ou apontando para trecho errado) | vários `tasks.md`/`spec.md` | Números reais conferidos linha a linha (ex.: REL-13 citava `release.yml:148`, que é um comentário — a entrada real está em `:155`; T10 dizia "job separado" quando é o mesmo job `finalize` com 2 steps) | 2ª auditoria, leitura direta de cada citação | MÉDIA/BAIXA | ✅ — todas corrigidas |
 
-**Confirmado sem divergência (auditor + eu):** README "112 requisitos", "16 ferramentas MCP" batendo com `TOOL-CONTRACT.md` e `tools.rs`; `App.tsx` de fato ainda placeholder; todos os 6 gates locais idênticos ao que `STATE.md`/`JOURNAL.md` já registravam; `.github/workflows/ci.yml` estruturalmente conforme `T2`/`T21`; `commands/*.rs` de fato invólucros finos; migrações 001-004 no disco batendo com `db/mod.rs`.
+**Confirmado sem divergência (2 auditores + eu):** README "112 requisitos", "16 ferramentas MCP" batendo com `TOOL-CONTRACT.md` e `tools.rs`; `App.tsx` de fato ainda placeholder; todos os gates locais idênticos ao que `STATE.md`/`JOURNAL.md` já registravam; `.github/workflows/ci.yml` estruturalmente conforme `T2`/`T21`; `commands/*.rs` de fato invólucros finos; migrações 001-004 no disco batendo com `db/mod.rs`; `npm run test:scripts` → 25/25 real (11 `bump-version` + 6 `make-portable` + 8 `patch-latest-json`); marcador `// SPEC:` presente nos 4 arquivos novos de `release-distribution` T7/T8; `T7`/`T8` de fato `[P]`-seguras (não compartilham arquivo); nenhum `protoc` nem `push --force` em `release.yml`; condição e ordem de exclusão do job `cleanup` batem exatamente com o `Done when` de T11; secrets citados em T5/T9 batem 1:1.
 
 ---
 
@@ -71,10 +74,11 @@ Duas fontes: leitura direta (minha) e um subagent de auditoria somente-leitura d
 | `terminal-statuses` (4 tarefas) | terminal-statuses | rust/vitest | `code` | **sim** | liberada nesta triagem (`Draft`→`In Progress`) |
 | `task-kanban` (6 tarefas) | task-kanban | rust/vitest | `code`/`uat-agent`* | parcial | liberada, mas depende de `mcp-task-server/T5` **e**, para sincronizar de verdade, de `T9` (nova) — ver `EXECUTION.md` |
 | Bug de CI em `agent_prefs.rs` (Linux) | release-distribution | pipeline | — | — | causa raiz achada e corrigida **fora desta skill** durante a sessão (`5ac0ecd`); decisão do usuário: não investigar/publicar nesta rodada |
-| `release-distribution` T6–T11 | release-distribution | vários | — | — | **fora do escopo desta triagem** — execução concorrente em andamento fora desta skill; reavaliar numa triagem futura depois que estabilizar |
+| **Corrigir `release.yml:135`** — `git add` referencia `src-tauri/Cargo.toml`/`Cargo.lock` inexistentes | release-distribution (T6) | pipeline (mas o fix em si é 1 linha, verificável por leitura) | `code` | **sim** | achado #14 — prioridade alta, desbloqueia toda a Fase C (T9, T10, T11) |
+| **Corrigir o caminho default em `make-portable.mjs:118-119`** | release-distribution (T7) | scripts | `code` | **sim** | achado #15 — trocar para `<raiz>/target/release/` ou exigir `--binary` explicitamente em `release.yml:225` |
 | `release-distribution/T5` | release-distribution | build | `human-only` | não | credencial |
 | `release-distribution/T2, T21` (fechar) | release-distribution | pipeline | `human-only` | não | run real existe e é vermelho; decisão do usuário nesta triagem foi não mexer |
-| `release-distribution/T6, T9–T12, T19` | release-distribution | pipeline/build | `human-only` | não | dependem de T5 e/ou push publicado e verde |
+| `release-distribution/T6, T9–T12, T19` (fechar) | release-distribution | pipeline/build | `human-only` | não | além de T5/push, agora também esperam os 2 bugs `code` acima corrigidos |
 
 ---
 
@@ -96,23 +100,29 @@ Duas fontes: leitura direta (minha) e um subagent de auditoria somente-leitura d
 | Item | Rótulo | Por quê |
 |---|---|---|
 | `release-distribution/T5` | `human-only` | credencial que nenhum agente tem |
-| `release-distribution/T2, T21, T6, T9–T12, T19` | `human-only` | push/CI verde/credencial |
-| `release-distribution/T6–T11` | fora de escopo | execução concorrente ativa fora desta skill — não auditado |
+| `release-distribution/T2, T21, T6, T9–T12, T19` (fechar) | `human-only` | push/CI verde/credencial — e agora também os 2 bugs `code` do inventário |
 
 ---
 
 ## Não verificado
 
-- **Causa raiz do bug de CI foi corrigida, mas não provada em CI real** (`5ac0ecd` não publicado).
-- **`release-distribution/T6–T11`**: código apareceu/mudou várias vezes durante esta triagem (outra sessão ativa); não auditado por esta skill — o autor concorrente já aplicou correção de rastreabilidade equivalente em `release-distribution/spec.md`.
+- **Causa raiz do bug de CI (`agent_prefs.rs`) foi corrigida, mas não provada em CI real** (`5ac0ecd` não publicado).
+- **Os 2 bugs de `release-distribution` (achados #14, #15) não foram corrigidos** — esta skill não edita código; viram itens `code` no inventário.
+- **Nenhuma validação de sintaxe de YAML** foi possível no ambiente desta triagem (sem `actionlint`, sem intérprete Python real) — os achados vêm de leitura estrutural, não de parse automatizado.
 - **`agent-selection` catálogo**: nomes `antigravity`/`kimi` seguem inferência de convenção, nunca confirmados contra instalação real.
 - **Aproximação T6/T7 de `mcp-task-server`** (~11/~5 de 16 testes): dividida por módulo de código, não por autoria real — documentado como aproximado no próprio `tasks.md`.
 - **`multi-terminal/T12` e `mcp-task-server/T9`**: escritas por leitura de código, nunca implementadas nem testadas por esta skill (não implementa).
+- **Medição de tamanho de binário** (`STATE.md`, T20) não foi refeita nesta triagem — exigiria dois builds de release completos.
 
 ---
 
 ## Recomendação
 
-**Itens prontos para a `spec-loop` agora:** `multi-terminal/T12`, `mcp-task-server/T9`, marcador `SPEC:` em 4 `mod.rs`, `terminal-statuses` (4 tarefas), `task-kanban` (parcial — trava em T9 para sincronizar de verdade).
+**Itens prontos para a `spec-loop` agora, em ordem de prioridade:**
+1. **Corrigir `release.yml:135`** (achado #14) — desbloqueia toda a Fase C de `release-distribution` (T6, T9, T10, T11 passam a fechar assim que `T5`/`T12` também estiverem prontos).
+2. **Corrigir o caminho default de `make-portable.mjs`** (achado #15).
+3. `multi-terminal/T12`, `mcp-task-server/T9` — as duas lacunas de integração real.
+4. Marcador `SPEC:` em 4 `mod.rs`.
+5. `terminal-statuses` (4 tarefas) e `task-kanban` (trava em `mcp-task-server/T9` para sincronizar de verdade).
 
-**Antes de rodar a `spec-loop`:** verificar se a sessão concorrente que estava implementando `release-distribution/T6–T11` já terminou (`git log`, `git status`) — se ainda estiver ativa, uma nova run corre o risco de colidir em `Cargo.toml`/`package.json`/território compartilhado. Se terminou e commitou, uma triagem rápida focada só em `release-distribution` (reconciliar `tasks.md` com o que `spec.md` já corrigiu sozinho) fecha o quadro antes da próxima execução.
+**`release-distribution/T2, T21` seguem fora de alcance** — mesmo corrigindo os 2 bugs de código, ainda faltam `T5` (chave de assinatura, credencial humana) e um push/disparo real, e a decisão desta triagem foi não mexer nisso agora.

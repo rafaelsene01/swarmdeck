@@ -177,7 +177,7 @@ T12 ─────────────────────────�
 
 ### T6: Job `prepare` do release
 
-> 🚧 **BLOQUEADA para fechar.** Gate `pipeline` — o job está escrito em `.github/workflows/release.yml` e todo o `Done when` verificável por leitura já está `[x]` (mesmo padrão de `T2`/`T21`). O que falta é o disparo real (`workflow_dispatch`), que é `T12` — passo humano, não coberto por esta execução.
+> 🐛 **BLOQUEADA por bug real, não só por falta de disparo — achado do auditor na triagem 005 (02/08/2026).** O step "Commitar e taguear" (`release.yml:135`) faz `git add package.json package-lock.json src-tauri/Cargo.toml src-tauri/Cargo.lock CHANGELOG.md` — mas **`src-tauri/Cargo.toml` e `src-tauri/Cargo.lock` não existem**. A versão foi movida para o `Cargo.toml` da **raiz** (`version.workspace = true` em `src-tauri/Cargo.toml`, decisão registrada em `spec.md`/`design.md`) e o lockfile do workspace é `Cargo.lock` na raiz — `src-tauri/Cargo.lock` nunca existiu. `T1` (`bump-version.mjs`) já escreve no lugar certo; este `git add`, em `T6`, ainda copia o caminho do `local-mind` (repo de referência), que não foi adaptado. Sob `set -euo pipefail`, um `git add` com pathspec inexistente falha com exit≠0 — o job `prepare` quebraria **no primeiro disparo real**, antes de qualquer commit, tag ou push. Como `T9`, `T10`, `T11` dependem de `T6` (`needs: prepare`), **a cadeia inteira está inalcançável por este bug**, não só por faltar `T12` (clique humano) ou `T5` (secrets). Corrigir é trocar `src-tauri/Cargo.toml src-tauri/Cargo.lock` por `Cargo.toml Cargo.lock` na linha 135 — mudança de uma linha, mas com efeito bloqueante em toda a Fase C.
 
 **O quê**: o job que calcula a versão, gera o CHANGELOG, commita e tagueia — com as duas guardas antes de qualquer escrita.
 **Onde**: `.github/workflows/release.yml`
@@ -186,15 +186,15 @@ T12 ─────────────────────────�
 **Requisito**: REL-01, REL-02, REL-03, REL-04, REL-05, REL-06, REL-07
 
 **Done when**:
-- [x] `on:` contém **apenas** `workflow_dispatch` com o input `bump` (choice de 3 valores) — confirmado em `.github/workflows/release.yml:8-17`
+- [x] `on:` contém **apenas** `workflow_dispatch` com o input `bump` (choice de 3 valores) — confirmado em `.github/workflows/release.yml:8-18` (linha corrigida na triagem 005 — o 3º valor, `major`, está na linha 18, fora do intervalo citado antes)
 - [x] Guarda de branch é o **primeiro** step, antes do checkout — confirmado em `.github/workflows/release.yml:39-44`, antes do `actions/checkout@v4` em `:45`
-- [x] Guarda de tag existente (local **e** remota) roda antes de gravar arquivo — confirmado em `release.yml:77-86`, antes de "Gravar a versão nos arquivos" em `:88`
+- [x] Guarda de tag existente (local **e** remota) roda antes de gravar arquivo — confirmado em `release.yml:77-86`, antes de "Gravar a versão nos arquivos" em `:90` (linha corrigida na triagem 005 — era citada como `:88`, que é só o `fi` de fechamento do guard)
 - [x] Versão calculada da última tag `v*`; sem tag, base é o `package.json` — confirmado em `release.yml:56-70`
 - [x] `cargo metadata` atualiza o `Cargo.lock` sem compilar — confirmado em `release.yml:93-98`
 - [x] CHANGELOG e notas gerados pelo git-cliff; as notas viram output do job — confirmado em `release.yml:100-125` (`orhun/git-cliff-action@v4` duas vezes, saída exposta via `$GITHUB_OUTPUT` no step "Expor as notas como output")
-- [x] Commit `chore(release): vX.Y.Z` incluindo `package.json`, `package-lock.json`, `Cargo.toml`, `Cargo.lock`, `CHANGELOG.md` — e **não** `tauri.conf.json` — confirmado em `release.yml:127-137` (`git add` lista os 5 arquivos, `tauri.conf.json` ausente de propósito, comentado)
+- [ ] ~~Commit `chore(release): vX.Y.Z` incluindo `package.json`, `package-lock.json`, `Cargo.toml`, `Cargo.lock`, `CHANGELOG.md`~~ — **FALSO, corrigido na triagem 005**: o `git add` real (`release.yml:135`) referencia `src-tauri/Cargo.toml`/`src-tauri/Cargo.lock`, que não existem. Ver o callout 🐛 acima — este item não pode ser `[x]` até o bug ser corrigido
 - [x] Output `release_sha` exposto para o `cleanup` — confirmado em `release.yml:35` (`outputs.release_sha`) e `:142` (`echo "sha=..."`)
-- [ ] Gate passa: disparo real com resultado esperado — **pendente de T12** (verificação humana; exige `workflow_dispatch` real, fora do escopo de execução automatizada — ver `T5`, ainda bloqueante)
+- [ ] Gate passa: disparo real com resultado esperado — bloqueado por dois motivos agora: o bug acima (`git add`, corrige sozinho) **e** `T12` (verificação humana, disparo real) — corrigir o bug não substitui `T12`, só deixa de garantir que `T12` falharia de cara
 
 **Tests**: none · **Gate**: pipeline
 
@@ -213,16 +213,17 @@ T12 ─────────────────────────�
 **Requisito**: REL-14, REL-18
 
 **Done when**:
-- [x] `portableArchiveName("0.1.1")` devolve `SwarmDeck_0.1.1_x64-portable.zip`; versão inválida lança — `scripts/make-portable.test.mjs:12,16`
-- [x] Versão fora de `X.Y.Z` é rejeitada antes de qualquer I/O — `scripts/make-portable.test.mjs:20-27` (confirma que `--out` não é criado)
-- [x] A pasta montada contém executável, recursos e o marcador `.portable` — `scripts/make-portable.test.mjs:30-41` (executável + marcador), `:44-60` (recursos, quando presentes)
-- [x] Um `LEIA-ME.txt` explica que apagar o marcador tira o app do modo portátil — `scripts/make-portable.test.mjs:63-67`
-- [x] Gate passa: `npm run test:scripts` — 25/25 (17 pré-existentes + 8 novos, ver T8)
+- [x] `portableArchiveName("0.1.1")` devolve `SwarmDeck_0.1.1_x64-portable.zip`; versão inválida lança — `scripts/make-portable.test.mjs:15-17,19-21` (linhas corrigidas na triagem 005 — citação antiga, `:12,16`, estava deslocada)
+- [x] Versão fora de `X.Y.Z` é rejeitada antes de qualquer I/O — `scripts/make-portable.test.mjs:23-31` (linha corrigida na triagem 005)
+- [x] A pasta montada contém executável, recursos e o marcador `.portable` — `scripts/make-portable.test.mjs:33-45` (executável + marcador), `:47-64` (recursos, quando presentes) — linhas corrigidas na triagem 005
+- [x] Um `LEIA-ME.txt` explica que apagar o marcador tira o app do modo portátil — `scripts/make-portable.test.mjs:66-70` (linha corrigida na triagem 005)
+- [x] Gate passa: `npm run test:scripts` — 25/25 (17 pré-existentes + 8 novos, ver T8) — reconfirmado na triagem 005
 - [x] Contagem de testes: 6 unit — confirmado
+- [ ] **Achado do auditor, triagem 005: o caminho *default* do binário está errado para este workspace.** `stageBundle`/`main()` resolvem `binary` para `join(ROOT, "src-tauri", "target", "release", "SwarmDeck.exe")` (`make-portable.mjs:118`) quando `--binary` não é passado — e `release.yml:225` chama o script **sem** `--binary`. Mas `Cargo.toml` da raiz declara `[workspace]`; um build real sai em `<raiz>/target/release/`, não em `src-tauri/target/release/` (confirmado: `cargo build --workspace` → binário em `./target/debug/...`; `src-tauri/target` não existe). Os 6 testes unitários passam `binary` explicitamente e nunca exercitam esse default — por isso o gate isolado fica verde enquanto o caminho real do release quebraria com "binary not found". Mesma classe de lacuna do bug de `T6`: gate verde, integração real nunca provada.
 
 **Tests**: unit · **Gate**: scripts
 
-**Verify**: rodar contra um build local e descompactar o zip — o executável abre a partir da pasta descompactada. **Não executado nesta run** (exige binário Windows compilado; fora do escopo desta task, que cobre as funções puras).
+**Verify**: rodar contra um build local e descompactar o zip — o executável abre a partir da pasta descompactada. **Não executado nesta run** (exige binário Windows compilado; fora do escopo desta task, que cobre as funções puras). **Triagem 005: se executado com o default atual, falharia** — ver achado acima.
 
 **Commit**: `feat(release): build the windows portable bundle`
 
@@ -239,16 +240,16 @@ T12 ─────────────────────────�
 **Requisito**: REL-11, REL-15
 
 **Done when**:
-- [x] `pickAssetUrlByName` acha o asset por nome exato e falha quando não existe — `scripts/patch-latest-json.test.mjs:19-30`
-- [x] `withReleaseTag` troca a ref `untagged-<hash>` pela tag, preservando dono, repositório e nome de arquivo — `scripts/patch-latest-json.test.mjs:33-42` (troca), `:44-48` (tag inválida), `:50-55` (URL que não é do GitHub)
-- [x] `patchManifest` acrescenta `windows-x86_64-portable` sem remexer nas chaves existentes — `scripts/patch-latest-json.test.mjs:57-75`
-- [x] Manifesto sem `platforms` falha com erro explícito — `scripts/patch-latest-json.test.mjs:77-82`
+- [x] `pickAssetUrlByName` acha o asset por nome exato e falha quando não existe — `scripts/patch-latest-json.test.mjs:26-32,34-36` (linhas corrigidas na triagem 005 — citação antiga, `:19-30`, estava deslocada)
+- [x] `withReleaseTag` troca a ref `untagged-<hash>` pela tag, preservando dono, repositório e nome de arquivo — `scripts/patch-latest-json.test.mjs:38-47` (troca), `:49-53` (tag inválida), `:55-60` (URL que não é do GitHub) — linhas corrigidas na triagem 005
+- [x] `patchManifest` acrescenta `windows-x86_64-portable` sem remexer nas chaves existentes — `scripts/patch-latest-json.test.mjs:62-82` (linha corrigida na triagem 005)
+- [x] Manifesto sem `platforms` falha com erro explícito — `scripts/patch-latest-json.test.mjs:84-89` (linha corrigida na triagem 005)
 - [x] Gate passa: `npm run test:scripts` — 25/25 (11 de `bump-version` + 6 de `make-portable`, T7 + 8 novos)
 - [x] Contagem de testes: 8 unit — confirmado
 
 **Tests**: unit · **Gate**: scripts
 
-**Verify**: rodar contra um `latest.json` real de uma release de rascunho e conferir que a URL resultante responde 200 depois da publicação. **Não executado nesta run** (exige uma release de rascunho real; coberto localmente por um teste CLI end-to-end contra fixtures, `scripts/patch-latest-json.test.mjs:84-118`).
+**Verify**: rodar contra um `latest.json` real de uma release de rascunho e conferir que a URL resultante responde 200 depois da publicação. **Não executado nesta run** (exige uma release de rascunho real; coberto localmente por um teste CLI end-to-end contra fixtures, `scripts/patch-latest-json.test.mjs:91-131` — linha corrigida na triagem 005, citação antiga `:84-118` não cobria o teste inteiro).
 
 **Commit**: `feat(release): add the portable entry to the updater manifest`
 
@@ -258,7 +259,7 @@ T12 ─────────────────────────�
 
 ### T9: Job `build` do release (matriz Windows + Linux)
 
-> 🚧 **BLOQUEADA para fechar.** Gate `pipeline` — o job está escrito e todo o `Done when` verificável por leitura já está `[x]`. Falta o disparo real (`T12`), **e** falta `T5` (chave de assinatura/secrets) — sem ela, mesmo um disparo real falharia no passo de assinatura do `tauri-action`.
+> 🚧 **BLOQUEADA para fechar — e nem chega a rodar antes de `T6` ser corrigida.** Gate `pipeline` — `needs: prepare`, então herda o bug de `T6` (achado na triagem 005: `git add` de pathspec inexistente derruba o job `prepare` antes de qualquer tag existir para este job dar checkout). Mesmo corrigido `T6`, ainda falta `T5` (chave de assinatura/secrets — sem ela, o `tauri-action` falha no passo de assinatura) e o disparo real (`T12`).
 
 **O quê**: a matriz que compila e empacota nos dois sistemas, e que no Windows também monta, assina e anexa o zip portátil.
 **Onde**: `.github/workflows/release.yml`
@@ -294,7 +295,7 @@ T12 ─────────────────────────�
 - [x] Baixa `latest.json` e o `.sig` do portátil da release de rascunho — confirmado em `.github/workflows/release.yml:252`
 - [x] Lê a URL do asset **da própria release** (`gh release view --json assets`), nunca remontando o nome — confirmado em `release.yml:255`, passado a `--assets`/`--name` de `patch-latest-json.mjs`, que resolve por `pickAssetUrlByName`
 - [x] Roda `patch-latest-json.mjs` com `--tag` e reenvia o manifesto — confirmado em `release.yml:261-269`
-- [x] `gh release edit --draft=false` só depois disso — confirmado em `release.yml:272-274`, job separado que roda depois do step acima
+- [x] `gh release edit --draft=false` só depois disso — confirmado em `release.yml:271-274`. **Corrigido na triagem 005**: não é um job separado — `finalize:` é **um único job** (`needs: [prepare, build]` declarado uma vez), com os dois steps ("Injetar a entrada portátil" e "Publicar") sequenciais dentro dele. A afirmação antiga ("job separado") sugeria dois jobs distintos, o que não existe.
 - [ ] Gate passa: release publicada com `latest.json` contendo as 5 entradas, todas com URL que responde 200 — **pendente de T12**
 
 **Tests**: none · **Gate**: pipeline
@@ -512,7 +513,7 @@ T12 ─────────────────────────�
 **Requisito**: REL-35
 
 **Done when**:
-- [x] `strip = true`, `lto = "thin"`, `codegen-units = 1` — `Cargo.toml:22-25`
+- [x] `strip = true`, `lto = "thin"`, `codegen-units = 1` — `Cargo.toml:23-26` (linha corrigida na triagem 005 — citação antiga cortava a última linha do bloco)
 - [x] Tamanho do binário medido **duas vezes** — com e sem o perfil, em `CARGO_TARGET_DIR` separado — e a diferença registrada em bytes no `STATE.md` — `.specs/project/STATE.md:67`: sem perfil 9.849.344 bytes, com perfil 7.805.440 bytes, redução de 2.043.904 bytes (~20,8%)
 - [x] O número é comparado à meta de **binário < 20MB** do `PROJECT.md`, e a conclusão (atingida ou não) fica escrita — `STATE.md:67` registra meta atingida nos dois casos
 - [x] Gate passa: `cargo build && npm run build` — `cargo build` finished dev profile; `npm run build` ✓ built in 964ms, 31/07/2026
