@@ -1,3 +1,5 @@
+// SPEC: agent-selection (AGT-01)
+
 //! Testes de integração de `agent-selection/T3` — preferência de agente
 //! padrão (AGT-01).
 //!
@@ -41,15 +43,22 @@ struct PathIsoladoGuard {
 }
 
 impl PathIsoladoGuard {
-    /// Cria um diretório temporário com um único binário falso (`codex`,
-    /// extensão `.exe`) e o coloca como `PATH` inteiro do processo — assim
-    /// só `codex-cli` resolve como instalado, e todo o resto do catálogo
-    /// real (`claude-code`, `antigravity-cli`, `opencode`, `kimi-code`) fica
-    /// ausente. Não porque a máquina não os tenha — porque o teste controla
-    /// o PATH inteiro, então não importa o que está instalado de verdade.
+    /// Cria um diretório temporário com um único binário falso (`codex`) e o
+    /// coloca como `PATH` inteiro do processo — assim só `codex-cli` resolve
+    /// como instalado, e todo o resto do catálogo real (`claude-code`,
+    /// `antigravity-cli`, `opencode`, `kimi-code`) fica ausente. Não porque a
+    /// máquina não os tenha — porque o teste controla o PATH inteiro, então
+    /// não importa o que está instalado de verdade.
+    ///
+    /// O nome do arquivo segue a mesma regra de `detect_installed`: extensão
+    /// `.exe` no Windows, onde a resolução por `PATHEXT` está ativa; sem
+    /// extensão fora dele, onde `PATHEXT` não existe e o nome precisa bater
+    /// exato (ver `catalog::windows_pathext`) — hardcoded `.exe` fazia esse
+    /// binário falso ficar invisível no runner de CI (Linux).
     fn with_only_codex_instalado() -> Self {
         let dir = tempfile::tempdir().expect("tempdir para isolar o PATH");
-        std::fs::write(dir.path().join("codex.exe"), b"").expect("criar binário falso");
+        let nome = if cfg!(windows) { "codex.exe" } else { "codex" };
+        std::fs::write(dir.path().join(nome), b"").expect("criar binário falso");
         let original = std::env::var("PATH").ok();
         std::env::set_var("PATH", dir.path());
         Self {
