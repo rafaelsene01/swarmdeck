@@ -1,0 +1,22 @@
+[package]
+name = "swarmdeck-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+# Official MCP Rust SDK (design.md "Pesquisa": ">4,7M downloads no
+# crates.io", macro-driven API). Confirmed 3.1.0 as current on crates.io via
+# `cargo search rmcp` while implementing this task (2026-08-01).
+rmcp = { version = "3.1.0", features = ["server", "client", "transport-io", "macros"] }
+# Same local-socket crate `src-tauri` uses for the server half of this
+# protocol (see src-tauri/src/ipc/transport.rs) — each workspace crate
+# declares its own dependency even when the version is shared.
+interprocess = "2.4.3"
+serde = { workspace = true }
+serde_json = { workspace = true }
+# `rmcp`'s server/client `.serve()` and stdio transport are async (see
+# rmcp::transport::stdio and ServiceExt::serve in the SDK's examples), so
+# this crate — unlike `src-tauri`, which stays synchronous — needs an async
+# runtime. Only this crate takes the dependency.
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "io-util"] }

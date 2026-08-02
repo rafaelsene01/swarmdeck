@@ -2,7 +2,7 @@
 
 **Spec**: `.specs/features/agent-selection/spec.md` (sem design — feature pequena, design inline)
 **Testing**: `.specs/codebase/TESTING.md`
-**Status**: Draft
+**Status**: Done (T1–T4 implementadas na run `spec-loop` 004, 01/08/2026 — `.specs/runs/004-2026-08-01/JOURNAL.md`)
 **Milestone**: M1
 
 ---
@@ -13,6 +13,15 @@
 multi-terminal/T5 → T1 → T2 → ┬→ T3 [P]
                               └→ T4 [P]
 ```
+
+| Tarefa | Status | Testes entregues |
+|---|---|---|
+| T1 Catálogo de agentes e detecção no PATH | ✅ Done | 5 unit (plano: 5) |
+| T2 Lançamento do agente na sessão | ✅ Done | 6 integration (plano: 5, +1 ponta-a-ponta) |
+| T3 Preferência de agente padrão | ✅ Done | 4 integration (plano: 4) |
+| T4 UI de seleção de agente | ✅ Done | 4 unit (plano: 4) |
+
+**Desvios registrados:** nomes de comando `antigravity`/`kimi` (T1) inferidos por convenção, sem confirmação de instalação real — catálogo estático, fácil de corrigir depois. Ver `JOURNAL.md` da run 004 para o detalhe de cada task.
 
 ---
 

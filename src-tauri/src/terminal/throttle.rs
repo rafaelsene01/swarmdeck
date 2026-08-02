@@ -1,3 +1,5 @@
+// SPEC: multi-terminal (TERM-02)
+
 //! Agregador da saída do PTY.
 //!
 //! Um processo verboso (`npm run build`, `cat` de arquivo grande) emite muito

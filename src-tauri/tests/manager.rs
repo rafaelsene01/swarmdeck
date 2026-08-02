@@ -60,7 +60,9 @@ fn spawn_registra_sessao_e_aparece_na_lista() {
     let _g = serial();
     let manager = TerminalManager::new();
 
-    let id = manager.spawn(default_config()).expect("spawn deve funcionar");
+    let id = manager
+        .spawn(default_config())
+        .expect("spawn deve funcionar");
 
     let lista = manager.list();
     let entrada = lista

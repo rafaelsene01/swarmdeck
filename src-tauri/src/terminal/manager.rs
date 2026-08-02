@@ -15,6 +15,8 @@ use std::time::Duration;
 use portable_pty::{CommandBuilder, PtySize};
 use uuid::Uuid;
 
+use crate::agents::resolve_launch_command;
+
 use super::session::{PtySession, SessionError, SessionState};
 use super::throttle::Chunk;
 
@@ -67,12 +69,19 @@ pub struct TerminalSnapshot {
     pub cwd: PathBuf,
     pub agent: Option<String>,
     pub state: SessionState,
+    /// `Some` quando `agent` foi pedido mas o `spawn` caiu para shell puro
+    /// (agente desconhecido ou CLI ausente do PATH) — ver
+    /// `agents::launch::resolve_launch_command`. `None` no caso comum: sem
+    /// agente pedido, ou agente pedido e lançado com sucesso.
+    pub launch_warning: Option<String>,
 }
 
 struct Entry {
     session: PtySession,
     cwd: PathBuf,
     agent: Option<String>,
+    /// Espelha `TerminalSnapshot.launch_warning` — ver ali.
+    launch_warning: Option<String>,
 }
 
 #[derive(Default)]
@@ -89,9 +98,19 @@ impl TerminalManager {
     pub fn spawn(&self, cfg: SessionConfig) -> Result<TerminalId, ManagerError> {
         let id = Uuid::now_v7();
 
-        let mut cmd = match &cfg.shell {
-            Some(shell) => CommandBuilder::new(shell),
-            None => CommandBuilder::new_default_prog(),
+        // SPEC: agent-selection (AGT-03, AGT-04)
+        // Sobrescrita por sessão (AGT-03): o agente lançado é o que esta
+        // sessão pediu, resolvido agora — nada aqui lê um "agente padrão"
+        // global depois do spawn, então trocar o padrão nunca afeta uma
+        // sessão já aberta. `launch_warning` fica na `Entry` para a UI
+        // identificar visualmente quando caiu para shell puro (AGT-04).
+        let resolution = resolve_launch_command(cfg.agent.as_deref());
+        let mut cmd = match &resolution.command {
+            Some(agent_command) => CommandBuilder::new(agent_command),
+            None => match &cfg.shell {
+                Some(shell) => CommandBuilder::new(shell),
+                None => CommandBuilder::new_default_prog(),
+            },
         };
         cmd.cwd(&cfg.cwd);
         for (key, value) in &cfg.env {
@@ -107,6 +126,7 @@ impl TerminalManager {
                 session,
                 cwd: cfg.cwd,
                 agent: cfg.agent,
+                launch_warning: resolution.warning,
             },
         );
 
@@ -131,10 +151,7 @@ impl TerminalManager {
 
     /// Encerra o processo e remove a sessão do registro.
     pub fn kill(&self, id: TerminalId) -> Result<(), ManagerError> {
-        let mut entry = self
-            .lock()
-            .remove(&id)
-            .ok_or(ManagerError::UnknownId(id))?;
+        let mut entry = self.lock().remove(&id).ok_or(ManagerError::UnknownId(id))?;
         entry.session.kill()?;
         Ok(())
     }
@@ -154,6 +171,7 @@ impl TerminalManager {
                 cwd: entry.cwd.clone(),
                 agent: entry.agent.clone(),
                 state: entry.session.state(),
+                launch_warning: entry.launch_warning.clone(),
             })
             .collect()
     }

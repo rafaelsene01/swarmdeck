@@ -12,16 +12,20 @@
 | T3 Throttle | ✅ Done | 5 unit (plano: 5) |
 | T4 PtySession | ✅ Done | 5 integration (plano: 5) |
 | T5 TerminalManager | ✅ Done | 6 integration (plano: 6) |
-| T6 Comandos Tauri | ✅ Done (gate build) — **Verify visual NÃO CONFIRMADO** | — (none, invólucro fino) |
-| T7 TerminalPane | ✅ Done (gate build) — **Verify visual NÃO CONFIRMADO** | — (none) |
+| T6 Comandos Tauri | ✅ Done — **Verify visual CONFIRMADO na run 004 (01/08/2026)** | — (none, invólucro fino) |
+| T7 TerminalPane | ✅ Done (gate build) — ⛔ **Verify visual NEEDS-DECISION (run 004)** | — (none) |
 | T8 GridLayout | ✅ Done | 5 unit (plano: 5) |
-| T9 TerminalHeader | ✅ Done (gate build) — **Verify visual NÃO CONFIRMADO** | — (none, apresentacional) |
-| T10 Max/min/fechar | ✅ Done (gate quick) — **Verify visual NÃO CONFIRMADO** | 4 unit (plano: 4) |
-| T11 Persistência | ✅ Done (gate full) — **Verify visual NÃO CONFIRMADO** | 4 integration (plano: 4) |
+| T9 TerminalHeader | ✅ Done (gate build) — ⛔ **Verify visual NEEDS-DECISION (run 004)** | — (none, apresentacional) |
+| T10 Max/min/fechar | ✅ Done (gate quick) — ⛔ **Verify visual NEEDS-DECISION (run 004)** | 4 unit (plano: 4) |
+| T11 Persistência | ✅ Done (gate full) — ⛔ **Verify visual NEEDS-DECISION (run 004)** | 4 integration (plano: 4) |
 
 **Total atual: 40 testes passando** — `cargo test` = 31 (11 lib + 5 db + 4 layout + 6 manager + 5 session); `npm run test` = 9 (5 GridLayout + 4 terminals). Ver relatório de execução para a saída bruta de cada gate.
 
-**Verify visual pendente (T6, T7, T9, T10, T11):** por AD registrada em `STATE.md` (31/07/2026), o ambiente desta run não oferece screenshot nem clique na janela do app — a decisão da triagem 002 ("o agente dirige o app") é inexecutável aqui. Cada uma dessas tarefas passou no gate automatizado declarado, mas o passo `Verify` com o app aberto **não foi executado nem confirmado**. Fica como pendência humana explícita — ver o relatório de execução para o que falta observar em cada uma.
+**Verify visual — atualização da run 004 (01/08/2026, spec-loop, modo direto, item `uat-agent`):** desta vez o ambiente TINHA display gráfico e o agente conseguiu subir o app, conectar por CDP (Chrome DevTools Protocol, via `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222`) e dirigir a janela real — a limitação registrada em 31/07/2026 (sem display) NÃO se repetiu. **T6 foi CONFIRMADO**: `pty_spawn` invocado pelo console do DevTools (a UI não tem botão de "novo terminal" ainda), bytes reais de `cmd.exe` chegaram pelo `Channel` (incluindo o handshake DSR `[6n` documentado no design.md).
+
+**T7, T9, T10 e T11 NÃO puderam ser confirmados — mas por um motivo diferente do registrado em 31/07/2026, e mais grave.** O agente de UAT encontrou que `src/App.tsx` é ainda o placeholder do scaffolding (`<h1>SwarmDeck</h1><p>Scaffolding pronto...</p>`) — ele **não importa nem renderiza** `GridLayout`, `TerminalPane`, `TerminalHeader` nem `state/terminals.ts`. Confirmado por leitura de `App.tsx`/`main.tsx` e grep: nenhum arquivo em `src/` fora dos próprios `.test.tsx` importa esses componentes. Ou seja: T7, T9, T10, T11 passam nos gates automatizados **isolados** (build/test do componente em si), mas nenhum deles é alcançável por um usuário real abrindo o app — não existe grid, não existe pane, não existe header na tela. Nenhuma task deste arquivo lista `App.tsx` como "Onde", então a integração nunca foi um item planejado — é uma lacuna de escopo, não um bug de uma task específica.
+
+⛔ **Isto é NEEDS-DECISION, devolvido à `spec-triage` (run 004, 01/08/2026) — ver `.specs/runs/004-2026-08-01/JOURNAL.md`, seção "Devolvido para triagem".** `spec-loop` não pode inventar a task de integração que faltaria (T12? "Montar App.tsx"?) porque criar requisito/task novo é trabalho da triagem, não da execução.
 
 **Desvios registrados:**
 - **T1**: `crates/*` saiu do workspace Cargo — Cargo falha ao carregar glob que não casa com nenhum diretório. Entra em `mcp-task-server/T6`, com o sidecar.
@@ -229,11 +233,13 @@ T7, T8, T9 → T10 → T11
 
 **Verify**: `npm run tauri dev`, chamar `pty_spawn` pelo console do devtools e ver bytes chegando no `Channel`.
 
+**✅ CONFIRMADO — run 004 (01/08/2026), `uat-agent`.** App subido com `npm run tauri dev`, CDP conectado via `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222`. `pty_spawn` invocado pelo console do DevTools (a UI ainda não tem botão de "novo terminal" — ver NEEDS-DECISION em T7 abaixo, mesma causa). Primeiro chunk recebido no `Channel`: `"[6n"` (handshake DSR do ConPTY, confirma a nota do design.md). Depois de responder com `pty_write` (`\x1b[24;80R`), chegou o output real de `cmd.exe` (banner do Windows + prompt). Terminal encerrado com `pty_kill` ao final. Evidência completa no journal desta run.
+
 **Commit**: `feat(terminal): tauri commands with ipc channel output`
 
 ---
 
-### T7: `TerminalPane` (React) [P]
+### T7: `TerminalPane` (React) [P]  ⛔ NEEDS-DECISION (Verify)
 
 **O quê**: Componente que casa uma instância de xterm.js com uma sessão do backend, com fit e debounce de resize.
 **Onde**: `src/components/terminal/TerminalPane.tsx`
@@ -254,6 +260,13 @@ T7, T8, T9 → T10 → T11
 **Tests**: none *(ponte com biblioteca externa e DOM real — a matriz exige `none`)* · **Gate**: build
 
 **Verify**: rodar o app, digitar no terminal, ver eco. Redimensionar a janela e confirmar o reflow.
+
+> ⛔ **NEEDS-DECISION — estacionada na run 004 (01/08/2026).** Não executar o `Verify` até haver decisão do usuário.
+
+**Pergunta:** `src/App.tsx` continua sendo o placeholder do scaffolding (`<h1>SwarmDeck</h1><p>Scaffolding pronto...</p>`) — não importa `GridLayout`, `TerminalPane`, `TerminalHeader` nem `state/terminals.ts`. Nenhuma task deste arquivo lista `App.tsx` como "Onde". Duas leituras possíveis: (a) falta uma task nova, explícita, de "integrar os componentes de terminal em `App.tsx`" — e aí é a `spec-triage` que a cria e a insere na cadeia; ou (b) a integração deveria ter sido parte implícita de uma das tasks já `✅ Done` (T7? T8? T10?) e ficou pra trás por lacuna de escopo, e a correção é reabrir essa task específica. Qual das duas, e se (a), qual o número/posição da task nova?
+**Por que só o usuário responde:** criar requisito/task novo é decisão de escopo do mantenedor — a `spec-loop` explicitamente não inventa ID de requisito nem task nova.
+**Medições que sustentam a escolha:** leitura de `src/App.tsx` e `src/main.tsx` (run 004) — nenhum import de `TerminalPane`/`GridLayout`/`TerminalHeader`; `grep` confirmou que só os próprios arquivos `.test.tsx` importam esses componentes fora de si mesmos.
+**Estado do código:** nada alterado — T7 (`TerminalPane.tsx`) continua existindo e passando no gate `build` isolado, só não é alcançável pela UI real.
 
 **Commit**: `feat(ui): terminal pane bridging xterm.js to pty channel`
 
@@ -284,7 +297,7 @@ T7, T8, T9 → T10 → T11
 
 ---
 
-### T9: `TerminalHeader` (React) [P]
+### T9: `TerminalHeader` (React) [P]  ⛔ NEEDS-DECISION (Verify)
 
 **O quê**: Header do terminal com número, título, ícone do agente, badge de status e ações.
 **Onde**: `src/components/terminal/TerminalHeader.tsx`
@@ -304,11 +317,13 @@ T7, T8, T9 → T10 → T11
 
 **Verify**: inspeção visual no app com um terminal ativo.
 
+> ⛔ **NEEDS-DECISION — estacionada na run 004 (01/08/2026), mesma causa de T7:** `src/App.tsx` não renderiza `TerminalHeader`, então não há "terminal ativo" na UI real para inspecionar. Ver o header de T7 acima para a pergunta completa e as opções — é a mesma decisão, não repetida aqui para não divergir.
+
 **Commit**: `feat(ui): terminal header with status badge and actions`
 
 ---
 
-### T10: Maximizar, minimizar e fechar
+### T10: Maximizar, minimizar e fechar  ⛔ NEEDS-DECISION (Verify)
 
 **O quê**: Ligar as ações do header ao estado do grid, mantendo o PTY vivo quando minimizado.
 **Onde**: `src/components/grid/GridLayout.tsx` (modifica), `src/state/terminals.ts`
@@ -330,11 +345,13 @@ T7, T8, T9 → T10 → T11
 
 **Verify**: minimizar um terminal com `ping -t` rodando, restaurar, e confirmar que a saída do período não sumiu.
 
+> ⛔ **NEEDS-DECISION — estacionada na run 004 (01/08/2026), mesma causa de T7:** sem `TerminalHeader`/`TerminalPane` montados em `App.tsx`, não há UI real para minimizar/restaurar. Ver o header de T7 acima para a pergunta completa.
+
 **Commit**: `feat(ui): maximize, minimize and close terminals`
 
 ---
 
-### T11: Persistência de layout
+### T11: Persistência de layout  ⛔ NEEDS-DECISION (Verify)
 
 **O quê**: Salvar e restaurar número de terminais, frações, `cwd` e agente entre reinícios.
 **Onde**: `src-tauri/src/terminal/layout.rs`, `src/state/terminals.ts` (modifica)
@@ -354,6 +371,8 @@ T7, T8, T9 → T10 → T11
 **Tests**: integration · **Gate**: full
 
 **Verify**: montar layout 2×2, fechar, reabrir, conferir restauração.
+
+> ⛔ **NEEDS-DECISION — estacionada na run 004 (01/08/2026), mesma causa de T7:** sem UI real de grid montada, não há como montar um layout 2×2 pela interface. Ver o header de T7 acima para a pergunta completa.
 
 **Commit**: `feat(terminal): persist and restore grid layout`
 

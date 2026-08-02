@@ -83,7 +83,7 @@ T12 ─────────────────────────�
 
 ### T2: Workflow de CI
 
-> 🚧 **BLOQUEADA.** Gate `pipeline` — depende de push humano ao GitHub para produzir um run real na aba Actions. Nenhum item do `Done when` abaixo tem essa evidência ainda; permanece com todas as caixas desmarcadas até o disparo real.
+> 🚧 **BLOQUEADA para fechar.** Gate `pipeline` — o arquivo já implementa a estrutura descrita abaixo (confirmado por leitura, triagem 004, 01/08/2026), mas a tarefa só fecha com o run real na aba Actions, que depende de push humano (nenhum push foi feito desde `12222fe`; `HEAD` está 2 commits à frente do `origin/master`). A task **não é** "nada feito" — é "implementado localmente, prova pendente".
 
 **O quê**: `.github/workflows/ci.yml` com os três jobs (frontend, rust, commits), concorrência com cancelamento e nenhuma capacidade de publicar.
 **Onde**: `.github/workflows/ci.yml`
@@ -92,12 +92,12 @@ T12 ─────────────────────────�
 **Requisito**: REL-27, REL-28, REL-29, REL-30, REL-31
 
 **Done when**:
-- [ ] Job `frontend` (ubuntu-latest, Node 24, cache npm): `npm ci` → `npm run build` → `npm run test` → `npm run test:scripts`
-- [ ] Job `rust` (`ubuntu-22.04`): deps de sistema do Tauri + `build-essential` → `cargo fmt --all -- --check` → `cargo test`
-- [ ] Job `commits` roda **só** em `pull_request`, avalia `origin/$base..HEAD` e ignora commits de merge
-- [ ] `concurrency` com `cancel-in-progress: true`
-- [ ] O arquivo não contém `gh release`, `git tag` nem `tauri-action` — a busca por esses termos retorna vazio
-- [ ] Gate passa: run verde na aba Actions
+- [x] Job `frontend` (ubuntu-latest, Node 24, cache npm): `npm ci` → `npm run build` → `npm run test` → `npm run test:scripts` — confirmado em `.github/workflows/ci.yml` (triagem 004)
+- [x] Job `rust` (`ubuntu-22.04`): deps de sistema do Tauri + `build-essential` → `cargo fmt --all -- --check` → `cargo test` — confirmado em `.github/workflows/ci.yml` (triagem 004)
+- [x] Job `commits` roda **só** em `pull_request`, avalia `origin/$base..HEAD` e ignora commits de merge — confirmado em `.github/workflows/ci.yml` (triagem 004)
+- [x] `concurrency` com `cancel-in-progress: true` — confirmado em `.github/workflows/ci.yml:12-14` (triagem 004)
+- [x] O arquivo não contém `gh release`, `git tag` nem `tauri-action` — busca vazia (triagem 004)
+- [ ] Gate passa: run verde na aba Actions — **pendente de push**, único item sem evidência
 
 **Tests**: none · **Gate**: pipeline
 
@@ -361,7 +361,9 @@ T12 ─────────────────────────�
 
 ---
 
-### T14: Persistência das preferências de update
+> **Bloco D (T13–T18) — status pós run `spec-loop` 004 (01/08/2026):** T13 já estava `Done` antes desta run; **T14, T15, T16, T17 e T18 foram implementadas nesta run**, em cadeia (T14 liberou T15, que liberou T16→T17→T18). `T19` (verificação ponta a ponta, 🧑) segue fora do alcance de qualquer agente — é humana por definição. Detalhe de cada task, gates e desvios: `.specs/runs/004-2026-08-01/JOURNAL.md`.
+
+### T14: Persistência das preferências de update ✅ Done
 
 **O quê**: tabela de configurações com `updates.auto_check` e as versões puladas, mais a migração correspondente.
 **Onde**: `src-tauri/src/db/migrations/NNN_settings.sql`, `src-tauri/src/db/mod.rs`
@@ -382,7 +384,7 @@ T12 ─────────────────────────�
 
 ---
 
-### T15: Verificação de atualização
+### T15: Verificação de atualização ✅ Done
 
 **O quê**: `src-tauri/src/update/{mod.rs,check.rs}` + dependência do `tauri-plugin-updater` + permissão na capability.
 **Onde**: `src-tauri/src/update/`, `src-tauri/Cargo.toml`, `src-tauri/capabilities/default.json`
@@ -405,7 +407,7 @@ T12 ─────────────────────────�
 
 ---
 
-### T16: Atualização do modo portátil
+### T16: Atualização do modo portátil ✅ Done
 
 **O quê**: `src-tauri/src/update/portable.rs` — download, verificação minisign, troca de arquivos com rollback e limpeza do `.old`.
 **Onde**: `src-tauri/src/update/portable.rs`, `src-tauri/Cargo.toml`
@@ -428,7 +430,7 @@ T12 ─────────────────────────�
 
 ---
 
-### T17: Aviso de nova versão
+### T17: Aviso de nova versão ✅ Done
 
 **O quê**: `UpdateBanner.tsx` e os comandos Tauri que o alimentam, com as três ações.
 **Onde**: `src/components/UpdateBanner.tsx`, `src-tauri/src/commands/update.rs`
@@ -449,7 +451,7 @@ T12 ─────────────────────────�
 
 ---
 
-### T18: Seção "Atualizações"
+### T18: Seção "Atualizações" ✅ Done
 
 **O quê**: superfície mínima de configuração com versão instalada, modo, "Verificar agora" e o toggle de verificação automática.
 **Onde**: `src/components/settings/UpdateSettings.tsx`
@@ -511,7 +513,7 @@ T12 ─────────────────────────�
 
 ### T21: Clippy no CI
 
-> 🚧 **BLOQUEADA.** Gate `pipeline` — depende de push humano ao GitHub para produzir um run real na aba Actions, e depende de `T2` já estar publicado. Nenhum item do `Done when` abaixo tem essa evidência ainda; permanece com todas as caixas desmarcadas até o disparo real.
+> 🚧 **BLOQUEADA para fechar.** Gate `pipeline` — a limpeza local e o job já existem (confirmado por leitura e execução, triagem 004, 01/08/2026), mas a tarefa só fecha com o run real na aba Actions, que depende de push humano **e** de `T2` já publicado. Nenhum dos dois aconteceu ainda (`HEAD` 2 commits à frente do `origin/master`). A task **não é** "nada feito" — é "implementado e verificado localmente, prova de pipeline pendente".
 
 **O quê**: zerar os warnings existentes e acrescentar o job de lint.
 **Onde**: código Rust conforme necessário, `.github/workflows/ci.yml`
@@ -519,11 +521,11 @@ T12 ─────────────────────────�
 **Requisito**: REL-36
 
 **Done when**:
-- [ ] `cargo clippy --all-targets -- -D warnings` passa localmente — a limpeza vem **antes** do job
-- [ ] O número de warnings encontrados antes da limpeza é registrado no `STATE.md` (hoje ninguém mediu)
-- [ ] Job acrescentado ao `ci.yml`
-- [ ] Gate passa: run verde na aba Actions
-- [ ] Nenhum `#[allow]` novo sem comentário explicando a razão
+- [x] `cargo clippy --all-targets -- -D warnings` passa localmente — a limpeza vem **antes** do job — remedido na triagem 004: **exit 0, zero warnings**, mesma medição do `STATE.md:72`
+- [x] O número de warnings encontrados antes da limpeza é registrado no `STATE.md` — `STATE.md:72` registra que a medição inicial (31/07/2026) já saiu com zero warnings, sem limpeza necessária
+- [x] Job acrescentado ao `ci.yml` — `.github/workflows/ci.yml` tem o job `clippy` (`cargo clippy --all-targets -- -D warnings`), confirmado na triagem 004
+- [ ] Gate passa: run verde na aba Actions — **pendente de push**, único item sem evidência
+- [x] Nenhum `#[allow]` novo sem comentário explicando a razão — não houve limpeza porque não havia warning; nenhum `#[allow]` foi adicionado (`grep -rn "#\[allow" src-tauri/src` confirma ausência)
 
 **Tests**: none · **Gate**: pipeline
 

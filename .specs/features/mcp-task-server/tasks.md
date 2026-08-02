@@ -2,10 +2,26 @@
 
 **Design**: `.specs/features/mcp-task-server/design.md`
 **Testing**: `.specs/codebase/TESTING.md`
-**Status**: Draft
+**Status**: Done (T0–T8 implementadas na run `spec-loop` 004, 01/08/2026 — `.specs/runs/004-2026-08-01/JOURNAL.md`)
 **Milestone**: M2
 
 > ⚠️ **T0 é gate de bloqueio.** Nenhuma tarefa deste arquivo começa antes dela.
+
+| Tarefa | Status | Testes entregues |
+|---|---|---|
+| T0 Contrato de ferramentas MCP | ✅ Done | — (documento) |
+| T1 Migração `003` — tarefas, projetos, status, atividade | ✅ Done | 5 integration (plano: 5) |
+| T2 Máquina de estados de tarefa | ✅ Done | 8 unit (plano: 8) |
+| T3 `TaskService` | ✅ Done | 9 integration (plano: 9) |
+| T4 `TerminalMetaService` | ✅ Done | 8 (plano: 8) |
+| T5 `IpcServer` | ✅ Done | 7 integration (plano: 6, +1) |
+| T6 Sidecar `swarmdeck-mcp` — esqueleto e `check_active` | ✅ Done | 6 (plano: 4, +2) |
+| T7 Ferramentas MCP de tarefa e terminal | ✅ Done | 21 (plano: 7 mínimo — cobertura ampliada, ver JOURNAL) |
+| T8 Similaridade de tarefas | ✅ Done | 6 unit (plano: 6) |
+
+**Desvio de numeração:** T1 rodou como migração **`003`**, não `002` como o título da seção ainda cita abaixo — `release-distribution/T14`, executada antes na mesma run, reservou a `002` primeiro (regra "quem chega primeiro pega o número", `EXECUTION.md`). O código e os testes usam `003` corretamente; só o texto do título ficou desatualizado, preservado como está para não reescrever histórico — a nota aqui é a correção.
+
+Ver `.specs/runs/004-2026-08-01/JOURNAL.md` para o detalhe e os desvios de cada task (teto de truncamento de texto, algoritmo de similaridade trocado de Dice para overlap após bug real encontrado em verificação, bug de path verbatim do Windows corrigido na origem, gap de escopo do roteamento server-side de T7 fechado nesta run).
 
 ---
 

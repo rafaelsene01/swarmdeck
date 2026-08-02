@@ -1,3 +1,5 @@
+// SPEC: multi-terminal (TERM-01, TERM-02)
+
 //! Uma sessão de PTY: processo filho, I/O e ciclo de vida.
 //!
 //! A API do `portable-pty` é síncrona e bloqueante, então cada sessão tem

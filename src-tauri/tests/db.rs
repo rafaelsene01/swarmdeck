@@ -20,7 +20,7 @@ fn aplica_migracoes_em_banco_novo() {
 
     assert_eq!(
         db.schema_version().expect("ler versão"),
-        1,
+        4,
         "banco novo deve chegar na versão mais recente"
     );
     assert!(path.exists(), "o arquivo do banco deve ter sido criado");
@@ -32,12 +32,12 @@ fn migracao_e_idempotente() {
 
     {
         let db = Db::open(&path).expect("primeira abertura");
-        assert_eq!(db.schema_version().unwrap(), 1);
+        assert_eq!(db.schema_version().unwrap(), 4);
     }
 
     // Segunda abertura sobre o mesmo arquivo: não deve reaplicar nada.
     let db = Db::open(&path).expect("segunda abertura");
-    assert_eq!(db.schema_version().unwrap(), 1);
+    assert_eq!(db.schema_version().unwrap(), 4);
 
     let aplicadas: i64 = db
         .conn()
@@ -45,8 +45,8 @@ fn migracao_e_idempotente() {
         .expect("contar migrações");
 
     assert_eq!(
-        aplicadas, 1,
-        "reabrir o banco não pode registrar a mesma migração de novo"
+        aplicadas, 4,
+        "reabrir o banco não pode registrar as mesmas migrações de novo"
     );
 }
 

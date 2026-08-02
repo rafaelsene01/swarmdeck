@@ -1,8 +1,9 @@
 [workspace]
-# `crates/*` entra em mcp-task-server/T6, junto com o sidecar swarmdeck-mcp.
-# Cargo falha se o glob não casar com nenhum diretório existente, então ele
-# não pode ser declarado antes do primeiro crate existir.
-members = ["src-tauri"]
+# `crates/swarmdeck-mcp` (mcp-task-server/T6): the MCP sidecar binary. It's a
+# separate crate — not `src-tauri` — because the CLI agent spawns MCP
+# servers as a stdio subprocess, and the app is already running as its own
+# process (see .specs/features/mcp-task-server/design.md, "Pesquisa").
+members = ["src-tauri", "crates/*"]
 resolver = "2"
 
 [workspace.package]

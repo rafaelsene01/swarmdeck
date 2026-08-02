@@ -37,7 +37,7 @@ SPECIFY ✅ →  DESIGN 🟡 →  TASKS 🟡 →  EXECUTE 🟡
 
 *(`EXECUTE` corrigido de ⬜ para 🟡 na triagem 002 — 28/07/2026. O marcador dizia "não começou" enquanto `multi-terminal/T1–T4` já estavam entregues, com 15 testes passando. É a mesma divergência que a triagem 001 corrigiu no `ROADMAP.md`; este segundo lugar passou.)*
 
-**Tasks concluídas para M1 + M2 e para a faixa transversal de entrega** — 59 tarefas atômicas. *(Corrigido na triagem 001: dizia 58, mas a tabela logo abaixo sempre somou 59, e a contagem de headers confirma 59.)*
+**Tasks definidas para M1 + M2 e para a faixa transversal de entrega** — 59 tarefas atômicas. *(Corrigido na triagem 001: dizia 58, mas a tabela logo abaixo sempre somou 59, e a contagem de headers confirma 59. Palavra corrigida na triagem 004, 01/08/2026: "definidas" em vez de "concluídas" — as 59 têm `tasks.md` escrito, mas só `multi-terminal` (11) está de fato 100% `✅ Done`, com `release-distribution` parcial. Na mesma triagem, `agent-selection`, `mcp-task-server` e `projects` saíram de `Draft` para `In Progress` — só `terminal-statuses` e `task-kanban` seguem `Draft`.)*
 
 - **Ordem de execução global**: [project/EXECUTION.md](project/EXECUTION.md) — o único lugar com as dependências *entre* features
 - **Estratégia de teste**: [codebase/TESTING.md](codebase/TESTING.md) — matriz de cobertura e avaliação de paralelismo

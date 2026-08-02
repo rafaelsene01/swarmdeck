@@ -20,6 +20,32 @@ thiserror.workspace = true
 uuid.workspace = true
 rusqlite = { version = "0.32", features = ["bundled"] }
 portable-pty = "0.9"
+# SPEC: mcp-task-server (MCP-01)
+# Transporte do `IpcServer` (src/ipc/): named pipe no Windows, socket de
+# domínio Unix nos demais, via `local_socket` — ver src/ipc/transport.rs
+# para a decisão de usar essa fachada em vez dos módulos os::windows/os::unix
+# crus.
+interprocess = "2.4.3"
+
+# SPEC: release-distribution (REL-19, REL-21, REL-24)
+# Verificação de atualização (src/update/check.rs): fala com o endpoint
+# configurado em `tauri.conf.json` via `UpdaterExt`. `semver` decide se a
+# versão publicada é mais nova que a instalada. Versões reconfirmadas no
+# crates.io em 01/08/2026 (T15): tauri-plugin-updater 2.10.1 (exige
+# `tauri ^2.10`, satisfeito por `tauri = "2"` acima), semver 1.0.28.
+tauri-plugin-updater = "2.10.1"
+semver = "1"
+
+# SPEC: release-distribution (REL-22, REL-24, REL-25)
+# Verificação da assinatura minisign do zip portátil (src/update/portable.rs)
+# com a mesma chave pública usada pelo tauri-plugin-updater — um único
+# esquema de confiança (Ed25519/minisign) para os dois caminhos de update.
+# Versão reconfirmada no crates.io em 01/08/2026 (T16): minisign-verify 0.2.5.
+minisign-verify = "0.2.5"
 
 [dev-dependencies]
 tempfile = "3"
+# SPEC: release-distribution (REL-19, REL-21, REL-24)
+# Runtime mínimo para rodar `check()` (async) nos 7 testes unitários de
+# src/update/check.rs sem depender do runtime do Tauri.
+tokio = { version = "1", features = ["macros", "rt"] }

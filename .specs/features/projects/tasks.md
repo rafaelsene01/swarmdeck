@@ -2,7 +2,7 @@
 
 **Spec**: `.specs/features/projects/spec.md` (sem design — feature pequena, design inline)
 **Testing**: `.specs/codebase/TESTING.md`
-**Status**: Draft
+**Status**: Done (T1–T4 implementadas na run `spec-loop` 004, 01/08/2026 — `.specs/runs/004-2026-08-01/JOURNAL.md`)
 **Milestone**: M1
 
 ---
@@ -13,6 +13,15 @@
 mcp-task-server/T1 → T1 → T2 → ┬→ T3 [P]
                                └→ T4 [P]
 ```
+
+| Tarefa | Status | Testes entregues |
+|---|---|---|
+| T1 `ProjectService` | ✅ Done | 7 integration (plano: 7) |
+| T2 Resolução de projeto por diretório | ✅ Done | 6 unit (plano: 6) |
+| T3 Comandos Tauri de projeto | ✅ Done | — (invólucro fino) |
+| T4 UI de gerenciamento de projetos | ✅ Done | 5 unit (plano: 4, +1 estado vazio) |
+
+**Bug real encontrado e corrigido durante a run:** `ProjectService::create`/`update` gravavam o `path` canonicalizado com o prefixo verbatim `\\?\` do Windows, quebrando `projects::resolve` para qualquer `cwd` real (não canonicalizado) — isso quebraria a resolução de projeto (PROJ-03) inteiramente em produção no Windows. Corrigido na origem (`require_existing_dir`, `projects/service.rs`); ver `JOURNAL.md` da run 004.
 
 ---
 

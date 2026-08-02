@@ -11,7 +11,7 @@ Inventário derivado da varredura de UI de 28/07/2026. Ver `.specs/research/UI-I
 
 **Não é um milestone**: é a faixa que atravessa todos eles. Está aqui porque uma parte entra **agora**, antes do M1 fechar, e o resto depende de existir um app que valha a pena instalar.
 
-**Release e distribuição** — PLANNED → `.specs/features/release-distribution/`
+**Release e distribuição** — IN PROGRESS. 10 de 21 tarefas `✅ Done` (`T1, T3, T4, T13, T14, T15, T16, T17, T18, T20` — o Bloco D inteiro fechou na run `spec-loop` 004, 01/08/2026); 2 implementadas e verificadas localmente, aguardando push para fechar (`T2, T21`); `T5` (chave de assinatura), a cadeia `T6–T12`, e `T19` (verificação ponta a ponta) são `human-only`. → `.specs/features/release-distribution/`
 
 | Bloco | O que entrega | Entra quando |
 |---|---|---|
@@ -29,19 +29,19 @@ Inventário derivado da varredura de UI de 28/07/2026. Ver `.specs/research/UI-I
 
 ### Features
 
-**Multi-terminal em grid** — IN PROGRESS (T1–T4 de 11 entregues) → `.specs/features/multi-terminal/`
+**Multi-terminal em grid** — 11 de 11 tarefas `✅ Done`; 5 (`T6, T7, T9, T10, T11`) com gate automatizado passando e `Verify` visual **ainda não confirmado** (triagem 004, 01/08/2026 — ver `multi-terminal/tasks.md`) → `.specs/features/multi-terminal/`
 - Grid de até 4 terminais com divisórias arrastáveis
 - PTY real por terminal (shell nativo do SO)
 - Header por terminal: título, número, badge de status, ações
 - Fechar / maximizar / minimizar terminal
 - Persistência de layout entre reinícios
 
-**Seleção de agente** — PLANNED → `.specs/features/agent-selection/`
+**Seleção de agente** — 4 de 4 tarefas `✅ Done` (run `spec-loop` 004, 01/08/2026) → `.specs/features/agent-selection/`
 - Catálogo de agentes: Claude Code, Codex CLI, Antigravity CLI, opencode, Kimi Code
 - Agente padrão configurável, sobrescrevível por sessão
 - Indicador do agente ativo no header do terminal
 
-**Projetos** — PLANNED → `.specs/features/projects/`
+**Projetos** — 4 de 4 tarefas `✅ Done` (run `spec-loop` 004, 01/08/2026) → `.specs/features/projects/`
 - CRUD de projeto: nome, diretório, cor
 - Detecção automática do projeto pelo diretório do terminal
 - Contagem de tarefas por projeto, ordenação por último uso
@@ -55,7 +55,7 @@ Inventário derivado da varredura de UI de 28/07/2026. Ver `.specs/research/UI-I
 
 ### Features
 
-**Servidor MCP de tarefas** — PLANNED → `.specs/features/mcp-task-server/`
+**Servidor MCP de tarefas** — 9 de 9 tarefas `✅ Done` (T0–T8, run `spec-loop` 004, 01/08/2026) → `.specs/features/mcp-task-server/`
 - Ferramentas de tarefa (criar, iniciar, planejar, implementar, concluir, buscar)
 - Ferramentas de terminal (título geral, atividade, status)
 - Auto-detecção de terminal e projeto a partir do ambiente da sessão

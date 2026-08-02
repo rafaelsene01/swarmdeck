@@ -76,8 +76,14 @@ fn restaura_com_mesmos_cwd_e_fracoes() {
 
     assert_eq!(restaurados.len(), 2);
     assert_eq!(restaurados[0].id, "t1");
-    assert_eq!(restaurados[0].cwd, cwd, "cwd deve bater com o que foi salvo");
-    assert_eq!(restaurados[0].frac_w, 0.3, "fração deve bater com o que foi salvo");
+    assert_eq!(
+        restaurados[0].cwd, cwd,
+        "cwd deve bater com o que foi salvo"
+    );
+    assert_eq!(
+        restaurados[0].frac_w, 0.3,
+        "fração deve bater com o que foi salvo"
+    );
     assert_eq!(restaurados[1].id, "t2");
     assert_eq!(restaurados[1].frac_w, 0.7);
 }

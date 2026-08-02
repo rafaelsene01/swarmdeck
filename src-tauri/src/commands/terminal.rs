@@ -46,7 +46,11 @@ pub fn pty_spawn(
 }
 
 #[tauri::command]
-pub fn pty_write(manager: State<'_, TerminalManager>, id: String, data: Vec<u8>) -> Result<(), String> {
+pub fn pty_write(
+    manager: State<'_, TerminalManager>,
+    id: String,
+    data: Vec<u8>,
+) -> Result<(), String> {
     let id = parse_id(&id)?;
     manager.write(id, &data).map_err(|e| e.to_string())
 }
