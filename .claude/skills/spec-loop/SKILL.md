@@ -40,6 +40,27 @@ A documentação de **nível feature** (requisitos, desenho, tasks) é escrita p
 
 ---
 
+## O contexto do orquestrador fica baixo — de propósito, e por construção
+
+Não é preferência de estilo. Numa run com muitas specs, o orquestrador é a única coisa que atravessa a fila inteira — se o contexto dele lotar de diff, log de teste e relatório de subagent, ele perde a única coisa que só ele tem: a visão de quais tasks colidem, o que já foi validado, o que falta. Um orquestrador com contexto sobrando também é o que ainda tem margem para reagir à Fase 3 no meio da fila, em vez de travar por falta de espaço na hora que mais importa.
+
+Duas regras de disciplina, as duas obrigatórias:
+
+**1. Toda spec/task executada roda inteira em subagent — nunca no agente principal.** Implementador, validador, corretor, UAT: cada papel é um subagent despachado (Fase 2), sempre. O agente principal não abre um arquivo de produto para editar, não roda o gate ele mesmo (a única exceção é a checagem de existência de arquivo do item 0 do validador em modo `direto`, que é dele por desenho — Fase 2), não escreve teste, não corrige defeito. Isso já valia antes desta seção — releia "As exceções, e elas têm fronteira exata" logo acima, ela continua sendo a lista completa do que o orquestrador escreve com a própria mão. O que esta seção acrescenta é o motivo explícito: cada byte que o orquestrador gasta implementando é um byte que ele não tem sobrando para orquestrar a fila inteira. Vale para toda task, inclusive a que parece pequena demais para valer um subagent — "é só uma linha, eu mesmo ajusto" é o mesmo atalho que a Fase 0 já proíbe para triagem, aplicado aqui à execução.
+
+**2. Do que o subagent devolve, o orquestrador extrai só o que o journal precisa — e descarta o resto.** Um relatório de implementador ou validador chega com diff, número de teste, prosa de justificativa. O orquestrador lê isso, tira Status / arquivos / gate medido / desvio / veredito, escreve a linha do journal (Fase 4), e **não carrega o relatório inteiro adiante na conversa**. Depois que a linha está no disco, o relatório já cumpriu sua função — reler o diff de uma task três tasks depois é o mesmo desperdício que implementar direto.
+
+### Em runs com fila grande: resuma, não acumule
+
+Numa fila de 5 tasks isso mal aparece. Numa fila de 30, ou numa que atravessa várias specs, acumular o histórico completo de cada onda no contexto é o jeito mais rápido de o orquestrador perder a run antes de chegar ao fim dela. A regra:
+
+- **Spec/task já journalizada e sem `Status: Bloqueado` sai do contexto ativo.** O que fica é o resumo: quantas tasks daquela spec passaram, quantas ficaram, se alguma foi estacionada. O detalhe (quem implementou o quê, o defeito exato que o validador achou) mora só no `JOURNAL.md` — que é exatamente o motivo dele ser escrito task a task e não só no fim (Fase 4). A razão agora é dupla: sobrevive a uma sessão cortada, **e** mantém o contexto do orquestrador do tamanho da onda atual, não do tamanho da run inteira.
+- **Ao fechar uma onda, comprima o que ela produziu num contador, não numa lista.** "Onda 3: 4/4 aprovadas" substitui os quatro parágrafos de relatório que geraram esse número. Se o relatório final precisar de detalhe por task, ele **relê o journal do disco** na hora de escrever — não recupera de memória de conversa.
+- **Ao passar para a próxima spec/feature dentro da mesma run, trate a anterior como fechada.** Não carregue "para dar contexto" o que já foi resolvido nela — se o subagent da spec nova precisar de algo daquela, isso é regra de repositório ou território compartilhado, e já está no Perfil do projeto (Fase 0), não na memória de conversa do orquestrador.
+- **Se o contexto crescer mesmo assim** (muitas ondas, muitos ciclos de correção), pare no limite de onda — nunca no meio de uma task em voo — e retome como a Fase 4 já descreve para sessão nova: releia o journal, releia o `TRIAGE.md`, confirme o checkpoint, siga da primeira task sem `Status: concluída`. Uma retomada deliberada por estouro de contexto usa o mesmo procedimento de uma retomada por sessão cortada — o journal já foi desenhado para os dois casos.
+
+---
+
 ## Fase 0 — Carregar a triagem (pré-condição, não trabalho)
 
 Esta skill não descobre o que fazer. Ela lê o que a `spec-triage` já decidiu.
@@ -281,6 +302,7 @@ tocados com mtime>
 - **Não deixe arquivo de diagnóstico temporário no repositório.** Órfãos com caminhos absolutos da máquina de alguém sobrevivem meses à investigação que os criou.
 - **Não invente ID de requisito.** Criar requisito é trabalho da triagem, não desta skill.
 - **As regras do repositório vencem** qualquer coisa escrita aqui. Se houver contradição, siga o repositório e registre a contradição no relatório.
+- **Não acumule no contexto o relatório completo de task já journalizada.** Extraia o que a linha do journal precisa, grave, e siga — o disco é a fonte de verdade a partir daí, não a conversa.
 
 ---
 

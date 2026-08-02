@@ -85,20 +85,33 @@ pub fn catalog() -> &'static [AgentDescriptor] {
 /// tenta também `command` com cada extensão listada — é assim que o
 /// Windows resolve `claude` para `claude.cmd`/`claude.exe`/etc via
 /// `%PATHEXT%`, em vez de aceitar só `.exe`.
+///
+/// A comparação de nome é case-insensitive de propósito: a resolução real
+/// do Windows via `PATHEXT` não diferencia caixa, então essa função não
+/// pode depender de o filesystem do processo ser case-insensitive por
+/// acaso (ele não é em CI Linux).
 fn command_exists_in_dir(dir: &Path, command: &str, pathext: Option<&str>) -> bool {
-    if dir.join(command).is_file() {
-        return true;
-    }
+    let entries = match std::fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(_) => return false,
+    };
 
+    let mut candidates = vec![command.to_string()];
     if let Some(pathext) = pathext {
-        for ext in pathext.split(';').filter(|e| !e.is_empty()) {
-            if dir.join(format!("{command}{ext}")).is_file() {
-                return true;
-            }
-        }
+        candidates.extend(
+            pathext
+                .split(';')
+                .filter(|e| !e.is_empty())
+                .map(|ext| format!("{command}{ext}")),
+        );
     }
 
-    false
+    entries.filter_map(|e| e.ok()).any(|entry| {
+        entry.file_type().is_ok_and(|t| t.is_file())
+            && candidates
+                .iter()
+                .any(|candidate| entry.file_name().eq_ignore_ascii_case(candidate))
+    })
 }
 
 /// Núcleo testável da detecção: recebe `PATH` e `PATHEXT` (Windows) já
