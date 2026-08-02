@@ -16,7 +16,7 @@ mcp-task-server/T1 → T1 → T2 → ┬→ T3 [P]
 
 | Tarefa | Status | Testes entregues |
 |---|---|---|
-| T1 `ProjectService` | ✅ Done | 7 integration (plano: 7) |
+| T1 `ProjectService` | ✅ Done | 8 integration (plano: 7, +1 — corrigido na triagem 005) |
 | T2 Resolução de projeto por diretório | ✅ Done | 6 unit (plano: 6) |
 | T3 Comandos Tauri de projeto | ✅ Done | — (invólucro fino) |
 | T4 UI de gerenciamento de projetos | ✅ Done | 5 unit (plano: 4, +1 estado vazio) |
@@ -42,11 +42,11 @@ mcp-task-server/T1 → T1 → T2 → ┬→ T3 [P]
 - [ ] Cor atribuída da paleta priorizando a menos usada quando esgotada
 - [ ] `delete` retorna quantas tarefas serão afetadas e deixa `project_id NULL`
 - [ ] Gate passa: `cargo test`
-- [ ] Contagem: 7 testes passam (create, diretório inexistente recusado, duplicado recusado, cores distintas, reciclagem de paleta, update propaga, delete conta e desvincula)
+- [ ] Contagem: 8 testes passam (create, diretório inexistente recusado, duplicado recusado, cores distintas, reciclagem de paleta, update propaga, delete conta e desvincula, regressão do bug de prefixo verbatim `\\?\` do Windows — corrigido na triagem 005, o teste extra tinha ficado de fora da contagem)
 
 **Tests**: integration · **Gate**: full
 
-**Verify**: `cargo test projects::service` → 7 passam.
+**Verify**: `cargo test --test projects` → 8 passam (funções soltas em `tests/projects.rs`, sem prefixo de módulo — `cargo test projects::service` não casa nenhum teste; corrigido na triagem 005).
 
 **Commit**: `feat(projects): project service with color assignment`
 

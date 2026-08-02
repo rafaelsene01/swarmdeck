@@ -37,17 +37,17 @@ SPECIFY ✅ →  DESIGN 🟡 →  TASKS 🟡 →  EXECUTE 🟡
 
 *(`EXECUTE` corrigido de ⬜ para 🟡 na triagem 002 — 28/07/2026. O marcador dizia "não começou" enquanto `multi-terminal/T1–T4` já estavam entregues, com 15 testes passando. É a mesma divergência que a triagem 001 corrigiu no `ROADMAP.md`; este segundo lugar passou.)*
 
-**Tasks definidas para M1 + M2 e para a faixa transversal de entrega** — 59 tarefas atômicas. *(Corrigido na triagem 001: dizia 58, mas a tabela logo abaixo sempre somou 59, e a contagem de headers confirma 59. Palavra corrigida na triagem 004, 01/08/2026: "definidas" em vez de "concluídas" — as 59 têm `tasks.md` escrito, mas só `multi-terminal` (11) está de fato 100% `✅ Done`, com `release-distribution` parcial. Na mesma triagem, `agent-selection`, `mcp-task-server` e `projects` saíram de `Draft` para `In Progress` — só `terminal-statuses` e `task-kanban` seguem `Draft`.)*
+**Tasks definidas para M1 + M2 e para a faixa transversal de entrega** — 61 tarefas atômicas. *(Corrigido na triagem 001: dizia 58, mas a tabela logo abaixo sempre somou 59, e a contagem de headers confirma 59. Palavra corrigida na triagem 004, 01/08/2026: "definidas" em vez de "concluídas". Número corrigido na triagem 005 (02/08/2026): 59→60, com a criação de `multi-terminal/T12` — a task de integração de `App.tsx`. `multi-terminal` (12), `agent-selection` (4), `projects` (4) e `mcp-task-server` (9, com T5 reaberta por NEEDS-DECISION) estão com gate 100% verde, mas duas lacunas de integração real ficaram estacionadas — ver `STATE.md`. `terminal-statuses` e `task-kanban` liberadas na triagem 005 (`Draft` → `In Progress`).)*
 
 - **Ordem de execução global**: [project/EXECUTION.md](project/EXECUTION.md) — o único lugar com as dependências *entre* features
 - **Estratégia de teste**: [codebase/TESTING.md](codebase/TESTING.md) — matriz de cobertura e avaliação de paralelismo
 
 | Feature | Tarefas | Arquivo |
 |---|---|---|
-| multi-terminal | 11 | [tasks.md](features/multi-terminal/tasks.md) |
+| multi-terminal | 12 | [tasks.md](features/multi-terminal/tasks.md) |
 | agent-selection | 4 | [tasks.md](features/agent-selection/tasks.md) |
 | projects | 4 | [tasks.md](features/projects/tasks.md) |
-| mcp-task-server | 9 | [tasks.md](features/mcp-task-server/tasks.md) |
+| mcp-task-server | 10 | [tasks.md](features/mcp-task-server/tasks.md) |
 | terminal-statuses | 4 | [tasks.md](features/terminal-statuses/tasks.md) |
 | task-kanban | 6 | [tasks.md](features/task-kanban/tasks.md) |
 | release-distribution | 21 | [tasks.md](features/release-distribution/tasks.md) |

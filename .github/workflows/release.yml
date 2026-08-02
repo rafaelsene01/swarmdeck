@@ -1,0 +1,333 @@
+# SPEC: release-distribution (REL-01, REL-02, REL-03, REL-04, REL-05, REL-06, REL-07)
+#
+# Manual only. There is deliberately no `push`, `tag` or `schedule` trigger in
+# this file — "a push never publica release nenhuma" é estrutural, não uma
+# convenção para lembrar depois.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Tipo de incremento da versão"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Versão, changelog e tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      notes: ${{ steps.notes.outputs.notes }}
+      release_sha: ${{ steps.commit.outputs.sha }}
+    steps:
+      # Guarda primeiro, antes do checkout: nada deve ser escrito se a ref
+      # disparada não for master.
+      - name: "Guarda — releases só saem de master"
+        if: github.ref_name != 'master'
+        run: |
+          echo "::error::Release só pode ser disparada a partir de master (veio de '${{ github.ref_name }}')"
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # cálculo de versão e changelog precisam do histórico inteiro
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Calcular a próxima versão
+        id: version
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+
+          LAST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+          if [ -z "$LAST_TAG" ]; then
+            # Sem tag ainda: a versão hoje no package.json é tratada como a
+            # última publicada, então a primeira release é um incremento
+            # sobre ela.
+            BASE=$(node -p "require('./package.json').version")
+            echo "Nenhuma tag encontrada; usando package.json como base ($BASE)"
+          else
+            BASE=${LAST_TAG#v}
+            echo "Última tag: $LAST_TAG (base $BASE)"
+          fi
+
+          VERSION=$(node scripts/bump-version.mjs "${{ inputs.bump }}" --base "$BASE" --dry-run)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Nova versão: $VERSION"
+
+      - name: "Guarda — a tag não pode já existir"
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.version.outputs.tag }}"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "::error::A tag $TAG já existe localmente"
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::A tag $TAG já existe no remoto"
+            exit 1
+          fi
+
+      - name: Gravar a versão nos arquivos que a duplicam
+        run: node scripts/bump-version.mjs "${{ steps.version.outputs.version }}"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Atualizar Cargo.lock
+        # `cargo metadata` atualiza o lockfile sem compilar nada, então este
+        # passo não precisa das dependências de sistema do Tauri.
+        run: cargo metadata --manifest-path src-tauri/Cargo.toml --format-version 1 > /dev/null
+
+      - name: Gerar CHANGELOG.md
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --tag ${{ steps.version.outputs.tag }}
+        env:
+          OUTPUT: CHANGELOG.md
+
+      - name: Gerar as notas desta versão
+        uses: orhun/git-cliff-action@v4
+        id: cliff_notes
+        with:
+          config: cliff.toml
+          args: --tag ${{ steps.version.outputs.tag }} --unreleased --strip all
+        env:
+          OUTPUT: RELEASE_NOTES.md
+
+      - name: Expor as notas como output
+        id: notes
+        run: |
+          {
+            echo 'notes<<RELEASE_NOTES_EOF'
+            cat RELEASE_NOTES.md
+            echo 'RELEASE_NOTES_EOF'
+          } >> "$GITHUB_OUTPUT"
+          rm -f RELEASE_NOTES.md
+
+      - name: Commitar e taguear
+        id: commit
+        run: |
+          set -euo pipefail
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          # tauri.conf.json fica de fora de propósito: a versão dele é
+          # "../package.json", derivada, não gravada.
+          git add package.json package-lock.json src-tauri/Cargo.toml src-tauri/Cargo.lock CHANGELOG.md
+          git commit -m "chore(release): ${{ steps.version.outputs.tag }}"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "${{ steps.version.outputs.tag }}"
+          git push origin HEAD:master
+          git push origin "${{ steps.version.outputs.tag }}"
+          # Repassado ao `cleanup`, que reverte exatamente este commit se o
+          # run nunca chegar numa release publicada.
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: "Empacotar (${{ matrix.os }})"
+    needs: prepare
+    # Uma plataforma falhando não pode cancelar a outra: um rascunho
+    # meio-empacotado ainda é aproveitável, um cancelado não.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            bundles: msi,nsis
+          - os: ubuntu-22.04
+            bundles: deb,appimage
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Build a partir da tag, para o artefato bater exatamente com o
+          # que foi tagueado.
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Dependências de sistema (Linux)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            libssl-dev \
+            build-essential \
+            file \
+            patchelf \
+            libfuse2 \
+            wget \
+            curl
+
+      - run: npm ci
+
+      - name: Build + bundle
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ needs.prepare.outputs.tag }}
+          releaseName: "SwarmDeck ${{ needs.prepare.outputs.tag }}"
+          releaseBody: ${{ needs.prepare.outputs.notes }}
+          # Continua rascunho até o `finalize` confirmar que todo artefato
+          # chegou.
+          releaseDraft: true
+          prerelease: false
+          args: --bundles ${{ matrix.bundles }} --verbose
+
+      # O Tauri não tem alvo portátil, e o updater oficial não tem caminho
+      # portátil no Windows — este bundle é montado e assinado à mão, com a
+      # mesma chave, para os dois caminhos de update compartilharem uma raiz
+      # de confiança só.
+      - name: Bundle portátil (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          ZIP=$(node scripts/make-portable.mjs --version "${{ needs.prepare.outputs.version }}")
+          echo "Bundle portátil: $ZIP"
+          npx tauri signer sign "$ZIP"
+          gh release upload "${{ needs.prepare.outputs.tag }}" "$ZIP" "$ZIP.sig" --clobber
+
+  finalize:
+    name: Publicar a release
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Injetar a entrada portátil no latest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ needs.prepare.outputs.tag }}"
+          VERSION="${{ needs.prepare.outputs.version }}"
+          ZIP_NAME="SwarmDeck_${VERSION}_x64-portable.zip"
+
+          gh release download "$TAG" -p latest.json -p "${ZIP_NAME}.sig" --clobber
+          # A URL do asset é lida da própria release, nunca remontada por
+          # nome: o formato do nome de artefato do Tauri varia entre versões.
+          gh release view "$TAG" --json assets --jq '.assets' > assets.json
+
+          # `--tag` é o que torna a URL usável: a release ainda é rascunho
+          # aqui, então a URL lida acima aponta para o caminho efêmero
+          # `untagged-<hash>`, que deixa de existir assim que a release é
+          # publicada.
+          node scripts/patch-latest-json.mjs \
+            --manifest latest.json \
+            --key windows-x86_64-portable \
+            --tag "$TAG" \
+            --assets assets.json \
+            --name "$ZIP_NAME" \
+            --signature-file "${ZIP_NAME}.sig"
+
+          gh release upload "$TAG" latest.json --clobber
+
+      - name: Publicar (sair de rascunho)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ needs.prepare.outputs.tag }}" --draft=false
+
+  # `prepare` dá push na tag e no commit de versão antes de qualquer coisa
+  # ser empacotada, então um build que falha — ou que alguém cancela —
+  # deixaria uma tag apontando para uma release que não existe, e um número
+  # de versão queimado: o próximo run calcularia o seguinte. Este job devolve
+  # o repositório ao estado anterior, para uma nova tentativa reusar o mesmo
+  # número.
+  cleanup:
+    name: Desfazer uma release interrompida
+    needs: [prepare, build, finalize]
+    # Só quando o `prepare` de fato escreveu algo e o run não terminou numa
+    # release publicada. `always()` é obrigatório para o job rodar mesmo
+    # depois de uma dependência que falhou ou foi cancelada.
+    if: >-
+      always()
+      && needs.prepare.result == 'success'
+      && (needs.build.result != 'success' || needs.finalize.result != 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0 # o revert precisa do commit da release no histórico
+
+      - name: Apagar a release e a tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ needs.prepare.outputs.tag }}"
+
+          # O rascunho sai primeiro: apagar a tag por baixo de uma release
+          # deixa a release órfã e impossível de apagar por tag.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release delete "$TAG" --yes
+            echo "Release $TAG apagada"
+          else
+            echo "Nenhuma release $TAG para apagar"
+          fi
+
+          git push origin ":refs/tags/$TAG" || echo "::warning::A tag $TAG já não existia no remoto"
+
+      - name: Reverter o commit de versão
+        run: |
+          set -euo pipefail
+          SHA="${{ needs.prepare.outputs.release_sha }}"
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+          # Revert, nunca force-push: master é branch publicada e reescrevê-la
+          # quebraria todo clone. Um commit de revert é feio e seguro.
+          if git revert --no-edit "$SHA"; then
+            git push origin HEAD:master
+            echo "Commit de versão $SHA revertido"
+          else
+            git revert --abort || true
+            echo "::error::Não foi possível reverter $SHA automaticamente (provavelmente houve outro push em master). A versão em package.json continua adiantada — reverta na mão antes da próxima release."
+            exit 1
+          fi

@@ -2,7 +2,7 @@
 
 **Design**: `.specs/features/task-kanban/design.md`
 **Testing**: `.specs/codebase/TESTING.md`
-**Status**: Draft
+**Status**: In Progress (liberada na triagem 005, 02/08/2026 — ver `project/STATE.md`)
 **Milestone**: M2
 
 ---

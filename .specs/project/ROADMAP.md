@@ -11,7 +11,7 @@ Inventário derivado da varredura de UI de 28/07/2026. Ver `.specs/research/UI-I
 
 **Não é um milestone**: é a faixa que atravessa todos eles. Está aqui porque uma parte entra **agora**, antes do M1 fechar, e o resto depende de existir um app que valha a pena instalar.
 
-**Release e distribuição** — IN PROGRESS. 10 de 21 tarefas `✅ Done` (`T1, T3, T4, T13, T14, T15, T16, T17, T18, T20` — o Bloco D inteiro fechou na run `spec-loop` 004, 01/08/2026); 2 implementadas e verificadas localmente, aguardando push para fechar (`T2, T21`); `T5` (chave de assinatura), a cadeia `T6–T12`, e `T19` (verificação ponta a ponta) são `human-only`. → `.specs/features/release-distribution/`
+**Release e distribuição** — IN PROGRESS. 10 de 21 tarefas `✅ Done` (`T1, T3, T4, T13, T14, T15, T16, T17, T18, T20` — o Bloco D inteiro fechou na run `spec-loop` 004, 01/08/2026); `T2, T21` implementadas e verificadas localmente, mas o push já aconteceu (fora desta skill, entre a 004 e a 005) e o CI real rodou duas vezes — **as duas falharam**, por um bug ainda não diagnosticado em `agent_prefs.rs` no Linux (ver `STATE.md`, AD de 02/08/2026); `T5` (chave de assinatura), a cadeia `T6–T12`, e `T19` (verificação ponta a ponta) são `human-only`. → `.specs/features/release-distribution/`
 
 | Bloco | O que entrega | Entra quando |
 |---|---|---|
@@ -29,7 +29,7 @@ Inventário derivado da varredura de UI de 28/07/2026. Ver `.specs/research/UI-I
 
 ### Features
 
-**Multi-terminal em grid** — 11 de 11 tarefas `✅ Done`; 5 (`T6, T7, T9, T10, T11`) com gate automatizado passando e `Verify` visual **ainda não confirmado** (triagem 004, 01/08/2026 — ver `multi-terminal/tasks.md`) → `.specs/features/multi-terminal/`
+**Multi-terminal em grid** — 11 de 12 tarefas `✅ Done`; `T6` confirmado visualmente (run 004); `T7, T9, T10, T11` com gate automatizado passando mas `Verify` visual pendente de **`T12` (nova, triagem 005, 02/08/2026)** — a task que finalmente monta `GridLayout`/`TerminalPane`/`TerminalHeader` em `App.tsx`, hoje ainda o placeholder do scaffolding → `.specs/features/multi-terminal/`
 - Grid de até 4 terminais com divisórias arrastáveis
 - PTY real por terminal (shell nativo do SO)
 - Header por terminal: título, número, badge de status, ações
@@ -55,19 +55,19 @@ Inventário derivado da varredura de UI de 28/07/2026. Ver `.specs/research/UI-I
 
 ### Features
 
-**Servidor MCP de tarefas** — 9 de 9 tarefas `✅ Done` (T0–T8, run `spec-loop` 004, 01/08/2026) → `.specs/features/mcp-task-server/`
+**Servidor MCP de tarefas** — 9 de 10 tarefas `✅ Done` no gate (T0–T8, run `spec-loop` 004, 01/08/2026); ⚠️ **T5 com `Verify` real pendente de `T9` (nova, triagem 005, 02/08/2026)** — `IpcServer` nunca é iniciado pelo app (`src-tauri/src/lib.rs`), então o sidecar não consegue conectar em uso real, mesma natureza do gap de `App.tsx` em `multi-terminal` → `.specs/features/mcp-task-server/`
 - Ferramentas de tarefa (criar, iniciar, planejar, implementar, concluir, buscar)
 - Ferramentas de terminal (título geral, atividade, status)
 - Auto-detecção de terminal e projeto a partir do ambiente da sessão
 - Handshake `check_active` — agentes fora do app ignoram o protocolo
 
-**Kanban de tarefas** — PLANNED → `.specs/features/task-kanban/`
+**Kanban de tarefas** — IN PROGRESS (liberada na triagem 005, 02/08/2026) → `.specs/features/task-kanban/`
 - Janela dedicada, 4 colunas: Pending / In Progress / In Testing / Completed
 - Card: chip de projeto, número, título, descrição, data, excluir, enviar-ao-terminal
 - Filtro por projeto, busca textual, ordenação por coluna
 - Fluxo obrigatório de teste: In Progress → In Testing → Completed
 
-**Status e atividade de terminal** — PLANNED → `.specs/features/terminal-statuses/`
+**Status e atividade de terminal** — IN PROGRESS (liberada na triagem 005, 02/08/2026) → `.specs/features/terminal-statuses/`
 - Catálogo editável de status (label, cor, instrução para o agente, ordem)
 - Badge colorido no terminal
 - Título geral fixo + log de atividade cronológico

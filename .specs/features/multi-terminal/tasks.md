@@ -13,11 +13,12 @@
 | T4 PtySession | ✅ Done | 5 integration (plano: 5) |
 | T5 TerminalManager | ✅ Done | 6 integration (plano: 6) |
 | T6 Comandos Tauri | ✅ Done — **Verify visual CONFIRMADO na run 004 (01/08/2026)** | — (none, invólucro fino) |
-| T7 TerminalPane | ✅ Done (gate build) — ⛔ **Verify visual NEEDS-DECISION (run 004)** | — (none) |
+| T7 TerminalPane | ✅ Done (gate build) — Verify pendente de T12 (decisão tomada, triagem 005) | — (none) |
 | T8 GridLayout | ✅ Done | 5 unit (plano: 5) |
-| T9 TerminalHeader | ✅ Done (gate build) — ⛔ **Verify visual NEEDS-DECISION (run 004)** | — (none, apresentacional) |
-| T10 Max/min/fechar | ✅ Done (gate quick) — ⛔ **Verify visual NEEDS-DECISION (run 004)** | 4 unit (plano: 4) |
-| T11 Persistência | ✅ Done (gate full) — ⛔ **Verify visual NEEDS-DECISION (run 004)** | 4 integration (plano: 4) |
+| T9 TerminalHeader | ✅ Done (gate build) — Verify pendente de T12 (decisão tomada, triagem 005) | — (none, apresentacional) |
+| T10 Max/min/fechar | ✅ Done (gate quick) — Verify pendente de T12 (decisão tomada, triagem 005) | 4 unit (plano: 4) |
+| T11 Persistência | ✅ Done (gate full) — Verify pendente de T12 (decisão tomada, triagem 005) | 4 integration (plano: 4) |
+| T12 Montar `App.tsx` | 🆕 Criada na triagem 005 (02/08/2026) — pronta para execução | — (fiação, gate build) |
 
 **Total atual: 40 testes passando** — `cargo test` = 31 (11 lib + 5 db + 4 layout + 6 manager + 5 session); `npm run test` = 9 (5 GridLayout + 4 terminals). Ver relatório de execução para a saída bruta de cada gate.
 
@@ -25,7 +26,7 @@
 
 **T7, T9, T10 e T11 NÃO puderam ser confirmados — mas por um motivo diferente do registrado em 31/07/2026, e mais grave.** O agente de UAT encontrou que `src/App.tsx` é ainda o placeholder do scaffolding (`<h1>SwarmDeck</h1><p>Scaffolding pronto...</p>`) — ele **não importa nem renderiza** `GridLayout`, `TerminalPane`, `TerminalHeader` nem `state/terminals.ts`. Confirmado por leitura de `App.tsx`/`main.tsx` e grep: nenhum arquivo em `src/` fora dos próprios `.test.tsx` importa esses componentes. Ou seja: T7, T9, T10, T11 passam nos gates automatizados **isolados** (build/test do componente em si), mas nenhum deles é alcançável por um usuário real abrindo o app — não existe grid, não existe pane, não existe header na tela. Nenhuma task deste arquivo lista `App.tsx` como "Onde", então a integração nunca foi um item planejado — é uma lacuna de escopo, não um bug de uma task específica.
 
-⛔ **Isto é NEEDS-DECISION, devolvido à `spec-triage` (run 004, 01/08/2026) — ver `.specs/runs/004-2026-08-01/JOURNAL.md`, seção "Devolvido para triagem".** `spec-loop` não pode inventar a task de integração que faltaria (T12? "Montar App.tsx"?) porque criar requisito/task novo é trabalho da triagem, não da execução.
+✅ **Resolvido na triagem 005 (02/08/2026).** O usuário decidiu criar uma task nova de integração — é **T12** (logo após T11 neste arquivo), pronta para a `spec-loop` executar. `T7, T9, T10, T11` seguem sem `Verify` confirmado até T12 fechar e o `uat-agent` reexecutar o `Verify` original de cada uma.
 
 **Desvios registrados:**
 - **T1**: `crates/*` saiu do workspace Cargo — Cargo falha ao carregar glob que não casa com nenhum diretório. Entra em `mcp-task-server/T6`, com o sidecar.
@@ -239,7 +240,7 @@ T7, T8, T9 → T10 → T11
 
 ---
 
-### T7: `TerminalPane` (React) [P]  ⛔ NEEDS-DECISION (Verify)
+### T7: `TerminalPane` (React) [P]  — Verify pendente de T12
 
 **O quê**: Componente que casa uma instância de xterm.js com uma sessão do backend, com fit e debounce de resize.
 **Onde**: `src/components/terminal/TerminalPane.tsx`
@@ -261,12 +262,8 @@ T7, T8, T9 → T10 → T11
 
 **Verify**: rodar o app, digitar no terminal, ver eco. Redimensionar a janela e confirmar o reflow.
 
-> ⛔ **NEEDS-DECISION — estacionada na run 004 (01/08/2026).** Não executar o `Verify` até haver decisão do usuário.
-
-**Pergunta:** `src/App.tsx` continua sendo o placeholder do scaffolding (`<h1>SwarmDeck</h1><p>Scaffolding pronto...</p>`) — não importa `GridLayout`, `TerminalPane`, `TerminalHeader` nem `state/terminals.ts`. Nenhuma task deste arquivo lista `App.tsx` como "Onde". Duas leituras possíveis: (a) falta uma task nova, explícita, de "integrar os componentes de terminal em `App.tsx`" — e aí é a `spec-triage` que a cria e a insere na cadeia; ou (b) a integração deveria ter sido parte implícita de uma das tasks já `✅ Done` (T7? T8? T10?) e ficou pra trás por lacuna de escopo, e a correção é reabrir essa task específica. Qual das duas, e se (a), qual o número/posição da task nova?
-**Por que só o usuário responde:** criar requisito/task novo é decisão de escopo do mantenedor — a `spec-loop` explicitamente não inventa ID de requisito nem task nova.
-**Medições que sustentam a escolha:** leitura de `src/App.tsx` e `src/main.tsx` (run 004) — nenhum import de `TerminalPane`/`GridLayout`/`TerminalHeader`; `grep` confirmou que só os próprios arquivos `.test.tsx` importam esses componentes fora de si mesmos.
-**Estado do código:** nada alterado — T7 (`TerminalPane.tsx`) continua existindo e passando no gate `build` isolado, só não é alcançável pela UI real.
+> ✅ **NEEDS-DECISION resolvida na triagem 005 (02/08/2026).** O usuário escolheu criar uma task nova de integração — ver **T12** (logo após T11 neste arquivo). O `Verify` desta task fica pendente de T12: só é executável depois que `App.tsx` monta a árvore real. Não reabrir esta pergunta — é a mesma decisão para T7, T9, T10 e T11, registrada uma única vez aqui.
+**Estado do código:** nada alterado — T7 (`TerminalPane.tsx`) continua existindo e passando no gate `build` isolado, só não é alcançável pela UI real até T12 fechar.
 
 **Commit**: `feat(ui): terminal pane bridging xterm.js to pty channel`
 
@@ -297,7 +294,7 @@ T7, T8, T9 → T10 → T11
 
 ---
 
-### T9: `TerminalHeader` (React) [P]  ⛔ NEEDS-DECISION (Verify)
+### T9: `TerminalHeader` (React) [P]  — Verify pendente de T12
 
 **O quê**: Header do terminal com número, título, ícone do agente, badge de status e ações.
 **Onde**: `src/components/terminal/TerminalHeader.tsx`
@@ -317,13 +314,13 @@ T7, T8, T9 → T10 → T11
 
 **Verify**: inspeção visual no app com um terminal ativo.
 
-> ⛔ **NEEDS-DECISION — estacionada na run 004 (01/08/2026), mesma causa de T7:** `src/App.tsx` não renderiza `TerminalHeader`, então não há "terminal ativo" na UI real para inspecionar. Ver o header de T7 acima para a pergunta completa e as opções — é a mesma decisão, não repetida aqui para não divergir.
+> ✅ **Resolvida na triagem 005 — ver T12.** `Verify` pendente da mesma integração de `App.tsx` que T7 aguardava; mesma decisão, não repetida aqui.
 
 **Commit**: `feat(ui): terminal header with status badge and actions`
 
 ---
 
-### T10: Maximizar, minimizar e fechar  ⛔ NEEDS-DECISION (Verify)
+### T10: Maximizar, minimizar e fechar  — Verify pendente de T12
 
 **O quê**: Ligar as ações do header ao estado do grid, mantendo o PTY vivo quando minimizado.
 **Onde**: `src/components/grid/GridLayout.tsx` (modifica), `src/state/terminals.ts`
@@ -345,13 +342,13 @@ T7, T8, T9 → T10 → T11
 
 **Verify**: minimizar um terminal com `ping -t` rodando, restaurar, e confirmar que a saída do período não sumiu.
 
-> ⛔ **NEEDS-DECISION — estacionada na run 004 (01/08/2026), mesma causa de T7:** sem `TerminalHeader`/`TerminalPane` montados em `App.tsx`, não há UI real para minimizar/restaurar. Ver o header de T7 acima para a pergunta completa.
+> ✅ **Resolvida na triagem 005 — ver T12.** `Verify` pendente da mesma integração de `App.tsx` que T7 aguardava; mesma decisão, não repetida aqui.
 
 **Commit**: `feat(ui): maximize, minimize and close terminals`
 
 ---
 
-### T11: Persistência de layout  ⛔ NEEDS-DECISION (Verify)
+### T11: Persistência de layout  — Verify pendente de T12
 
 **O quê**: Salvar e restaurar número de terminais, frações, `cwd` e agente entre reinícios.
 **Onde**: `src-tauri/src/terminal/layout.rs`, `src/state/terminals.ts` (modifica)
@@ -372,9 +369,37 @@ T7, T8, T9 → T10 → T11
 
 **Verify**: montar layout 2×2, fechar, reabrir, conferir restauração.
 
-> ⛔ **NEEDS-DECISION — estacionada na run 004 (01/08/2026), mesma causa de T7:** sem UI real de grid montada, não há como montar um layout 2×2 pela interface. Ver o header de T7 acima para a pergunta completa.
+> ✅ **Resolvida na triagem 005 — ver T12.** `Verify` pendente da mesma integração de `App.tsx` que T7 aguardava; mesma decisão, não repetida aqui.
 
 **Commit**: `feat(terminal): persist and restore grid layout`
+
+---
+
+### T12: Montar `App.tsx` — integração real do grid
+
+> **Criada na triagem 005 (02/08/2026), decisão do usuário.** Resolve o `⛔ NEEDS-DECISION` aberto desde a run 004 em T7, T9, T10 e T11: nenhuma task listava `App.tsx` como `Onde`, então nenhum componente de terminal era alcançável por um usuário real — `App.tsx` seguia o placeholder do scaffolding. O usuário escolheu "criar task nova de integração" entre as opções levantadas (a alternativa era reabrir uma task `Done` existente). Não é redesenho: todos os componentes e o estado já existem e passam no gate isolado — esta task só monta o que já foi construído.
+
+**O quê**: Substituir o placeholder de `App.tsx` por uma árvore real: estado de `TerminalState[]` (`state/terminals.ts`) alimentando `GridLayout`, cada painel renderizando `TerminalPane` dentro de `TerminalHeader`, e um botão "novo terminal" abrindo `NewTerminalDialog` (já existe, também nunca foi montado — ver Divergências da triagem 005). Fiação, não lógica nova: cada peça já tem seu próprio teste; esta task não introduz regra de negócio, só liga os pontos.
+**Onde**: `src/App.tsx`, `src/main.tsx` (se precisar mover o provider/root)
+**Depende de**: T7, T8, T9, T10, T11 (todos os componentes e o estado que serão montados)
+**Reusa**: `GridLayout` (T8), `TerminalPane` (T7), `TerminalHeader` (T9), `NewTerminalDialog` (já existe em `src/components/terminal/`, órfão — mesma situação), `state/terminals.ts` (T10, T11), comandos Tauri de terminal (T6)
+**Requisito**: TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-07, TERM-08 (nenhum requisito novo — esta task fecha o `Verify` dos que já existem, não cria comportamento)
+
+**Ferramentas**: MCP: NENHUM · Skill: NENHUMA
+
+**Done when**:
+- [ ] `App.tsx` renderiza `GridLayout` alimentado por `state/terminals.ts`, não o placeholder
+- [ ] Cada painel do grid mostra `TerminalHeader` (topo) + `TerminalPane` (corpo), ligados ao mesmo `id` de terminal
+- [ ] Existe uma ação visível de "novo terminal" que abre `NewTerminalDialog` e, ao confirmar, adiciona uma entrada a `TerminalState[]`
+- [ ] Maximizar/minimizar/fechar (T10) e persistência de layout (T11) funcionam através da UI montada, não só via chamada direta ao estado
+- [ ] Gate passa: `cargo build && npm run build`
+- [ ] `Verify` de T7, T9, T10 e T11 (estacionados desde a run 004) tornam-se executáveis e devem ser reconfirmados nesta mesma execução — não é suficiente montar a árvore, o `uat-agent` precisa efetivamente repetir o `Verify` de cada um contra o app real
+
+**Tests**: none *(fiação — a lógica já é testada nas peças que compõe; ver `codebase/TESTING.md` → "Ponte xterm.js ↔ Channel" e a linha de `App.tsx`, que hoje não existe na matriz e deveria ser adicionada como `none` na próxima revisão de `TESTING.md`)* · **Gate**: build
+
+**Verify**: `uat-agent` — abrir o app, criar 2+ terminais pela UI (não pelo console do DevTools), digitar em cada um, redimensionar arrastando a divisória, maximizar, minimizar, fechar, reabrir o app e confirmar que o layout volta. Isto **substitui** o `Verify` que T7/T9/T10/T11 não conseguiram completar na run 004 — depois de T12, reexecutar o `Verify` original de cada uma dessas quatro tasks e atualizar seus marcadores de `NEEDS-DECISION` para `CONFIRMADO` ou `NÃO CONFIRMADO` (nunca presumir).
+
+**Commit**: `feat(ui): mount grid, terminal panes and header in App.tsx`
 
 ---
 

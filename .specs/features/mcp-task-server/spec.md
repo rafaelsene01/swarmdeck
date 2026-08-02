@@ -123,16 +123,16 @@ Um agente de codificação rodando num terminal é uma caixa-preta: o usuário s
 
 | ID | História | Fase | Status |
 |---|---|---|---|
-| MCP-01 | P1: Handshake | Design | Pending |
-| MCP-02 | P1: Ciclo de vida da tarefa | Design | Pending |
-| MCP-03 | P1: Fluxo obrigatório de teste | Design | Pending |
-| MCP-04 | P1: Título e atividade do terminal | Design | Pending |
-| MCP-05 | P1: Status do terminal | Design | Pending |
-| MCP-06 | P1: Rename manual vence o agente | Design | Pending |
-| MCP-07 | P2: Similaridade e dedup | — | Pending |
-| MCP-08 | P2: Resolução de projeto | — | Pending |
+| MCP-01 | P1: Handshake | Tasks | Done (gate) — `T5, T6` — ⚠️ ver nota abaixo: `IpcServer` não roda no app real |
+| MCP-02 | P1: Ciclo de vida da tarefa | Tasks | Done — `T1, T3, T7` |
+| MCP-03 | P1: Fluxo obrigatório de teste | Tasks | Done — `T2, T3, T7` |
+| MCP-04 | P1: Título e atividade do terminal | Tasks | Done — `T4, T7` |
+| MCP-05 | P1: Status do terminal | Tasks | Done — `T4, T7` |
+| MCP-06 | P1: Rename manual vence o agente | Tasks | Done — `T4` |
+| MCP-07 | P2: Similaridade e dedup | Tasks | Done — `T8` |
+| MCP-08 | P2: Resolução de projeto | Tasks | Done — `T1, T3` |
 
-**Cobertura:** 8 requisitos, 0 mapeados para tarefas ⚠️
+**Cobertura (corrigida na triagem 005 — a tabela dizia "0 mapeados" com a feature 100% `✅ Done` em `tasks.md`):** 8 requisitos, **8 mapeados no gate automatizado** — mas ver a ressalva ⚠️ em `MCP-01`: `IpcServer::for_app(...).serve()` (T5) nunca é chamado em `src-tauri/src/lib.rs` — o app real não abre o socket/pipe que o sidecar precisa para conectar. Achado do auditor na triagem 005 (`grep -rn "IpcServer" src-tauri/src/lib.rs` → nenhum resultado). Todo o handshake e os testes de round-trip (T5, T6, T7) passam porque rodam contra um `IpcServer` instanciado dentro do próprio teste — nunca contra o app de verdade. Estacionado como `⛔ NEEDS-DECISION` em `tasks.md` (T5), mesma natureza do gap de `App.tsx` em `multi-terminal`.
 
 ---
 

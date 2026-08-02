@@ -83,7 +83,7 @@ T12 ─────────────────────────�
 
 ### T2: Workflow de CI
 
-> 🚧 **BLOQUEADA para fechar.** Gate `pipeline` — o arquivo já implementa a estrutura descrita abaixo (confirmado por leitura, triagem 004, 01/08/2026), mas a tarefa só fecha com o run real na aba Actions, que depende de push humano (nenhum push foi feito desde `12222fe`; `HEAD` está 2 commits à frente do `origin/master`). A task **não é** "nada feito" — é "implementado localmente, prova pendente".
+> 🚧 **BLOQUEADA para fechar.** Gate `pipeline` — a estrutura do arquivo bate com o `Done when` (confirmado por leitura, triagem 004). O push aconteceu fora desta skill entre a triagem 004 e a 005 (`origin/master` em `cf21c82`), e o CI rodou de verdade duas vezes (`gh run list`) — **as duas falharam**. Run `30752379391` (commit `2169884`) quebrou em 2 testes de `catalog.rs` (bug real de case-sensitivity em nome de arquivo no Linux); run `30754389304` (commit `cf21c82`, já com o fix de case-sensitivity) foi mais longe — `fmt`, `clippy` e `frontend` passam — mas quebrou em `agent_prefs.rs`. Causa raiz encontrada e corrigida **fora desta skill, na mesma sessão** (commit `5ac0ecd` — ver AD de 02/08/2026 no `STATE.md`), mas ainda não publicada nem provada em CI real. A task não fecha porque o `Done when` pede "run verde", e não existe run verde ainda — nem com a causa raiz resolvida, porque falta o próximo push (decisão desta triagem: não mexer agora).
 
 **O quê**: `.github/workflows/ci.yml` com os três jobs (frontend, rust, commits), concorrência com cancelamento e nenhuma capacidade de publicar.
 **Onde**: `.github/workflows/ci.yml`
@@ -177,6 +177,8 @@ T12 ─────────────────────────�
 
 ### T6: Job `prepare` do release
 
+> 🚧 **BLOQUEADA para fechar.** Gate `pipeline` — o job está escrito em `.github/workflows/release.yml` e todo o `Done when` verificável por leitura já está `[x]` (mesmo padrão de `T2`/`T21`). O que falta é o disparo real (`workflow_dispatch`), que é `T12` — passo humano, não coberto por esta execução.
+
 **O quê**: o job que calcula a versão, gera o CHANGELOG, commita e tagueia — com as duas guardas antes de qualquer escrita.
 **Onde**: `.github/workflows/release.yml`
 **Depende de**: T1, T3, T4
@@ -184,15 +186,15 @@ T12 ─────────────────────────�
 **Requisito**: REL-01, REL-02, REL-03, REL-04, REL-05, REL-06, REL-07
 
 **Done when**:
-- [ ] `on:` contém **apenas** `workflow_dispatch` com o input `bump` (choice de 3 valores)
-- [ ] Guarda de branch é o **primeiro** step, antes do checkout
-- [ ] Guarda de tag existente (local **e** remota) roda antes de gravar arquivo
-- [ ] Versão calculada da última tag `v*`; sem tag, base é o `package.json`
-- [ ] `cargo metadata` atualiza o `Cargo.lock` sem compilar
-- [ ] CHANGELOG e notas gerados pelo git-cliff; as notas viram output do job
-- [ ] Commit `chore(release): vX.Y.Z` incluindo `package.json`, `package-lock.json`, `Cargo.toml`, `Cargo.lock`, `CHANGELOG.md` — e **não** `tauri.conf.json`
-- [ ] Output `release_sha` exposto para o `cleanup`
-- [ ] Gate passa: disparo real com resultado esperado
+- [x] `on:` contém **apenas** `workflow_dispatch` com o input `bump` (choice de 3 valores) — confirmado em `.github/workflows/release.yml:8-17`
+- [x] Guarda de branch é o **primeiro** step, antes do checkout — confirmado em `.github/workflows/release.yml:39-44`, antes do `actions/checkout@v4` em `:45`
+- [x] Guarda de tag existente (local **e** remota) roda antes de gravar arquivo — confirmado em `release.yml:77-86`, antes de "Gravar a versão nos arquivos" em `:88`
+- [x] Versão calculada da última tag `v*`; sem tag, base é o `package.json` — confirmado em `release.yml:56-70`
+- [x] `cargo metadata` atualiza o `Cargo.lock` sem compilar — confirmado em `release.yml:93-98`
+- [x] CHANGELOG e notas gerados pelo git-cliff; as notas viram output do job — confirmado em `release.yml:100-125` (`orhun/git-cliff-action@v4` duas vezes, saída exposta via `$GITHUB_OUTPUT` no step "Expor as notas como output")
+- [x] Commit `chore(release): vX.Y.Z` incluindo `package.json`, `package-lock.json`, `Cargo.toml`, `Cargo.lock`, `CHANGELOG.md` — e **não** `tauri.conf.json` — confirmado em `release.yml:127-137` (`git add` lista os 5 arquivos, `tauri.conf.json` ausente de propósito, comentado)
+- [x] Output `release_sha` exposto para o `cleanup` — confirmado em `release.yml:35` (`outputs.release_sha`) e `:142` (`echo "sha=..."`)
+- [ ] Gate passa: disparo real com resultado esperado — **pendente de T12** (verificação humana; exige `workflow_dispatch` real, fora do escopo de execução automatizada — ver `T5`, ainda bloqueante)
 
 **Tests**: none · **Gate**: pipeline
 
@@ -211,18 +213,20 @@ T12 ─────────────────────────�
 **Requisito**: REL-14, REL-18
 
 **Done when**:
-- [ ] `portableArchiveName("0.1.1")` devolve `SwarmDeck_0.1.1_x64-portable.zip`; versão inválida lança
-- [ ] Versão fora de `X.Y.Z` é rejeitada antes de qualquer I/O
-- [ ] A pasta montada contém executável, recursos e o marcador `.portable`
-- [ ] Um `LEIA-ME.txt` explica que apagar o marcador tira o app do modo portátil
-- [ ] Gate passa: `npm run test:scripts`
-- [ ] Contagem de testes: 6 unit
+- [x] `portableArchiveName("0.1.1")` devolve `SwarmDeck_0.1.1_x64-portable.zip`; versão inválida lança — `scripts/make-portable.test.mjs:12,16`
+- [x] Versão fora de `X.Y.Z` é rejeitada antes de qualquer I/O — `scripts/make-portable.test.mjs:20-27` (confirma que `--out` não é criado)
+- [x] A pasta montada contém executável, recursos e o marcador `.portable` — `scripts/make-portable.test.mjs:30-41` (executável + marcador), `:44-60` (recursos, quando presentes)
+- [x] Um `LEIA-ME.txt` explica que apagar o marcador tira o app do modo portátil — `scripts/make-portable.test.mjs:63-67`
+- [x] Gate passa: `npm run test:scripts` — 25/25 (17 pré-existentes + 8 novos, ver T8)
+- [x] Contagem de testes: 6 unit — confirmado
 
 **Tests**: unit · **Gate**: scripts
 
-**Verify**: rodar contra um build local e descompactar o zip — o executável abre a partir da pasta descompactada.
+**Verify**: rodar contra um build local e descompactar o zip — o executável abre a partir da pasta descompactada. **Não executado nesta run** (exige binário Windows compilado; fora do escopo desta task, que cobre as funções puras).
 
 **Commit**: `feat(release): build the windows portable bundle`
+
+**Desvio de execução**: adaptado do `local-mind` para **não** exigir `resources` (`stageBundle` copia a pasta só quando ela é passada e existe) — `tauri.conf.json` do SwarmDeck ainda não declara `bundle.resources` (nada é vendorizado hoje, ver `design.md` "Empacotar o sidecar MCP"); exigir a pasta faria o script falhar sempre. Nome do arquivo de instruções é `LEIA-ME.txt` (não `README.txt` como no `local-mind`), conforme já especificado no `design.md`.
 
 ---
 
@@ -235,22 +239,26 @@ T12 ─────────────────────────�
 **Requisito**: REL-11, REL-15
 
 **Done when**:
-- [ ] `pickAssetUrlByName` acha o asset por nome exato e falha quando não existe
-- [ ] `withReleaseTag` troca a ref `untagged-<hash>` pela tag, preservando dono, repositório e nome de arquivo
-- [ ] `patchManifest` acrescenta `windows-x86_64-portable` sem remexer nas chaves existentes
-- [ ] Manifesto sem `platforms` falha com erro explícito
-- [ ] Gate passa: `npm run test:scripts`
-- [ ] Contagem de testes: 8 unit
+- [x] `pickAssetUrlByName` acha o asset por nome exato e falha quando não existe — `scripts/patch-latest-json.test.mjs:19-30`
+- [x] `withReleaseTag` troca a ref `untagged-<hash>` pela tag, preservando dono, repositório e nome de arquivo — `scripts/patch-latest-json.test.mjs:33-42` (troca), `:44-48` (tag inválida), `:50-55` (URL que não é do GitHub)
+- [x] `patchManifest` acrescenta `windows-x86_64-portable` sem remexer nas chaves existentes — `scripts/patch-latest-json.test.mjs:57-75`
+- [x] Manifesto sem `platforms` falha com erro explícito — `scripts/patch-latest-json.test.mjs:77-82`
+- [x] Gate passa: `npm run test:scripts` — 25/25 (11 de `bump-version` + 6 de `make-portable`, T7 + 8 novos)
+- [x] Contagem de testes: 8 unit — confirmado
 
 **Tests**: unit · **Gate**: scripts
 
-**Verify**: rodar contra um `latest.json` real de uma release de rascunho e conferir que a URL resultante responde 200 depois da publicação.
+**Verify**: rodar contra um `latest.json` real de uma release de rascunho e conferir que a URL resultante responde 200 depois da publicação. **Não executado nesta run** (exige uma release de rascunho real; coberto localmente por um teste CLI end-to-end contra fixtures, `scripts/patch-latest-json.test.mjs:84-118`).
 
 **Commit**: `feat(release): add the portable entry to the updater manifest`
+
+**Desvio de execução**: nomes de interface seguem o `design.md` do SwarmDeck, não o `local-mind` — `pickAssetUrlByName`/`withReleaseTag`/`patchManifest` no lugar de `pickAssetUrlByName`/`retagDownloadUrl`/`addPlatform`, e `patchManifest` recebe um único objeto (`{manifest, key, url, signature}`) em vez de três argumentos posicionais.
 
 ---
 
 ### T9: Job `build` do release (matriz Windows + Linux)
+
+> 🚧 **BLOQUEADA para fechar.** Gate `pipeline` — o job está escrito e todo o `Done when` verificável por leitura já está `[x]`. Falta o disparo real (`T12`), **e** falta `T5` (chave de assinatura/secrets) — sem ela, mesmo um disparo real falharia no passo de assinatura do `tauri-action`.
 
 **O quê**: a matriz que compila e empacota nos dois sistemas, e que no Windows também monta, assina e anexa o zip portátil.
 **Onde**: `.github/workflows/release.yml`
@@ -258,12 +266,12 @@ T12 ─────────────────────────�
 **Requisito**: REL-09, REL-12, REL-13, REL-15
 
 **Done when**:
-- [ ] Matriz `windows-latest` (`msi,nsis`) e `ubuntu-22.04` (`deb,appimage`), com `fail-fast: false`
-- [ ] Checkout **na tag** criada pelo `prepare`, não em `master`
-- [ ] Deps de sistema do Linux incluem `libfuse2` (AppImage) e `build-essential`; **nenhum passo instala `protoc`**
-- [ ] `tauri-action` com `releaseDraft: true` e as env de assinatura
-- [ ] Passo do Windows: `make-portable.mjs` → `tauri signer sign` → `gh release upload` do `.zip` e do `.sig`
-- [ ] Gate passa: os 5 artefatos aparecem na release de rascunho de um disparo real
+- [x] Matriz `windows-latest` (`msi,nsis`) e `ubuntu-22.04` (`deb,appimage`), com `fail-fast: false` — confirmado em `.github/workflows/release.yml:149-156`
+- [x] Checkout **na tag** criada pelo `prepare`, não em `master` — confirmado em `release.yml:159-163`
+- [x] Deps de sistema do Linux incluem `libfuse2` (AppImage) e `build-essential`; **nenhum passo instala `protoc`** — confirmado em `release.yml:177-192`; `grep -n protoc .github/workflows/release.yml` não acha nada
+- [x] `tauri-action` com `releaseDraft: true` e as env de assinatura — confirmado em `release.yml:196-210`
+- [x] Passo do Windows: `make-portable.mjs` → `tauri signer sign` → `gh release upload` do `.zip` e do `.sig` — confirmado em `release.yml:216-228`
+- [ ] Gate passa: os 5 artefatos aparecem na release de rascunho de um disparo real — **pendente de T12** (exige `workflow_dispatch` real e a chave de `T5`, que ainda não foi gerada; fora do escopo de execução automatizada)
 
 **Tests**: none · **Gate**: pipeline
 
@@ -275,17 +283,19 @@ T12 ─────────────────────────�
 
 ### T10: Job `finalize`
 
+> 🚧 **BLOQUEADA para fechar.** Gate `pipeline` — o job está escrito e todo o `Done when` verificável por leitura já está `[x]`. Depende de `T9` ter rodado de verdade para existir um `latest.json` de rascunho para baixar — bloqueada pela mesma cadeia (`T5`, `T12`).
+
 **O quê**: injetar a entrada portátil no manifesto publicado e tirar a release do rascunho.
 **Onde**: `.github/workflows/release.yml`
 **Depende de**: T8, T9
 **Requisito**: REL-11
 
 **Done when**:
-- [ ] Baixa `latest.json` e o `.sig` do portátil da release de rascunho
-- [ ] Lê a URL do asset **da própria release** (`gh release view --json assets`), nunca remontando o nome
-- [ ] Roda `patch-latest-json.mjs` com `--tag` e reenvia o manifesto
-- [ ] `gh release edit --draft=false` só depois disso
-- [ ] Gate passa: release publicada com `latest.json` contendo as 5 entradas, todas com URL que responde 200
+- [x] Baixa `latest.json` e o `.sig` do portátil da release de rascunho — confirmado em `.github/workflows/release.yml:252`
+- [x] Lê a URL do asset **da própria release** (`gh release view --json assets`), nunca remontando o nome — confirmado em `release.yml:255`, passado a `--assets`/`--name` de `patch-latest-json.mjs`, que resolve por `pickAssetUrlByName`
+- [x] Roda `patch-latest-json.mjs` com `--tag` e reenvia o manifesto — confirmado em `release.yml:261-269`
+- [x] `gh release edit --draft=false` só depois disso — confirmado em `release.yml:272-274`, job separado que roda depois do step acima
+- [ ] Gate passa: release publicada com `latest.json` contendo as 5 entradas, todas com URL que responde 200 — **pendente de T12**
 
 **Tests**: none · **Gate**: pipeline
 
@@ -297,17 +307,19 @@ T12 ─────────────────────────�
 
 ### T11: Job `cleanup`
 
+> 🚧 **BLOQUEADA para fechar.** Gate `pipeline` — o job está escrito e todo o `Done when` verificável por leitura já está `[x]`. Provar que ele reverte de verdade exige um disparo real que falhe de propósito (`T12`).
+
 **O quê**: desfazer tag, rascunho e commit de versão quando o run não chega a publicar.
 **Onde**: `.github/workflows/release.yml`
 **Depende de**: T6
 **Requisito**: REL-08
 
 **Done when**:
-- [ ] Condição `always() && needs.prepare.result == 'success' && (build != success || finalize != success)`
-- [ ] Apaga **primeiro** a release, depois a tag remota — a ordem inversa deixa release órfã
-- [ ] `git revert` do `release_sha`, com push normal; **nenhum** `push --force` no arquivo
-- [ ] Revert que não aplica limpo falha com mensagem pedindo correção manual
-- [ ] Gate passa: um disparo com falha proposital (ex.: cancelar o run) deixa o repositório no estado anterior e a numeração livre
+- [x] Condição `always() && needs.prepare.result == 'success' && (build != success || finalize != success)` — confirmado em `.github/workflows/release.yml:288-291`
+- [x] Apaga **primeiro** a release, depois a tag remota — a ordem inversa deixa release órfã — confirmado em `release.yml:305-315` (`gh release delete` antes de `git push origin :refs/tags/$TAG`)
+- [x] `git revert` do `release_sha`, com push normal; **nenhum** `push --force` no arquivo — confirmado em `release.yml:317-333`; `grep -n "push --force\|push -f\|push origin.*--force" .github/workflows/release.yml` não acha nada
+- [x] Revert que não aplica limpo falha com mensagem pedindo correção manual — confirmado em `release.yml:326-333` (`revert --abort` + `::error::` explícito + `exit 1`)
+- [ ] Gate passa: um disparo com falha proposital (ex.: cancelar o run) deixa o repositório no estado anterior e a numeração livre — **pendente de T12**
 
 **Tests**: none · **Gate**: pipeline
 
@@ -513,7 +525,7 @@ T12 ─────────────────────────�
 
 ### T21: Clippy no CI
 
-> 🚧 **BLOQUEADA para fechar.** Gate `pipeline` — a limpeza local e o job já existem (confirmado por leitura e execução, triagem 004, 01/08/2026), mas a tarefa só fecha com o run real na aba Actions, que depende de push humano **e** de `T2` já publicado. Nenhum dos dois aconteceu ainda (`HEAD` 2 commits à frente do `origin/master`). A task **não é** "nada feito" — é "implementado e verificado localmente, prova de pipeline pendente".
+> 🚧 **BLOQUEADA para fechar.** Gate `pipeline` — o job `clippy` existe em `ci.yml` e passou nos dois runs reais que já aconteceram (`30752379391`, `30754389304` — ver detalhe em T2 e na AD de 02/08/2026 no `STATE.md`). `T21` em si está verde; o que bloqueia é `T2` — o `Done when` desta task também exige `T2` publicado, e `T2` segue vermelha por causa do `rust` job, não do `clippy`.
 
 **O quê**: zerar os warnings existentes e acrescentar o job de lint.
 **Onde**: código Rust conforme necessário, `.github/workflows/ci.yml`

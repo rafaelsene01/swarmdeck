@@ -130,17 +130,17 @@ Quem roda vários agentes de codificação hoje abre várias janelas de terminal
 
 | ID | História | Fase | Status |
 |---|---|---|---|
-| TERM-01 | P1: Terminal real | Design | Pending |
-| TERM-02 | P1: Terminal real (resize/ANSI) | Design | Pending |
-| TERM-03 | P1: Grid | Design | Pending |
-| TERM-04 | P1: Grid (divisórias, maximizar) | Design | Pending |
-| TERM-05 | P1: Header | Design | Pending |
-| TERM-06 | P1: Header (git, rename manual) | Design | Pending |
-| TERM-07 | P2: Persistência | — | Pending |
-| TERM-08 | P2: Minimizar | — | Pending |
-| TERM-09 | P3: Log de atividade | — | Pending |
+| TERM-01 | P1: Terminal real | Tasks | Done — `T4, T5, T6, T7` |
+| TERM-02 | P1: Terminal real (resize/ANSI) | Tasks | Done — `T3, T4, T6, T7` |
+| TERM-03 | P1: Grid | Tasks | Done — `T5, T8` |
+| TERM-04 | P1: Grid (divisórias, maximizar) | Tasks | Done — `T8, T10` |
+| TERM-05 | P1: Header | Tasks | Done — `T9` |
+| TERM-06 | P1: Header (git, rename manual) | Tasks | **Não coberto** — nenhuma task de `tasks.md` cita este ID; `T9` (header) só cobre TERM-05. Branch git e persistência de rename manual não foram implementados no v1 |
+| TERM-07 | P2: Persistência | Tasks | Done — `T2, T11` |
+| TERM-08 | P2: Minimizar | Tasks | Done — `T10` |
+| TERM-09 | P3: Log de atividade | Tasks | **Não coberto** — nenhuma task cita este ID. Não está em `ROADMAP.md` → "Considerações futuras" nem em `STATE.md` → "Ideias adiadas"; gap não documentado antes desta triagem |
 
-**Cobertura:** 9 requisitos, 0 mapeados para tarefas ⚠️
+**Cobertura (corrigida na triagem 005 — a tabela dizia "0 mapeados" com a feature 100% `✅ Done` em `tasks.md`):** 9 requisitos, **7 mapeados e implementados**, 2 sem cobertura nenhuma (`TERM-06`, `TERM-09`) ⚠️. Note também que `T7, T9, T10, T11` — que cobrem `TERM-01, 02, 04, 05, 07, 08` — têm `Verify` visual não confirmável enquanto o NEEDS-DECISION de integração de `App.tsx` (ver `tasks.md`) não for resolvido: "Done" aqui significa gate automatizado verde, não confirmado no app real.
 
 ---
 

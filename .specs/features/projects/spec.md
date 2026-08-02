@@ -77,13 +77,13 @@ Um desenvolvedor rodando 4 agentes raramente está em um repositório só. Sem u
 
 | ID | História | Fase | Status |
 |---|---|---|---|
-| PROJ-01 | P1: CRUD | Design | Pending |
-| PROJ-02 | P1: Cores únicas | Design | Pending |
-| PROJ-03 | P1: Resolução por diretório | Design | Pending |
-| PROJ-04 | P1: Fallback pelo nome da pasta | Design | Pending |
-| PROJ-05 | P2: Listagem e ordenação | — | Pending |
+| PROJ-01 | P1: CRUD | Tasks | Done — `T1, T3` |
+| PROJ-02 | P1: Cores únicas | Tasks | Done — `T1` |
+| PROJ-03 | P1: Resolução por diretório | Tasks | Done — `T2` |
+| PROJ-04 | P1: Fallback pelo nome da pasta | Tasks | Done — `T2` |
+| PROJ-05 | P2: Listagem e ordenação | Tasks | Done — `T4` |
 
-**Cobertura:** 5 requisitos, 0 mapeados para tarefas ⚠️
+**Cobertura (corrigida na triagem 005 — a tabela dizia "0 mapeados" com a feature 100% `✅ Done` em `tasks.md`):** 5 requisitos, **5 mapeados e implementados** — cobertura completa
 
 ---
 

@@ -203,24 +203,24 @@ Levantados por inspeção direta, não deduzidos — cada um muda uma decisão d
 
 | ID | História | Fase | Status |
 |---|---|---|---|
-| REL-01 | P1: Release só por `workflow_dispatch` com select de incremento | Design | Pending |
-| REL-02 | P1: Push/tag/agendamento nunca publicam | Design | Pending |
+| REL-01 | P1: Release só por `workflow_dispatch` com select de incremento | Execute | Implemented — parcial: `release.yml` escrito e lido de volta (T6); gate `pipeline` real pendente de `T12` |
+| REL-02 | P1: Push/tag/agendamento nunca publicam | Execute | Implemented — parcial: ausência de outros gatilhos confirmada por leitura de `release.yml:8-17` (T6); gate `pipeline` real pendente de `T12` |
 | REL-03 | P1: Versão da última tag + incremento, gravada nos 4 arquivos que a duplicam | Execute | Implemented (T1, `npm run test:scripts` 11/11) |
 | REL-04 | P1: Sem tag anterior, base é o `package.json` | Execute | Implemented (T1, `npm run test:scripts` 11/11) |
-| REL-05 | P1: CHANGELOG dos Conventional Commits desde a última tag | Execute | Implemented — parcial: `cliff.toml` criado e os 9 tipos mapeados (T3); a geração real depende de `git-cliff` rodar em `T6`, ainda pendente |
-| REL-06 | P1: Commit `chore(release)`, tag e GitHub Release no mesmo run | Design | Pending |
-| REL-07 | P1: Guarda de branch e de tag existente, antes de escrever | Design | Pending |
-| REL-08 | P1: Run interrompido desfaz tag, rascunho e commit de versão | Design | Pending |
-| REL-09 | P1: `.msi` + `-setup.exe` + `.deb` + `.AppImage` em toda release | Design | Pending |
-| REL-10 | P1: NSIS em `currentUser`, sem UAC | Design | Pending |
-| REL-11 | P1: Artefatos de update assinados + `latest.json` | Design | Pending |
-| REL-12 | P1: `fail-fast: false` e release em rascunho enquanto a matriz não fecha | Design | Pending |
-| REL-13 | P1: Build de Linux em `ubuntu-22.04` | Design | Pending |
-| REL-14 | P1: `.zip` portátil de Windows com marcador | Design | Pending |
-| REL-15 | P1: Portátil assinado com a mesma chave, `.sig` anexado | Design | Pending |
+| REL-05 | P1: CHANGELOG dos Conventional Commits desde a última tag | Execute | Implemented — parcial: `cliff.toml` criado e os 9 tipos mapeados (T3); `release.yml` agora invoca `git-cliff` (T6, `release.yml:100-125`); a geração real depende do gate `pipeline` de `T12`, e `git-cliff` não foi instalado localmente para validar a saída |
+| REL-06 | P1: Commit `chore(release)`, tag e GitHub Release no mesmo run | Execute | Implemented — parcial: commit + tag + push escritos em `release.yml:127-142` (T6); a GitHub Release em si sai do `tauri-action` em `build` (T9); gate `pipeline` real pendente de `T12` |
+| REL-07 | P1: Guarda de branch e de tag existente, antes de escrever | Execute | Implemented (T6, `release.yml:39-44` e `:77-86`, confirmado por leitura — as duas guardas rodam antes de qualquer escrita) |
+| REL-08 | P1: Run interrompido desfaz tag, rascunho e commit de versão | Execute | Implemented — parcial: job `cleanup` escrito em `release.yml:282-333` (T11), condição e ordem de apagar confirmadas por leitura; gate `pipeline` real (disparo cancelado de propósito) pendente de `T12` |
+| REL-09 | P1: `.msi` + `-setup.exe` + `.deb` + `.AppImage` em toda release | Execute | Implemented — parcial: matriz `windows-latest`/`ubuntu-22.04` escrita em `release.yml:144-228` (T9); gate `pipeline` real pendente de `T12` e da chave de `T5` |
+| REL-10 | P1: NSIS em `currentUser`, sem UAC | Execute | Implemented (T4, `src-tauri/tauri.conf.json:39-41`) |
+| REL-11 | P1: Artefatos de update assinados + `latest.json` | Execute | Implemented — parcial: `patch-latest-json.mjs` com 8/8 testes unitários (T8) e injeção no `latest.json` escrita em `release.yml:246-269` (T10); assinatura e URL reais só existem depois de um disparo real, pendente de `T12` |
+| REL-12 | P1: `fail-fast: false` e release em rascunho enquanto a matriz não fecha | Execute | Implemented (T9, `release.yml:150` e `:208`, confirmado por leitura) |
+| REL-13 | P1: Build de Linux em `ubuntu-22.04` | Execute | Implemented (T9, `release.yml:148` — mesma base do job `rust` do `ci.yml`) |
+| REL-14 | P1: `.zip` portátil de Windows com marcador | Execute | Implemented (T7, `npm run test:scripts` — 6/6 de `make-portable.test.mjs`) |
+| REL-15 | P1: Portátil assinado com a mesma chave, `.sig` anexado | Execute | Implemented — parcial: assinatura via `tauri signer sign` escrita em `release.yml:216-228` (T9) e injeção do `.sig` no manifesto testada (T8, `patch-latest-json.test.mjs`); verificação de uma assinatura real pendente de `T12` |
 | REL-16 | P1: Modo portátil grava dados ao lado do executável | Execute | Implemented (T13, `cargo test --lib` 11/11) |
 | REL-17 | P1: Modo instalado usa `app_data_dir`; resolução centralizada num módulo só | Execute | Implemented (T13, `cargo test --lib` 11/11) |
-| REL-18 | P1: Rodar do zip em pasta gravável, sem elevação | Execute | Implemented — parcial: detecção de pasta somente-leitura (`is_writable`) coberta por `T13`; a montagem real do zip é `T7`, ainda pendente |
+| REL-18 | P1: Rodar do zip em pasta gravável, sem elevação | Execute | Implemented — parcial: detecção de pasta somente-leitura (`is_writable`) coberta por `T13`; montagem do zip agora escrita e testada (T7, `npm run test:scripts` 6/6); rodar de fato o zip descompactado é verificação humana, não coberta nesta run |
 | REL-19 | P1: Verificação silenciosa no boot, sem bloquear a UI | Design | Pending |
 | REL-20 | P1: Aviso não bloqueante com versão, notas e 3 ações | Design | Pending |
 | REL-21 | P1: Nada é exibido quando não há versão nova | Design | Pending |
@@ -240,7 +240,7 @@ Levantados por inspeção direta, não deduzidos — cada um muda uma decisão d
 | REL-35 | P3: `strip` + LTO com redução medida e comparada à meta de 20MB | Execute | Implemented (T20, medição registrada em `STATE.md`, meta de <20MB atingida) |
 | REL-36 | P3: `clippy -D warnings` no CI após limpeza | — | Pending |
 
-**Cobertura:** 36 requisitos, 36 mapeados para tarefas em `tasks.md` (ver "Cobertura de requisitos" nesse arquivo). Desta correção, 6 ficaram `Implemented` com evidência de gate verde (REL-03, REL-04, REL-16, REL-17, REL-18, REL-35) e 1 `Implemented` parcial (REL-05, aguardando `T6`); os demais 29 permanecem `Pending` — código ainda não escrito ou gate `pipeline` bloqueado por push humano (`T2`, `T21`).
+**Cobertura:** 36 requisitos, 36 mapeados para tarefas em `tasks.md` (ver "Cobertura de requisitos" nesse arquivo). Nesta execução de `T6`–`T11`: 10 requisitos com evidência de gate local verde e sem dependência de execução real (REL-03, REL-04, REL-07, REL-10, REL-12, REL-13, REL-14, REL-16, REL-17, REL-35) e 9 `Implemented — parcial` — código escrito e confirmado por leitura, mas cujo `Done when` só fecha com o `gate pipeline` de um disparo real, pendente de `T12` (REL-01, REL-02, REL-05, REL-06, REL-08, REL-09, REL-11, REL-15, REL-18). Os demais 17 permanecem `Pending`: REL-19–REL-26 (update no app, fora do escopo desta execução), REL-32–REL-34 (seção "Atualizações"), REL-36 (`clippy` no CI) e REL-27–REL-31 — este último bloco já tem código escrito e `Done when` majoritariamente `[x]` em `T2`/`tasks.md`, mas a tabela desta spec ainda não foi atualizada para refletir isso; ficou fora do escopo desta execução (que cobriu só `T6`–`T11`) e é uma pendência textual separada, não um requisito sem código.
 
 ---
 

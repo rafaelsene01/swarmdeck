@@ -101,13 +101,13 @@ Observados na instalação de referência:
 
 | ID | História | Fase | Status |
 |---|---|---|---|
-| AGT-01 | P1: Catálogo e padrão | Design | Pending |
-| AGT-02 | P1: Detecção de CLI ausente | Design | Pending |
-| AGT-03 | P1: Sobrescrita por sessão | Design | Pending |
-| AGT-04 | P2: Identificação visual | — | Pending |
-| AGT-05 | P2: Escopo por agente | — | Pending |
+| AGT-01 | P1: Catálogo e padrão | Tasks | Done — `T1, T3, T4` |
+| AGT-02 | P1: Detecção de CLI ausente | Tasks | Done — `T1` |
+| AGT-03 | P1: Sobrescrita por sessão | Tasks | Done — `T2, T4` |
+| AGT-04 | P2: Identificação visual | Tasks | Done — `T2, T4` |
+| AGT-05 | P2: Escopo por agente | Tasks | **Não coberto** — nenhuma task de `tasks.md` cita este ID. "Escopo por agente nas features de extensão" depende de features de M3 (MCP/Skills) que ainda não existem — plausivelmente adiado por dependência, mas isso nunca foi registrado em `ROADMAP.md` nem `STATE.md` |
 
-**Cobertura:** 5 requisitos, 0 mapeados para tarefas ⚠️
+**Cobertura (corrigida na triagem 005 — a tabela dizia "0 mapeados" com a feature 100% `✅ Done` em `tasks.md`):** 5 requisitos, **4 mapeados e implementados**, 1 sem cobertura (`AGT-05`) ⚠️
 
 ---
 

@@ -69,11 +69,11 @@ multi-terminal/T5 → T1 → T2 → ┬→ T3 [P]
 - [ ] CLI ausente no PATH → **abre com shell puro** e devolve o aviso, sem falhar o spawn
 - [ ] Trocar o agente padrão não afeta sessões já abertas
 - [ ] Gate passa: `cargo test`
-- [ ] Contagem: 5 testes passam (lança agente, shell puro, CLI ausente cai para shell, aviso presente, sessão existente não muda)
+- [ ] Contagem: 6 testes passam (4 unit em `agents::launch` + 2 integration em `tests/agent_launch.rs`, ponta-a-ponta — corrigido na triagem 005; a versão anterior contava 5 e citava um comando que só cobre os 4 unit)
 
 **Tests**: integration · **Gate**: full
 
-**Verify**: `cargo test agents::launch` → 5 passam.
+**Verify**: `cargo test -p swarmdeck agents::launch` → 4 passam (unit); `cargo test -p swarmdeck --test agent_launch` → 2 passam (integration). Total 6.
 
 **Commit**: `feat(agents): launch selected agent CLI in session`
 
@@ -82,7 +82,7 @@ multi-terminal/T5 → T1 → T2 → ┬→ T3 [P]
 ### T3: Preferência de agente padrão [P]
 
 **O quê**: Persistir e ler o agente padrão, pré-selecionado em toda sessão nova.
-**Onde**: `src-tauri/src/agents/prefs.rs`, migração `003_agent_prefs.sql`
+**Onde**: `src-tauri/src/agents/prefs.rs`, migração `004_agent_prefs.sql` (o arquivo real é `004`, não `003` — `003` já estava ocupado por `mcp-task-server/T1`; mesmo padrão de desvio de numeração, corrigido na triagem 005)
 **Depende de**: T2
 **Reusa**: camada de banco
 **Requisito**: AGT-01

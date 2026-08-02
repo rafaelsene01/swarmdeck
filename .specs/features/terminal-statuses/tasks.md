@@ -2,7 +2,7 @@
 
 **Spec**: `.specs/features/terminal-statuses/spec.md`
 **Testing**: `.specs/codebase/TESTING.md`
-**Status**: Draft
+**Status**: In Progress (liberada na triagem 005, 02/08/2026 — ver `project/STATE.md`)
 **Milestone**: M2
 
 > O serviço de domínio já é entregue por `mcp-task-server/T4`. Este arquivo cobre o catálogo editável, o snapshot por sessão e a UI.

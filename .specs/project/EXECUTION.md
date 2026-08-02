@@ -25,7 +25,7 @@ graph TD
     AG2 --> AG4[T4 UI]
 
     T0[mcp-task-server T0<br/>🚧 CONTRATO] --> MS1
-    MT2 --> MS1[mcp T1<br/>migração 002]
+    MT2 --> MS1[mcp T1<br/>migração 003, ver nota]
     MS1 --> MS2[T2 máquina de estados] --> MS3[T3 TaskService]
     MS3 --> MS4[T4 MetaService] --> MS5[T5 IpcServer] --> MS6[T6 sidecar] --> MS7[T7 tools]
     MS3 --> MS8[T8 similaridade]
@@ -112,7 +112,7 @@ As 21 tarefas de `features/release-distribution/tasks.md` **não entram nas onda
 **Dois pontos de contato reais, e é só isso:**
 
 1. **`rd/T13` × `mt/T11`** — `mt/T11` persiste o layout e precisa saber onde o banco mora. Se `rd/T13` vier antes, `mt/T11` só consome `paths::db_path`. Se vier depois, `rd/T13` terá que reformar o caminho que `mt/T11` montou. **Recomendado: `rd/T13` antes da onda 7.**
-2. **`rd/T14` × `mcp/T1`** — as duas criam uma migração e as duas assumiriam o número `002`. Quem executar primeiro fica com a `002`; a outra pega a seguinte e **atualiza o próprio `tasks.md`** no mesmo commit. Registrado como Todo no `STATE.md`.
+2. **`rd/T14` × `mcp/T1`** — as duas criam uma migração e as duas assumiriam o número `002`. Quem executar primeiro fica com a `002`; a outra pega a seguinte. **Resolvido na run `spec-loop` 004 (01/08/2026):** `rd/T14` rodou primeiro e pegou a `002`; `mcp/T1` pegou a `003` — ver `002_settings.sql` e `003_tasks.sql` em `src-tauri/src/db/migrations/`. O `tasks.md` de `mcp-task-server` não foi atualizado no mesmo commit (o título de T1 ainda diz `002`); a nota de correção está no próprio arquivo, logo acima da tabela de status.
 
 Nenhuma tarefa com gate `pipeline` (`rd/T2`, `rd/T6`, `rd/T9–T12`, `rd/T19`, `rd/T21`) é paralelizável com outra do mesmo gate: todas disputam a mesma branch e o mesmo histórico de execuções do GitHub Actions.
 
