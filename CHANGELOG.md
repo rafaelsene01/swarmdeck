@@ -1,6 +1,12 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.2] - 2026-08-03
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.1] - 2026-08-03
 
 ### Outros
@@ -48,5 +54,7 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 - Fix release workflow to correctly add files for commit. Updated `release.yml` to reference the correct paths for `Cargo.toml` and `Cargo.lock`, ensuring the release process functions as intended. Adjusted task documentation to reflect this critical change and prevent future job failures.
 
 - Refactor test assertions and formatting for improved readability. Updated multiple test cases in `tasks.rs` and `status_catalog.rs` to enhance clarity by breaking long lines and ensuring consistent formatting. This change aims to improve code maintainability and readability in test scenarios.
+
+- Populate AGENTS.md with project documentation and guidelines for language usage, traceability markers, and commit practices. Update Cargo.lock and package.json to include new dependencies for dialog and file handling plugins. Enhance multi-terminal specs with new features for session restoration and directory selection, including integration of native folder picker and session management improvements. Update agent-selection specs to reflect observed features and new tasks for resuming sessions. Document changes in tasks.md and spec.md to ensure clarity on implementation progress and verification processes.
 
 
