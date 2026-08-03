@@ -1,0 +1,52 @@
+# Changelog
+
+Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.1] - 2026-08-03
+
+### Outros
+
+- Initialize SwarmDeck project with essential files and configurations. Added .gitignore, Cargo.toml, and Cargo.lock for Rust setup. Created package.json and package-lock.json for Node.js dependencies. Included basic HTML structure in index.html and TypeScript configuration in tsconfig.json. Set up Vite for development and testing. Added initial specifications and testing strategy documentation in .specs directory.
+
+- Update dependencies in Cargo.lock and Cargo.toml; refine skill documentation and task specifications. Added new packages including `cfg_aliases`, `downcast-rs`, `filedescriptor`, `lazy_static`, `nix`, `portable-pty`, `serial2`, `shared_library`, and `shell-words`. Removed unnecessary flags for ConPTY in design and tasks documentation, reflecting changes in `portable-pty` 0.9.0. Adjusted terminal module structure for better session management.
+
+- Enhance documentation and testing for terminal session management. Updated SKILL.md to clarify task behavior regarding file declarations. Expanded README.md to include new release and distribution features, increasing traceable requirements. Improved TESTING.md with detailed explanations of testing strategies for scripts and pipelines. Added timeout handling in PtySession for graceful shutdowns and implemented synchronization in session tests to prevent concurrency issues.
+
+- Update documentation in README.md, TESTING.md, EXECUTION.md, ROADMAP.md, and STATE.md to correct task counts, execution statuses, and clarify testing strategies. Adjusted task descriptions to reflect accurate information following triagem 001. Enhanced clarity on parallel execution capabilities and removed outdated planning statuses.
+
+- Revise MCP tool contract documentation in `tasks.md` to reflect user decision on freezing inferred names from `CLAUDE.md` without prior validation against the reference implementation. Update `STATE.md` to resolve the corresponding block and clarify the impact on task execution statuses. Adjust `Done when` criteria in `tasks.md` to align with the new contract approach, removing the need for external validation.
+
+- Update documentation across multiple files to reflect user decisions from triagem 002 on task verification processes and execution statuses. Adjust README.md to correct execution status for `EXECUTE`, clarify the MCP tool contract in `tasks.md`, and enhance `TESTING.md` with detailed verification rules for `uat-agent` tasks. Revise `STATE.md` to document the implications of these changes on task execution and verification criteria, ensuring consistency across project specifications.
+
+- Add updater plugin configuration in tauri.conf.json for automatic updates
+
+- Add MCP server configuration to settings.json, including context7 command and deny all setting
+
+- Refactor MCP server settings in settings.json to enhance command handling and security configurations, including updates to context7 command and deny all settings.
+
+- Enhance SKILL.md documentation for spec-driven execution. Updated descriptions to clarify the orchestrator's role, added details on project profile discovery, and improved the explanation of sub-agent roles and their interactions. Expanded the section on Phase 0 to provide clearer guidance on building the project profile, ensuring users understand the necessary steps and requirements for effective execution.
+
+- Refactor database migration constant in mod.rs for improved readability. Update test assertions in throttle.rs for better formatting and clarity. Simplify pump_until function signature in session.rs for consistency and readability.
+
+- Enhance release distribution profile in Cargo.toml for optimized binary size by enabling stripping and thin LTO. Add new test script command in package.json. Update task status in release-distribution documentation to reflect progress. Modify tauri configuration for versioning and installer targets. Implement database path management in Tauri application setup for improved data handling.
+
+- Refactor Tauri application setup for improved database path management and update tauri configuration for versioning and installer targets. Enhance release distribution documentation with new test script command in package.json and update task status to reflect current progress.
+
+- Enhance documentation in spec-driven changes and SKILL.md to clarify the exception for shared file markers and detail the new run mode options. Update agent briefs to reflect the impact of the chosen mode on brief usage, ensuring users understand the implications for execution and validation processes.
+
+- Update test script command in package.json to use glob pattern for test files. Enhance CI workflow by adding Clippy checks for Rust code quality and updating dependencies installation. Revise release distribution documentation to reflect the current implementation status and clarify task execution requirements. Document changes in STATE.md regarding the correction of the test command and the impact on task verification processes.
+
+- Update Cargo.toml and related files to include new dependencies for release distribution and update capabilities. Enhance the Tauri application setup by integrating the updater plugin and refining command structures. Revise documentation in STATE.md and ROADMAP.md to reflect the current status of tasks and features, ensuring clarity on implementation progress and verification processes.
+
+- Enhance SKILL.md documentation to clarify the orchestration context management and task execution rules. Introduce guidelines for handling task reports and context accumulation during large runs, emphasizing the importance of summarizing completed tasks and maintaining an efficient orchestration process. Update catalog.rs to improve command existence checks by utilizing case-insensitive comparisons and refining file type validation logic.
+
+- Refactor agent preference test to improve clarity and functionality. Update the `with_only_codex_instalado` method to dynamically set the binary name based on the operating system, ensuring compatibility across platforms. Add specification comment for agent selection (AGT-01) to enhance documentation.
+
+- Update task statuses and documentation across multiple features. Corrected task counts in README.md, agent-selection, multi-terminal, and mcp-task-server specs. Enhanced coverage details and clarified integration gaps in tasks.md for agent-selection and multi-terminal. Adjusted release-distribution tasks to reflect implementation progress and pipeline dependencies. Addressed verification needs for UI components in multi-terminal and ensured accurate documentation in ROADMAP.md and EXECUTION.md.
+
+- Audit and fix critical bugs in release distribution tasks. Identified and documented two major issues: incorrect file paths in the commit step of T6, which would cause job failures, and a default binary path mismatch in T7 that could lead to integration issues. Updated task documentation to reflect these findings and clarified the impact on the pipeline execution. Ensured accurate tracking of task statuses and dependencies in the release-distribution spec.
+
+- Fix release workflow to correctly add files for commit. Updated `release.yml` to reference the correct paths for `Cargo.toml` and `Cargo.lock`, ensuring the release process functions as intended. Adjusted task documentation to reflect this critical change and prevent future job failures.
+
+- Refactor test assertions and formatting for improved readability. Updated multiple test cases in `tasks.rs` and `status_catalog.rs` to enhance clarity by breaking long lines and ensuring consistent formatting. This change aims to improve code maintainability and readability in test scenarios.
+
+
