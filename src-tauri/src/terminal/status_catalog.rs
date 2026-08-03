@@ -403,8 +403,12 @@ mod tests {
     fn create_com_rotulo_e_instrucao_grava_status_habilitado_com_cor_inedita() {
         let db = open_db();
 
-        let outcome = create(db.conn(), "Blocked", "Use when you are stuck on an external dependency.")
-            .expect("create com rótulo e instrução deve funcionar");
+        let outcome = create(
+            db.conn(),
+            "Blocked",
+            "Use when you are stuck on an external dependency.",
+        )
+        .expect("create com rótulo e instrução deve funcionar");
 
         assert_eq!(outcome.status.label, "Blocked");
         assert_eq!(
@@ -413,7 +417,10 @@ mod tests {
         );
         assert!(outcome.status.enabled);
         assert!(!outcome.status.is_default);
-        assert_eq!(outcome.status.sort_order, 4, "deve entrar depois dos 4 padrão (sort_order 0..3)");
+        assert_eq!(
+            outcome.status.sort_order, 4,
+            "deve entrar depois dos 4 padrão (sort_order 0..3)"
+        );
 
         // Cor atribuída não colide com nenhuma das 4 cores padrão.
         let default_colors = ["#22c55e", "#eab308", "#3b82f6", "#6b7280"];
@@ -423,7 +430,8 @@ mod tests {
         );
 
         // Foi de fato gravado no banco.
-        let persisted = fetch(db.conn(), &outcome.status.id).expect("status recém-criado deve existir");
+        let persisted =
+            fetch(db.conn(), &outcome.status.id).expect("status recém-criado deve existir");
         assert_eq!(persisted, outcome.status);
     }
 
@@ -435,7 +443,10 @@ mod tests {
         assert!(matches!(sem_rotulo, Err(CatalogError::MissingLabel)));
 
         let sem_instrucao = create(db.conn(), "Rótulo válido", "");
-        assert!(matches!(sem_instrucao, Err(CatalogError::MissingInstruction)));
+        assert!(matches!(
+            sem_instrucao,
+            Err(CatalogError::MissingInstruction)
+        ));
 
         // Nenhuma das duas tentativas deve ter gravado nada além dos 4 padrão.
         let total: i64 = db
@@ -536,12 +547,17 @@ mod tests {
         restore_defaults(db.conn()).expect("restore_defaults deve funcionar");
 
         for (id, label, color, instruction, sort_order) in DEFAULT_STATUSES {
-            let record = fetch(db.conn(), id).unwrap_or_else(|_| panic!("status padrão `{id}` deve existir após restore_defaults"));
+            let record = fetch(db.conn(), id).unwrap_or_else(|_| {
+                panic!("status padrão `{id}` deve existir após restore_defaults")
+            });
             assert_eq!(record.label, *label);
             assert_eq!(record.color, *color);
             assert_eq!(record.instruction, *instruction);
             assert_eq!(record.sort_order, *sort_order);
-            assert!(record.enabled, "status padrão `{id}` deve voltar habilitado");
+            assert!(
+                record.enabled,
+                "status padrão `{id}` deve voltar habilitado"
+            );
         }
     }
 
@@ -566,7 +582,10 @@ mod tests {
                 |r| r.get(0),
             )
             .expect("contar linhas com id working");
-        assert_eq!(total, 0, "delete deve remover a linha, diferente de disable");
+        assert_eq!(
+            total, 0,
+            "delete deve remover a linha, diferente de disable"
+        );
     }
 
     #[test]
@@ -575,8 +594,8 @@ mod tests {
 
         // Primeira criação: pega a primeira cor da paleta (#a855f7), longe
         // de todas as cores padrão — sem aviso.
-        let primeira = create(db.conn(), "Blocked", "Instrução um.")
-            .expect("primeira criação deve funcionar");
+        let primeira =
+            create(db.conn(), "Blocked", "Instrução um.").expect("primeira criação deve funcionar");
         assert_eq!(primeira.status.color, "#a855f7");
         assert!(
             primeira.color_warning.is_none(),
@@ -585,8 +604,8 @@ mod tests {
 
         // Segunda criação: pega a próxima cor da paleta (#8b5cf6), que é
         // intencionalmente próxima da primeira — deve gerar aviso.
-        let segunda = create(db.conn(), "Review", "Instrução dois.")
-            .expect("segunda criação deve funcionar");
+        let segunda =
+            create(db.conn(), "Review", "Instrução dois.").expect("segunda criação deve funcionar");
         assert_eq!(segunda.status.color, "#8b5cf6");
         assert!(
             segunda.color_warning.is_some(),

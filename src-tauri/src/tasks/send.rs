@@ -90,10 +90,9 @@ fn resolve_alive_terminal(
 
     let terminal_id: TerminalId = task.terminal_id.parse().map_err(|_| not_alive())?;
 
-    let alive = terminal_manager
-        .list()
-        .into_iter()
-        .any(|snapshot| snapshot.id == terminal_id && matches!(snapshot.state, SessionState::Running));
+    let alive = terminal_manager.list().into_iter().any(|snapshot| {
+        snapshot.id == terminal_id && matches!(snapshot.state, SessionState::Running)
+    });
 
     if !alive {
         return Err(not_alive());
@@ -200,9 +199,14 @@ mod tests {
         // sessão. A prova de que o *conteúdo certo* foi escrito é
         // `format_task_context` incluir id/título/descrição, testado
         // isoladamente abaixo.
-        assert!(focused, "send deveria ter escrito com sucesso antes de focar");
+        assert!(
+            focused,
+            "send deveria ter escrito com sucesso antes de focar"
+        );
 
-        manager.kill(terminal_id).expect("encerrar terminal de teste");
+        manager
+            .kill(terminal_id)
+            .expect("encerrar terminal de teste");
     }
 
     #[test]
@@ -247,9 +251,14 @@ mod tests {
         })
         .expect("send deveria ter sucesso");
 
-        assert_eq!(focus_calls, 1, "focar a janela principal deveria acontecer exatamente uma vez");
+        assert_eq!(
+            focus_calls, 1,
+            "focar a janela principal deveria acontecer exatamente uma vez"
+        );
 
-        manager.kill(terminal_id).expect("encerrar terminal de teste");
+        manager
+            .kill(terminal_id)
+            .expect("encerrar terminal de teste");
     }
 
     #[test]
@@ -261,7 +270,8 @@ mod tests {
         // terminal encerrado e removido do registro.
         let manager = TerminalManager::new();
 
-        let task = create_task_with_terminal(conn, &uuid::Uuid::now_v7().to_string(), "Tarefa órfã");
+        let task =
+            create_task_with_terminal(conn, &uuid::Uuid::now_v7().to_string(), "Tarefa órfã");
 
         let mut focused = false;
         let result = send(conn, &manager, task.id, || {
@@ -281,7 +291,10 @@ mod tests {
         // `Display` — não um erro genérico de PTY.
         assert_eq!(
             result.unwrap_err().to_string(),
-            format!("o terminal de origem da tarefa #{} não está mais ativo", task.id)
+            format!(
+                "o terminal de origem da tarefa #{} não está mais ativo",
+                task.id
+            )
         );
     }
 
@@ -309,7 +322,8 @@ mod tests {
         let db = Db::open_in_memory().expect("banco em memória");
         let conn = db.conn();
 
-        let task = create_task_with_terminal(conn, "terminal-qualquer", "Tarefa com detalhe aberto");
+        let task =
+            create_task_with_terminal(conn, "terminal-qualquer", "Tarefa com detalhe aberto");
         task_service::delete(conn, task.id).expect("excluir tarefa de teste");
 
         let result = task_service::get(conn, task.id);

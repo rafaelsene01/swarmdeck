@@ -279,7 +279,9 @@ mod tests {
             "sessão recém-criada deveria contar como viva"
         );
 
-        manager.kill(terminal_id).expect("encerrar terminal de teste");
+        manager
+            .kill(terminal_id)
+            .expect("encerrar terminal de teste");
     }
 
     #[test]
