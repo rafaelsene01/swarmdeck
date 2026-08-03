@@ -132,7 +132,7 @@ jobs:
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           # tauri.conf.json fica de fora de propósito: a versão dele é
           # "../package.json", derivada, não gravada.
-          git add package.json package-lock.json src-tauri/Cargo.toml src-tauri/Cargo.lock CHANGELOG.md
+          git add package.json package-lock.json Cargo.toml Cargo.lock CHANGELOG.md
           git commit -m "chore(release): ${{ steps.version.outputs.tag }}"
           git tag -a "${{ steps.version.outputs.tag }}" -m "${{ steps.version.outputs.tag }}"
           git push origin HEAD:master

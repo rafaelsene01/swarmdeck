@@ -277,6 +277,33 @@ pub fn update_project(
     get(conn, task_id)
 }
 
+// SPEC: task-kanban (KAN-03)
+// DESVIO: `tasks/service.rs` is otherwise mcp-task-server territory (top
+// marker) — this file isn't in task-kanban/T6's authorized file list, but
+// KAN-03 criterion 4 ("excluir pede confirmação antes de remover") has no
+// deletion primitive anywhere in the codebase to build on, and the one
+// existing precedent for "delete a row this service owns"
+// (`projects::service::delete`) lives in the domain service, not in a
+// `commands/*.rs` wrapper. Putting a raw `DELETE FROM tasks` in
+// `commands/tasks.rs` instead would fork where task mutations are allowed to
+// happen, which is exactly what `design.md`'s "Criação manual passa pelo
+// mesmo TaskService" decision (same table) argues against. Localized marker
+// per `spec-driven-changes.md` §3 exception, since this file mostly belongs
+// to another feature and only this function is task-kanban's.
+/// Deletes a task permanently — no soft-delete, no undo, and no cascading
+/// side effect beyond what SQLite's own FKs already do (nothing references
+/// `tasks.id`). `task_id` not existing is `TaskError::NotFound`, same
+/// "no-op that doesn't silently succeed" rule as every other mutator here.
+/// Callers that need a confirmation step before calling this (the Kanban
+/// card's delete action) implement that gate on their own side — this
+/// function is intentionally just the single place a task row actually
+/// leaves the table.
+pub fn delete(conn: &Connection, task_id: i64) -> Result<(), TaskError> {
+    get(conn, task_id)?;
+    conn.execute("DELETE FROM tasks WHERE id = ?1", params![task_id])?;
+    Ok(())
+}
+
 /// Lists tasks optionally filtered by `status`, most-recently-created first,
 /// paginated by `limit`/`offset` (both `None` means "no limit"/"from the
 /// start"). `total` is the count of rows matching the `status` filter

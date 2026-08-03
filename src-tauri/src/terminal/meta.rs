@@ -10,8 +10,12 @@
 //! - `push_activity` grava uma linha em `terminal_activity` a cada chamada
 //!   (o log sobrevive a restart) e poda o que passar de
 //!   [`ACTIVITY_LOG_CAP`] entradas para aquele terminal;
-//! - `set_status` lê o catálogo `terminal_statuses` para validar o
-//!   `status_id` pedido contra os habilitados.
+//! - `set_status` valida o `status_id` pedido contra o **snapshot** do
+//!   catálogo (`terminal::status_snapshot`, STAT-04) daquele terminal, não
+//!   contra `terminal_statuses` ao vivo — ver o comentário de módulo de
+//!   `status_snapshot.rs` para o porquê e para como o snapshot é obtido
+//!   aqui (rede de segurança via `capture_if_absent`, já que a captura no
+//!   spawn de verdade é responsabilidade de outra camada).
 //!
 //! Título e status ATUAIS de um terminal não têm coluna própria em nenhuma
 //! tabela — ficam só em memória, de propósito: são sinal de sessão, não
@@ -23,7 +27,9 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard};
 
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{params, Connection};
+
+use super::status_snapshot::StatusSnapshotService;
 
 /// Máximo de linhas de `terminal_activity` retidas por terminal. Acima
 /// disso, `push_activity` apaga as mais antigas na mesma chamada que insere
@@ -65,6 +71,10 @@ pub enum MetaError {
 #[derive(Default)]
 pub struct TerminalMetaService {
     entries: Mutex<HashMap<String, TerminalMeta>>,
+    /// Snapshot do catálogo de status por sessão (STAT-04) — ver
+    /// `status_snapshot.rs`. `set_status` valida contra isto, não contra o
+    /// catálogo ao vivo.
+    status_snapshots: StatusSnapshotService,
 }
 
 impl TerminalMetaService {
@@ -127,27 +137,33 @@ impl TerminalMetaService {
     }
 
     /// Define o status atual do terminal, validando `status_id` contra o
-    /// catálogo `terminal_statuses` (só os habilitados contam). Um id
-    /// inexistente ou desabilitado é recusado com a mesma forma de erro,
-    /// listando os ids válidos.
+    /// **snapshot** do catálogo (STAT-04) capturado para `terminal_id`, não
+    /// contra `terminal_statuses` ao vivo. Um id fora do snapshot — porque
+    /// nunca existiu, porque estava desabilitado no momento da captura, ou
+    /// porque foi removido do catálogo depois da captura — é recusado com a
+    /// mesma forma de erro, listando os ids válidos naquele snapshot.
+    ///
+    /// Se `terminal_id` ainda não tem snapshot (nenhuma captura no spawn
+    /// aconteceu até agora), esta chamada captura um na hora — ver
+    /// `StatusSnapshotService::capture_if_absent` e o comentário de módulo
+    /// de `status_snapshot.rs`.
     pub fn set_status(
         &self,
         conn: &Connection,
         terminal_id: &str,
         status_id: &str,
     ) -> Result<(), MetaError> {
-        let exists: Option<i64> = conn
-            .query_row(
-                "SELECT 1 FROM terminal_statuses WHERE id = ?1 AND enabled = 1",
-                params![status_id],
-                |row| row.get(0),
-            )
-            .optional()?;
+        self.status_snapshots.capture_if_absent(conn, terminal_id)?;
 
-        if exists.is_none() {
+        let valid_ids = self
+            .status_snapshots
+            .valid_ids(terminal_id)
+            .unwrap_or_default();
+
+        if !valid_ids.iter().any(|id| id == status_id) {
             return Err(MetaError::InvalidStatus {
                 status_id: status_id.to_string(),
-                valid_ids: valid_status_ids(conn)?.join(", "),
+                valid_ids: valid_ids.join(", "),
             });
         }
 
@@ -181,13 +197,6 @@ impl TerminalMetaService {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
-}
-
-fn valid_status_ids(conn: &Connection) -> Result<Vec<String>, rusqlite::Error> {
-    let mut stmt =
-        conn.prepare("SELECT id FROM terminal_statuses WHERE enabled = 1 ORDER BY sort_order")?;
-    let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
-    rows.collect()
 }
 
 fn now_unix() -> i64 {

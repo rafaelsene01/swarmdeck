@@ -13,11 +13,11 @@
 | T4 PtySession | ✅ Done | 5 integration (plano: 5) |
 | T5 TerminalManager | ✅ Done | 6 integration (plano: 6) |
 | T6 Comandos Tauri | ✅ Done — **Verify visual CONFIRMADO na run 004 (01/08/2026)** | — (none, invólucro fino) |
-| T7 TerminalPane | ✅ Done (gate build) — Verify pendente de T12 (decisão tomada, triagem 005) | — (none) |
+| T7 TerminalPane | ✅ Done — **Verify confirmado na run 005 (uat-agent, 02/08/2026)** | — (none) |
 | T8 GridLayout | ✅ Done | 5 unit (plano: 5) |
-| T9 TerminalHeader | ✅ Done (gate build) — Verify pendente de T12 (decisão tomada, triagem 005) | — (none, apresentacional) |
-| T10 Max/min/fechar | ✅ Done (gate quick) — Verify pendente de T12 (decisão tomada, triagem 005) | 4 unit (plano: 4) |
-| T11 Persistência | ✅ Done (gate full) — Verify pendente de T12 (decisão tomada, triagem 005) | 4 integration (plano: 4) |
+| T9 TerminalHeader | ✅ Done — **Verify confirmado na run 005 (uat-agent, 02/08/2026)** | — (none, apresentacional) |
+| T10 Max/min/fechar | ⚠️ Done (gate quick) — **Verify PARCIAL na run 005 (uat-agent, 02/08/2026): maximizar/fechar confirmados; minimizar→restaurar PERDE o scrollback do período minimizado — o próprio critério de Verify da task (`ping -t`, minimizar, restaurar) falhou.** | 4 unit (plano: 4) |
+| T11 Persistência | ⛔ Done (gate full) — **NEEDS-DECISION na run 005 (uat-agent, 02/08/2026): TERM-07 confirmado como não integrado ao frontend.** | 4 integration (plano: 4) |
 | T12 Montar `App.tsx` | 🆕 Criada na triagem 005 (02/08/2026) — pronta para execução | — (fiação, gate build) |
 
 **Total atual: 40 testes passando** — `cargo test` = 31 (11 lib + 5 db + 4 layout + 6 manager + 5 session); `npm run test` = 9 (5 GridLayout + 4 terminals). Ver relatório de execução para a saída bruta de cada gate.
@@ -265,6 +265,8 @@ T7, T8, T9 → T10 → T11
 > ✅ **NEEDS-DECISION resolvida na triagem 005 (02/08/2026).** O usuário escolheu criar uma task nova de integração — ver **T12** (logo após T11 neste arquivo). O `Verify` desta task fica pendente de T12: só é executável depois que `App.tsx` monta a árvore real. Não reabrir esta pergunta — é a mesma decisão para T7, T9, T10 e T11, registrada uma única vez aqui.
 **Estado do código:** nada alterado — T7 (`TerminalPane.tsx`) continua existindo e passando no gate `build` isolado, só não é alcançável pela UI real até T12 fechar.
 
+**✅ Verify confirmado — run 005 (02/08/2026), `uat-agent`, via T12.** App real dirigido por CDP/Playwright (não console do DevTools). Terminal #1 nasce automaticamente com `cmd.exe` real, banner do Windows visível em <500ms. Digitação (`echo HELLO_UAT_12345`) ecoada sem perda de caractere. Redraw de linha testado (digitar errado, `Backspace` × 3, completar, `Enter`) — o texto errado nunca aparece na tela, só o corrigido: edição de linha do shell (doskey) renderiza igual a um terminal nativo. Cores ANSI confirmadas via `color 0a`/`color 07` (ConPTY traduz a chamada de console attribute do Win32 em SGR real) — tela virou verde e voltou ao normal, screenshot confirma. Redimensionamento do painel → PTY: não testado via resize direto da janela do SO, mas confirmado **indiretamente e de forma mais forte**: o ciclo maximizar/restaurar de um painel vizinho (que oculta os outros com `display:none` e depois os reexibe) dispara `ResizeObserver → fit() → pty_resize` nos painéis ocultos — é exatamente esse mecanismo que causou a perda de scrollback documentada no Verify de T10 abaixo, o que prova que as dimensões chegam de fato ao PTY (o bug está na perda de conteúdo durante o resize, não na ausência do resize).
+
 **Commit**: `feat(ui): terminal pane bridging xterm.js to pty channel`
 
 ---
@@ -316,6 +318,8 @@ T7, T8, T9 → T10 → T11
 
 > ✅ **Resolvida na triagem 005 — ver T12.** `Verify` pendente da mesma integração de `App.tsx` que T7 aguardava; mesma decisão, não repetida aqui.
 
+**✅ Verify confirmado — run 005 (02/08/2026), `uat-agent`, via T12.** Header exibe número sequencial correto em cada painel (`#1`..`#4`, confirmado visualmente com 4 terminais abertos simultaneamente). Ícone de agente e badge de status: **fora de escopo desta run** (gap conhecido, `agent-selection` ainda não fiado — `App.tsx` passa `agents={[]}` de propósito, ver comentário no próprio arquivo). Ação de fechar com processo ativo **pede confirmação real**: cliquei em "×" do terminal #4 e um diálogo nativo `window.confirm` apareceu com a mensagem exata "Este terminal tem um processo ativo. Encerrar mesmo assim?" — `Cancel` manteve o terminal aberto (contagem de painéis inalterada), `OK` fechou e reorganizou o grid. **Isto contradiz a hipótese do prompt desta run** (que a leitura isolada de `App.tsx` sugeria fechamento direto sem confirmação) — a confirmação está implementada em `TerminalHeader.tsx::handleClose` (linhas 34-42), que envolve o `onClose` recebido via prop antes de chamá-lo; `App.tsx::handleCloseTerminal` de fato não tem confirmação própria, mas nunca é chamado sem passar primeiro pelo `window.confirm` do header. Botões de maximizar/minimizar disparam os callbacks corretos (confirmado em T10).
+
 **Commit**: `feat(ui): terminal header with status badge and actions`
 
 ---
@@ -344,6 +348,14 @@ T7, T8, T9 → T10 → T11
 
 > ✅ **Resolvida na triagem 005 — ver T12.** `Verify` pendente da mesma integração de `App.tsx` que T7 aguardava; mesma decisão, não repetida aqui.
 
+**⚠️ Verify PARCIAL — run 005 (02/08/2026), `uat-agent`, via T12.** Três dos quatro comportamentos confirmam; o quarto (o critério literal do `Verify` desta task) **falha**:
+- ✅ Maximizar: painel ocupa toda a área (`boundingBox` = viewport inteiro, 1400×900), os outros 2 painéis continuam no DOM (`display:none`, não desmontados) — confirmado com screenshot. Ressalva cosmética: o header do painel maximizado (`z-index:20`, `position:fixed`) sobrepõe visualmente a toolbar do app (`z-index` não declarado na toolbar) — bug visual menor, não bloqueia a função.
+- ✅ Fechar: `×` remove o painel e o grid reorganiza (4→3 painéis, 2×2 vira 2+1) — confirmado com screenshot.
+- ✅ Minimizar recolhe a uma barra compacta — confirmado visualmente (`data-mode="minimized"`, altura ~2rem). Ressalva: o espaço liberado **não é redistribuído** aos vizinhos — a célula minimizada só encolhe seu próprio conteúdo a 2rem dentro da mesma track de grid (`1fr` fixo), deixando espaço vazio na grade em vez de ceder a área aos painéis restantes. O texto da task ("recolher a uma barra compacta **e redistribuir o espaço**") só se confirma pela metade.
+- ❌ **Restaurar NÃO reexibe o scrollback do período minimizado — reprodução exata do `Verify` pedido.** Rodei `ping -t 127.0.0.1` (caminho completo, `C:\Windows\System32\ping.exe`, para contornar um `PATH` incompleto do shell spawnado — ver DESVIO), esperei 3 respostas visíveis, minimizei, esperei 4s (tempo suficiente para mais ~4 respostas), restaurei. Resultado: só **1** resposta ficou visível — nem as 3 anteriores ao minimizar nem a maior parte das que deveriam ter chegado durante os 4s permaneceram. Rolei a tela para cima (`mouse.wheel`) e o conteúdo não reapareceu — não é um problema de viewport/scroll, é perda real do buffer. A barra de scroll de outro painel (não afetado) mostra thumb visível para comparação; a do painel restaurado fica praticamente vazia. Mesmo padrão de perda observado, de forma independente, no ciclo maximizar/restaurar de um vizinho (T7 acima) — o `ResizeObserver → fit() → pty_resize` disparado quando o painel sai/entra de `display:none` parece truncar o histórico do lado do PTY/ConPTY (redimensionar para uma área oculta provavelmente encolhe rows/cols do console, e o Windows console buffer trunca no shrink). O processo `ping` continuou rodando (não foi morto — ainda produzia 1 resposta nova), então o requisito "PTY continua rodando" se sustenta; é especificamente "reexibir o scrollback completo" que não se sustenta.
+
+Screenshots desta verificação: `shot-17-minimized2.png`, `shot-19-minimized2.png`, `shot-20-restored2.png` (caminho local do agente, não versionados no repo).
+
 **Commit**: `feat(ui): maximize, minimize and close terminals`
 
 ---
@@ -370,6 +382,10 @@ T7, T8, T9 → T10 → T11
 **Verify**: montar layout 2×2, fechar, reabrir, conferir restauração.
 
 > ✅ **Resolvida na triagem 005 — ver T12.** `Verify` pendente da mesma integração de `App.tsx` que T7 aguardava; mesma decisão, não repetida aqui.
+
+⛔ **NEEDS-DECISION — persistência não integrada ao frontend (run 005):** backend `layout::save`/`restore` (T11, `src-tauri/src/terminal/layout.rs`) nunca foi exposto como comando Tauri; `App.tsx` nunca chama `invoke` para layout. Requer task nova (mesmo padrão de `mcp-task-server/T9`) — decisão da spec-triage, não desta execução.
+
+**Confirmação empírica (run 005, 02/08/2026, `uat-agent`):** montei 3 terminais reais na UI (não pelo console do DevTools), um deles com histórico de comandos digitado (`echo`, `color`). Fechei a janela do app com `taskkill` (sinal de encerramento, não `/F` — a mesma via que fecharia a janela por um clique real no X), o processo `swarmdeck.exe` e todo o pipeline `cargo run`/`vite` encerraram juntos (nenhum ficou de pé aguardando um segundo close). Subi o app de novo do zero (`npm run tauri dev` outra vez, build incremental). Resultado: o app abriu com **1 único terminal** (`#1`, `cmd.exe` fresco em `D:\ide\src-tauri`) — os 3 terminais anteriores, seus diretórios e proporções não voltaram. Confirma exatamente o sintoma que o orquestrador já havia identificado por `grep` (nenhum `tauri::command` de layout registrado): TERM-07 falha na prática, não só na leitura de código.
 
 **Commit**: `feat(terminal): persist and restore grid layout`
 
@@ -398,6 +414,38 @@ T7, T8, T9 → T10 → T11
 **Tests**: none *(fiação — a lógica já é testada nas peças que compõe; ver `codebase/TESTING.md` → "Ponte xterm.js ↔ Channel" e a linha de `App.tsx`, que hoje não existe na matriz e deveria ser adicionada como `none` na próxima revisão de `TESTING.md`)* · **Gate**: build
 
 **Verify**: `uat-agent` — abrir o app, criar 2+ terminais pela UI (não pelo console do DevTools), digitar em cada um, redimensionar arrastando a divisória, maximizar, minimizar, fechar, reabrir o app e confirmar que o layout volta. Isto **substitui** o `Verify` que T7/T9/T10/T11 não conseguiram completar na run 004 — depois de T12, reexecutar o `Verify` original de cada uma dessas quatro tasks e atualizar seus marcadores de `NEEDS-DECISION` para `CONFIRMADO` ou `NÃO CONFIRMADO` (nunca presumir).
+
+**Verify** (executado)
+
+Executado em 02/08/2026 pelo `uat-agent` da run 005, app real dirigido via CDP (`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222`) + Playwright `connectOverCDP` (ad-hoc, `npx`, não entrou em `package.json`). Nenhuma chamada direta a `invoke`/estado interno — todas as ações abaixo foram cliques, digitação e arrasto reais na página.
+
+| Critério | Resultado | Evidência |
+|---|---|---|
+| `App.tsx` renderiza `GridLayout` real, não placeholder | ✅ | Grid com painéis reais visível desde a abertura |
+| Header + Pane por painel, mesmo `id` | ✅ | `#1`..`#4` com terminal correspondente, testado com 4 terminais simultâneos |
+| Ação "novo terminal" abre `NewTerminalDialog` e cria entrada | ✅ | Diálogo abriu, campo Diretório/Agente visíveis, `criar` adicionou painel em 251ms |
+| TERM-01.1 spawn em até 500ms | ✅ | 251ms do clique em "criar" até o 2º painel aparecer no DOM |
+| TERM-01.2/TERM-02 digitação sem perda | ✅ | `echo HELLO_UAT_12345` ecoado exato |
+| TERM-01/02.3 redraw de linha + ANSI | ✅ | Backspace/retype sem resíduo visual; `color 0a`/`07` mudou a tela inteira de cor e voltou |
+| TERM-01.4 resize → PTY | ✅ (indireto) | Confirmado via efeito colateral do bug de T10 (resize claramente chega ao PTY) — não testado via resize direto da janela do SO |
+| TERM-03/04.1 2 terminais = 2 colunas iguais | ✅ | Screenshot, 700px/700px |
+| TERM-03/04.2 3-4 terminais = grid 2×2 | ✅ | Screenshot com 4 painéis |
+| TERM-03/04.3 arrastar divisória redimensiona | ❌ | **Bug real, não de condução**: `GridLayout.tsx` usa `gridTemplateColumns: repeat(columns, 1fr)` fixo — nunca lê `pane.fracW` no container. Eventos `pointerdown`/`pointermove` disparam corretamente (confirmado via listener injetado, 16 `pointermove` durante o arrasto) e o estado interno `localPanes` provavelmente atualiza, mas nada no DOM reflete a nova fração — larguras ficam sempre 50/50. Achado adicional: a caixa de acerto (`boundingBox`) da divisória é reportada com 8px, mas o pai tem `overflow:hidden` que corta a metade direita — só ~4px realmente respondem a clique (não é a causa do bug acima, mas é um problema de UX separado que também vale registrar) |
+| TERM-03/04.4 maximizar ocupa tudo, outros vivos | ✅ (com ressalva cosmética) | `boundingBox` = viewport inteiro; outros painéis `display:none` mas presentes no DOM. Ressalva: header do painel maximizado sobrepõe a toolbar (`z-index`/posicionamento, cosmético) |
+| TERM-03/04.5 fechar encerra e reorganiza | ✅ | 4→3 painéis, grid reflui |
+| TERM-03/04.6 5º desabilitado com explicação | ✅ | Botão `disabled`, `title="Limite de 4 terminais atingido"` |
+| TERM-05.1 número sequencial no header | ✅ | `#1`..`#4` visíveis |
+| TERM-05.6 fechar com processo ativo pede confirmação | ✅ | `window.confirm` real disparado com a mensagem exata; Cancelar mantém, OK fecha — **contradiz a suspeita levantada no prompt desta run** (a confirmação vive em `TerminalHeader.tsx`, não em `App.tsx`) |
+| TERM-08.1 minimizar recolhe e redistribui espaço | ⚠️ PARCIAL | Recolhe a ~2rem; **não redistribui** — espaço liberado fica vazio na grade (`1fr` fixo por linha) |
+| TERM-08.2 PTY continua rodando minimizado | ✅ | Processo `ping` não foi morto durante os 4s minimizado — nova resposta chegou |
+| TERM-08.3 restaurar reexibe scrollback completo | ❌ | De 3 respostas visíveis pré-minimizar + ~4 esperadas durante o período, só 1 sobrou após restaurar. Rolagem para cima não recupera o conteúdo (não é problema de viewport). Mesmo padrão observado independentemente no ciclo maximizar/restaurar de T7 |
+| TERM-07.1/2 persistência entre reinícios | ❌ | Confirmado: fechei o app com 3 terminais abertos, reabri — voltou com 1 terminal padrão. Gap de integração já identificado pelo orquestrador (nenhum comando Tauri de layout registrado); **NEEDS-DECISION**, não conserto aqui |
+
+**Achados fora do escopo original do `Verify`, mas descobertos durante a condução real (reportados, não corrigidos):**
+1. Divisória do grid não redimensiona visualmente (`fracW` nunca aplicado ao `gridTemplateColumns`) — `GridLayout.tsx`.
+2. Perda de scrollback ao ocultar/reexibir um painel via `display:none` (afeta tanto minimizar quanto o painel *vizinho* de um maximizado) — provável truncamento do buffer do ConPTY ao redimensionar para uma área oculta.
+3. Sobreposição visual cosmética entre o header do painel maximizado e a toolbar do app.
+4. Área de clique real da divisória é ~4px, não os 8px do layout — clipada pelo `overflow:hidden` do pai.
 
 **Commit**: `feat(ui): mount grid, terminal panes and header in App.tsx`
 

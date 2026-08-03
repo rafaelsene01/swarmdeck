@@ -18,7 +18,7 @@
 | T6 Sidecar `swarmdeck-mcp` — esqueleto e `check_active` | ✅ Done | ~11 (`client::tests::*` + o teste de handshake; ver nota abaixo) |
 | T7 Ferramentas MCP de tarefa e terminal | ✅ Done | ~5 (`tools::tests::*` + o teste de registro do catálogo; ver nota abaixo) |
 | T8 Similaridade de tarefas | ✅ Done | 6 unit (plano: 6) |
-| T9 Iniciar `IpcServer` no app real | 🆕 Criada na triagem 005 (02/08/2026) — pronta para execução | — (fiação, gate build) |
+| T9 Iniciar `IpcServer` no app real | ⛔ NEEDS-DECISION — estacionada na run 005 (02/08/2026, `spec-loop`): escopo de arquivos autorizado insuficiente, exige decisão de arquitetura (ver bloco da task) | — (fiação, gate build) |
 
 **Desvio de numeração:** T1 rodou como migração **`003`**, não `002` como o título da seção ainda cita abaixo — `release-distribution/T14`, executada antes na mesma run, reservou a `002` primeiro (regra "quem chega primeiro pega o número", `EXECUTION.md`). O código e os testes usam `003` corretamente; só o texto do título ficou desatualizado, preservado como está para não reescrever histórico — a nota aqui é a correção.
 
@@ -324,6 +324,20 @@ T3 → T8 [P]
 **Tests**: none *(fiação de inicialização — a lógica de roteamento já é testada em T5/T6/T7; ver `codebase/TESTING.md`)* · **Gate**: build
 
 **Verify**: `uat-agent` — subir o app (`npm run tauri dev` ou o binário), rodar o sidecar `swarmdeck-mcp` apontando para o mesmo nome de socket/pipe, chamar `check_active` pela interface MCP e confirmar `true` + `terminal_id` de um terminal real aberto no app. Isto é o primeiro teste ponta-a-ponta de dois processos reais (app + sidecar) deste projeto — até aqui, só `tokio::io::duplex`/sockets de teste tinham sido exercitados (ver `JOURNAL.md` da run 004, seção "Não verificado").
+
+**⛔ NEEDS-DECISION — estacionada na run 005 (02/08/2026).** Não executar até haver decisão do usuário. Nenhum código foi alterado (o implementador só leu, nada foi escrito no disco).
+
+**Pergunta:** `IpcServer::for_app` (`src-tauri/src/ipc/server.rs:215-229`) exige `Arc<TerminalManager>`, `Arc<Mutex<Db>>` e `Arc<TerminalMetaService>` — as MESMAS instâncias que `check_active` precisa enxergar. Hoje `lib.rs:32,37` geriza `TerminalManager`/`Mutex<Db>` como tipos "nus" (sem `Arc`), e `tauri::State<T>` resolve por `TypeId` exato — então religar exige trocar a chave de tipo em todo consumidor existente, não só em `lib.rs`. Consumidores fora da lista de arquivos autorizada a esta task: `src-tauri/src/commands/terminal.rs:33,50,60,70,82` (5 usos de `State<'_, TerminalManager>`, incluindo dentro da thread de `pump_output`) e `src-tauri/src/update/check.rs:83` (`State<'_, Mutex<Db>>`). Três caminhos reais:
+- **A**: ampliar o escopo de T9 para incluir `commands/terminal.rs` e `update/check.rs`, trocando os `app.state::<TerminalManager>()`/`app.state::<Mutex<Db>>()` por `app.state::<Arc<TerminalManager>>()`/`app.state::<Arc<Mutex<Db>>>()`.
+- **B**: redesenhar `IpcServer::for_app` para receber só `AppHandle` e buscar `app.state::<TerminalManager>()`/`app.state::<Mutex<Db>>()` frescos a cada conexão, dentro da thread de `serve()` — evita tocar `commands/`/`update/`, mas é mudança de assinatura maior que "expor algo que não está `pub`" (único motivo que autorizava tocar `ipc/` nesta task).
+- **C**: outra direção que o usuário/planejador prefira.
+  Criar uma segunda instância `Arc::new(TerminalManager::new())` isolada **não é opção válida**: `TerminalManager` (`src-tauri/src/terminal/manager.rs:87-90`) é só um `Mutex<HashMap<...>>` sem `Clone` interno — uma segunda instância nasceria vazia e `check_active` diria "unknown terminal" para todo terminal real, sempre. `TerminalMetaService` não tem este conflito (nada mais no código a referencia hoje).
+
+**Por que só o usuário responde:** é escolha de arquitetura (onde a fronteira de `Arc`-wrapping do estado do app deve viver), não ambiguidade de requisito — e alarga o escopo de arquivos de uma task já triada, o que esta skill não decide sozinha.
+
+**Medições que sustentam a escolha:** leitura direta de `ipc/server.rs:215-229`, `lib.rs:32,37`, `commands/terminal.rs:33,50,60,70,82`, `update/check.rs:83`, `terminal/manager.rs:87-90`; confirmação de resolução por `TypeId` no crate `tauri` 2.11.5 vendorizado (`state.rs`).
+
+**Estado do código:** nada alterado — nenhum arquivo escrito nesta run.
 
 **Commit**: `feat(ipc): start IpcServer inside the running app`
 

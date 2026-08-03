@@ -8,9 +8,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { PORTABLE_MARKER, portableArchiveName, portableReadme, stageBundle } from "./make-portable.mjs";
+import {
+  PORTABLE_MARKER,
+  defaultBinaryPath,
+  portableArchiveName,
+  portableReadme,
+  stageBundle,
+} from "./make-portable.mjs";
 
 const scriptPath = fileURLToPath(new URL("./make-portable.mjs", import.meta.url));
+const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 
 test("portableArchiveName names the zip after the app and version", () => {
   assert.equal(portableArchiveName("0.1.1"), "SwarmDeck_0.1.1_x64-portable.zip");
@@ -61,6 +68,40 @@ test("stageBundle copies the resources directory only when it is given and exist
   assert.equal(existsSync(join(appDirWithout, "resources")), false);
 
   rmSync(dir, { recursive: true, force: true });
+});
+
+test("the default binary path resolves under the workspace's own target/, not src-tauri/target/", () => {
+  // Regression test for the triagem 005 finding: the root Cargo.toml declares
+  // [workspace], so `cargo build --workspace`/`--release` always outputs to
+  // <root>/target/release — never <root>/src-tauri/target/release, which
+  // does not exist. This is the exact default release.yml relies on when it
+  // calls the script without --binary.
+  assert.equal(defaultBinaryPath(), join(repoRoot, "target", "release", "SwarmDeck.exe"));
+});
+
+test("running without --binary reports the workspace target/ path, not src-tauri/target/", (t) => {
+  // If a real cargo build already populated the workspace's default binary
+  // path, the CLI won't fail — there is nothing to assert on stderr in that
+  // case, so skip rather than assume a fixed environment state.
+  if (existsSync(defaultBinaryPath())) {
+    t.skip("a real binary already exists at the default path in this environment");
+    return;
+  }
+
+  const outDir = join(mkdtempSync(join(tmpdir(), "swarmdeck-portable-")), "out");
+
+  let error;
+  try {
+    execFileSync("node", [scriptPath, "--version", "0.1.1", "--out", outDir], { stdio: "pipe" });
+  } catch (caught) {
+    error = caught;
+  }
+
+  assert.ok(error, "expected the script to fail because no real binary exists at the default path");
+  const stderr = error.stderr.toString();
+  assert.match(stderr, /binary not found/);
+  assert.ok(stderr.includes(join(repoRoot, "target", "release", "SwarmDeck.exe")));
+  assert.ok(!stderr.includes(join("src-tauri", "target", "release")));
 });
 
 test("the LEIA-ME explains that deleting the marker takes the app out of portable mode", () => {

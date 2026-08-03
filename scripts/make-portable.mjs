@@ -107,6 +107,17 @@ export function stageBundle({ appDir, binary, resources, version }) {
   return appDir;
 }
 
+/**
+ * Where a real `cargo build --workspace` (or `--release`) puts the compiled
+ * binary when `--binary` is not passed on the CLI. The root `Cargo.toml`
+ * declares `[workspace]`, so Cargo's output always lands under `<root>/target`
+ * — never under `src-tauri/target`, which does not exist in this layout.
+ * Exported so the default can be asserted without shelling out.
+ */
+export function defaultBinaryPath() {
+  return join(ROOT, "target", "release", `${APP_NAME}.exe`);
+}
+
 function main(argv) {
   const flags = parseArgs(argv);
   const version = flags.version;
@@ -115,7 +126,7 @@ function main(argv) {
   // version must fail without creating or touching any file or directory.
   portableArchiveName(version);
 
-  const binary = resolve(flags.binary ?? join(ROOT, "src-tauri", "target", "release", `${APP_NAME}.exe`));
+  const binary = resolve(flags.binary ?? defaultBinaryPath());
   const outDir = resolve(flags.out ?? join(ROOT, "src-tauri", "target", "release", "portable"));
   const stagingRoot = join(outDir, "staging");
   const appDir = join(stagingRoot, APP_NAME);
