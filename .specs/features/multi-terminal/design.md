@@ -57,6 +57,7 @@ Projeto novo — não há código a reaproveitar. O que se aproveita é **infrae
 | `xterm.js` + `@xterm/addon-fit` | npm | Emulação e renderização. `FitAddon` calcula rows/cols a partir do tamanho do painel. |
 | `tauri-plugin-store` ou tabela SQLite | Tauri / rusqlite | Persistência de layout. Ver decisão abaixo. |
 | `AppState` do Tauri (`Manager::state`) | Tauri 2 | Registro de sessões compartilhado entre comandos, sem singleton global. |
+| `tauri-plugin-dialog` | plugin oficial Tauri 2 | Seletor nativo de pasta (`TERM-10`). Chamado do frontend via `@tauri-apps/plugin-dialog` (`open({ directory: true, defaultPath })`) — sem comando Rust próprio para abrir o diálogo em si, só para ler/gravar o último diretório (`TERM-11`). Identificador exato da permission a confirmar contra a doc do plugin ao implementar (baseline esperado: `dialog:default` ou `dialog:allow-open`, no `capabilities/default.json`) — não fabricado aqui. |
 
 ### Pontos de integração
 
@@ -66,6 +67,7 @@ Projeto novo — não há código a reaproveitar. O que se aproveita é **infrae
 | Status de terminal | `TerminalHeader` lê o status do `AppState`, escrito pelo canal MCP. |
 | Projetos | O diretório de trabalho da sessão resolve o projeto. Ver `.specs/features/projects/spec.md`. |
 | Worktrees | Quando ativo, o diretório de trabalho da sessão é o do worktree, não o do repo. |
+| Seleção de agente | O passo AGENT (após PROJECT) e o `resume: true` do "Restore Selected" (TERM-12) são especificados em `.specs/features/agent-selection/spec.md` (AGT-06) — este design não duplica a lógica de retomada de sessão do agente, só a aciona. |
 
 ---
 
@@ -123,6 +125,42 @@ Projeto novo — não há código a reaproveitar. O que se aproveita é **infrae
 - **Local**: `src/components/terminal/TerminalHeader.tsx`
 - **Dependências**: `AppState` (título, atividade, status), estado de git
 
+### `terminal::picker_prefs` (Rust) — TERM-11
+- **Propósito**: lembrar o último diretório escolhido no seletor de pasta, entre sessões do app.
+- **Local**: `src-tauri/src/terminal/picker_prefs.rs`
+- **Interfaces**:
+  - `last_dir(conn) -> Result<Option<String>>`
+  - `set_last_dir(conn, path: &str) -> Result<()>` — upsert de linha única
+- **Reusa**: mesmo padrão de `agents::prefs` (`agent_prefs`, linha única `id = 1`, não seedada — ausência de linha = "nunca escolhido") — ver `agent_prefs.rs`
+- **Dependências**: nova tabela `terminal_picker_prefs` (migração `005`)
+
+### `NewTerminalDialog` (React) — TERM-10, TERM-11
+
+**Correção 03/08/2026** (observação ao vivo — `.specs/research/screenshots/Captura de tela 2026-08-03 003525.png`): este componente **não é um modal flutuante**. Ele renderiza **dentro do slot de terminal vazio**, no lugar onde o terminal ainda não iniciado mostraria "INITIALIZE AGENT". O passo PROJECT (lista de projetos, busca, New/Import/No Project — `projects/spec.md` PROJ-06/PROJ-07) é o primeiro passo desse mesmo componente; o botão "Import Project" é o que aciona o comportamento abaixo. O único elemento que continua sendo um modal de verdade, sobreposto à janela inteira, é "Create New Project" (`projects/spec.md` PROJ-01).
+
+- **Propósito**: campo "Diretório" deixa de ser texto livre e vira somente-leitura, preenchido pelo seletor nativo de pasta.
+- **Local**: `src/components/terminal/NewTerminalDialog.tsx` (modifica) — nome do arquivo mantido por continuidade de código; o componente deixou de ser um diálogo, é um painel de passos dentro do `TerminalPane`
+- **Comportamento**: botão "Import Project" chama `open({ directory: true, defaultPath })` do `@tauri-apps/plugin-dialog`, usando `defaultPath` = resultado de `invoke('terminal_picker_last_dir')` lido ao montar o painel. Seleção bem-sucedida seta `cwd` e chama `invoke('terminal_picker_set_last_dir', { path })`; `null` (cancelado) limpa `cwd`. Botão "criar" desabilitado enquanto `cwd` estiver vazio.
+
+### `RestoreSessionModal` (React) — TERM-12
+
+- **Propósito**: no boot, se o fechamento anterior não foi limpo, oferece escolher quais terminais (com sessão de agente) retomar.
+- **Local**: `src/components/terminal/RestoreSessionModal.tsx` (novo)
+- **Interfaces**: `<RestoreSessionModal candidates={RestorableTerminal[]} maxSlots={4} onRestore={(ids: TerminalId[]) => void} onStartFresh={() => void} />`
+- **Comportamento**: lista `candidates` com checkbox pré-marcado; contador "N/M selected · K terminal slots available" recalcula a cada toggle (`K = maxSlots - N`, nunca negativo — desabilita novos checks ao chegar em 0); "Restore Selected" chama `pty_spawn` para cada id marcado, passando `resume: true` (mesmo parâmetro de AGT-06); "Start Fresh" ignora `candidates` e não spawna nada.
+- **Dependências**: `terminal::shutdown` (Rust, abaixo), catálogo de agentes (para o ícone de cada linha)
+
+### `terminal::shutdown` (Rust) — TERM-12
+
+- **Propósito**: distinguir fechamento limpo de fechamento inesperado, e listar o que é restaurável.
+- **Local**: `src-tauri/src/terminal/shutdown.rs`
+- **Interfaces**:
+  - `mark_clean_shutdown(conn) -> Result<()>` — chamado no handler de fechamento da janela principal, antes do `kill` de todos os PTYs
+  - `was_clean(conn) -> Result<bool>` — lido no boot, antes de recriar terminais
+  - `restorable_candidates(conn) -> Result<Vec<RestorableTerminal>>` — lê `terminal_layout` (última foto salva) e monta a lista para o modal
+- **Comportamento**: um flag de linha única (`app_shutdown_state`, mesmo padrão de `agent_prefs`/`terminal_picker_prefs`) é setado como "sujo" (`clean = 0`) logo no boot e só vira `clean = 1` no shutdown limpo. Se o processo morrer no meio (crash, kill -9, queda de energia), o flag nunca chega a `1`, e o próximo boot encontra `clean = 0` → fechamento inesperado.
+- **Dependências**: nova tabela `app_shutdown_state` (migração — próximo número livre a checar no momento da implementação, mesma regra de "quem chegar primeiro pega o número" já registrada em `EXECUTION.md`)
+
 ---
 
 ## Modelos de dados
@@ -151,6 +189,35 @@ interface TerminalSnapshot {
   projectId: string | null
   git: { branch: string, changes: number } | null
   state: 'running' | 'exited' | 'failed'
+}
+```
+
+```sql
+-- migração 005 — TERM-11
+CREATE TABLE terminal_picker_prefs (
+  id       INTEGER PRIMARY KEY,   -- fixo em 1, mesmo padrão de agent_prefs
+  last_dir TEXT                   -- NULL = nunca escolhido (não seedada)
+);
+```
+
+```sql
+-- migração a numerar — TERM-12
+CREATE TABLE app_shutdown_state (
+  id    INTEGER PRIMARY KEY,   -- fixo em 1, mesmo padrão de agent_prefs / terminal_picker_prefs
+  clean INTEGER NOT NULL DEFAULT 0   -- 0 = sujo (setado no boot), 1 = fechamento limpo (setado no shutdown)
+);
+```
+
+`RestorableTerminal` (montado a partir de `terminal_layout` + catálogo de agentes + projeto, não uma tabela própria):
+
+```typescript
+interface RestorableTerminal {
+  terminalId: TerminalId
+  agentId: AgentId
+  projectId: string | null   // null = era "No Project" / Sandbox
+  projectName: string        // "Sandbox" quando projectId é null
+  conversationTitle: string | null  // "Untitled conversation" quando ausente
+  selected: boolean           // pré-marcado true
 }
 ```
 
@@ -184,6 +251,11 @@ CREATE TABLE terminal_layout (
 | CLI do agente ausente no PATH | Abre com shell puro | Aviso no painel explicando o que faltou (AGT-04) |
 | App fecha com PTYs vivos | `kill` em todos no shutdown, com timeout, depois force-kill | Nada — mas nenhum processo órfão fica |
 | Diretório persistido sumiu | Abre em home | Aviso nomeando o diretório que sumiu |
+| Seletor nativo de pasta falha ao abrir (TERM-10) | Campo "Diretório" mantém o valor anterior à tentativa | Nada — o painel de inicialização do terminal segue aberto e utilizável |
+| Último diretório usado (TERM-11) não existe mais no disco | `defaultPath` do seletor cai para home | Nada — seletor abre em home silenciosamente, mesma lógica de `TERM-07.3` |
+| Restaurar terminal cujo diretório sumiu (TERM-12) | Mesma regra de `TERM-07.3` — abre em home e avisa | Aviso nomeando o diretório que sumiu, terminal ainda é criado |
+| Restaurar terminal cujo agente não existe mais no PATH (TERM-12) | Mesma regra de AGT-04 — abre com shell puro | Aviso no painel explicando o que faltou, sem bloquear a restauração dos demais |
+| Selecionar mais terminais do que `maxSlots` no modal de restauração | Checkbox extra fica desabilitado | "0 terminal slots available" impede marcar mais um |
 
 ---
 

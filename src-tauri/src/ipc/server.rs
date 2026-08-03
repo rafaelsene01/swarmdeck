@@ -37,13 +37,40 @@
 //! `IpcServer::on_task_changed` so routing code never touches `AppHandle`
 //! directly (keeps `route()`/`handle_request()` testable without a live
 //! Tauri app — see the unit test at the bottom of this file). Only the
-//! tools that write task rows set `RouteResult::mutated = true`:
+//! tools that write task rows set `RouteResult::task_change = Some(..)`:
 //! `create_task`, `start_task`, `complete_task`, `update_task_plan`,
-//! `update_task_implementation`, `update_task_project`, `create_project`.
-//! Terminal metadata (`set_terminal_title`, `update_terminal_activity`,
-//! `set_terminal_status`) and every read-only tool never do — `task_changed`
-//! is a nudge for the Kanban board specifically (design.md), not a generic
-//! "something happened" event.
+//! `update_task_implementation`, `update_task_project`. Terminal metadata
+//! (`set_terminal_title`, `update_terminal_activity`, `set_terminal_status`)
+//! and every read-only tool never do — `task_changed` is a nudge for the
+//! Kanban board specifically (design.md), not a generic "something
+//! happened" event.
+//!
+//! ### task-kanban/T7 — the payload used to be empty
+//! Before this task `emit_task_changed` emitted `app.emit("task_changed", ())`
+//! — no payload at all — while `src/types/tasks.ts`'s `TaskChangedEvent`
+//! (and `useTaskStore.ts`'s `applyTaskChangedEvent`, which reads
+//! `event.payload.op`/`.task`/`.taskId`/`.previousStatus` with no null
+//! guard) already assumed a real payload. Every route that mutates a task
+//! now builds a [`TaskChangeInfo`] and `notify_if_mutated` forwards it
+//! verbatim to `emit_task_changed`, which serializes it into exactly that
+//! shape. `task_change.task` is the same camelCase, project-embedded,
+//! `terminalAlive`-computed DTO the frontend already renders
+//! (`commands::tasks::TaskDto`/`get_with_project`) — reused here rather than
+//! duplicated, so the event payload and a fresh `task_list`/`task_get`
+//! response can never disagree on shape. `task_json` below (snake_case,
+//! `project_id` only) is unrelated: it is the MCP tool response shape from
+//! `TOOL-CONTRACT.md`, never what goes out over `task_changed`.
+//!
+//! `create_project` no longer sets `task_change`: it mutates a project row,
+//! not a task, and `TaskChangedEvent` has no shape for that (`task` would
+//! have to be a real `Task` or `null`, and `null` is reserved for `deleted`
+//! per `design.md`). It kept firing an empty-payload `task_changed` before
+//! this task only because no consumer ever read anything from that payload;
+//! now that the event carries real data, firing it for a project-only
+//! mutation would mean inventing a fake `op`/`taskId` with nothing behind
+//! them. `BoardFilters` (T5) doesn't depend on this event for its project
+//! list either — it derives distinct projects from the tasks already
+//! loaded.
 //!
 //! ## DESVIO — `find_related_active_tasks` returns at most one entry
 //! `TOOL-CONTRACT.md` describes the return shape as an array scored against
@@ -87,18 +114,38 @@ use crate::terminal::{MetaError, TerminalId, TerminalManager, TerminalMetaServic
 
 use super::transport::{IpcConnection, IpcTransport};
 
+/// Payload of one `task_changed` emission — mirrors `TaskChangedEvent` in
+/// `src/types/tasks.ts` field for field (`op`/`task`/`taskId`/
+/// `previousStatus`), so `emit_task_changed` only has to serialize it, never
+/// decide its shape. `task` is `None` exactly when `op == "deleted"`;
+/// `previous_status` is only ever `Some` when `op == "moved"` (`design.md` →
+/// Modelos de dados).
+pub struct TaskChangeInfo {
+    pub op: &'static str,
+    pub task: Option<Value>,
+    pub task_id: i64,
+    pub previous_status: Option<String>,
+}
+
 /// Emits the `task_changed` event to every window, per MCP-01 / design.md
-/// ("Toda mutação bem-sucedida emite task_changed para todas as janelas").
-/// The event carries no payload — it's a nudge for listeners (the Kanban)
-/// to refetch, not a data transport (design.md: "Kanban consome o evento
-/// task_changed; nunca lê o banco por polling").
+/// ("Toda mutação bem-sucedida emite task_changed para todas as janelas"),
+/// carrying the real delta (`info`) `useTaskStore.ts`'s
+/// `applyTaskChangedEvent` needs to update its `Map` without a full
+/// `task_list` reload (task-kanban/T7 — see the module doc's "the payload
+/// used to be empty" note).
 ///
 /// A failed emit (e.g. no window left to receive it) is not something the
 /// caller of a successful mutation should fail over — the task write
 /// already committed — so the error is deliberately swallowed here.
-pub fn emit_task_changed(app: &tauri::AppHandle) {
+pub fn emit_task_changed(app: &tauri::AppHandle, info: &TaskChangeInfo) {
     use tauri::Emitter;
-    let _ = app.emit("task_changed", ());
+    let payload = json!({
+        "op": info.op,
+        "task": info.task,
+        "taskId": info.task_id,
+        "previousStatus": info.previous_status,
+    });
+    let _ = app.emit("task_changed", payload);
 }
 
 #[derive(Debug, Deserialize)]
@@ -109,18 +156,20 @@ struct McpRequest {
     args: Value,
 }
 
-/// Outcome of routing one request: the JSON to send back, plus whether a
-/// mutation happened (decides whether `on_task_changed` fires).
+/// Outcome of routing one request: the JSON to send back, plus the task
+/// delta to broadcast (if any) — `Some` is what decides whether
+/// `on_task_changed` fires, and its contents are exactly what
+/// `emit_task_changed` needs (task-kanban/T7).
 struct RouteResult {
     response: Value,
-    mutated: bool,
+    task_change: Option<TaskChangeInfo>,
 }
 
 impl RouteResult {
     fn unmutated(response: Value) -> Self {
         Self {
             response,
-            mutated: false,
+            task_change: None,
         }
     }
 }
@@ -187,7 +236,7 @@ pub struct IpcServer {
     terminal_manager: Arc<TerminalManager>,
     db: Arc<Mutex<Db>>,
     terminal_meta: Arc<TerminalMetaService>,
-    on_task_changed: Arc<dyn Fn() + Send + Sync>,
+    on_task_changed: Arc<dyn Fn(&TaskChangeInfo) + Send + Sync>,
 }
 
 impl IpcServer {
@@ -196,7 +245,7 @@ impl IpcServer {
         terminal_manager: Arc<TerminalManager>,
         db: Arc<Mutex<Db>>,
         terminal_meta: Arc<TerminalMetaService>,
-        on_task_changed: Arc<dyn Fn() + Send + Sync>,
+        on_task_changed: Arc<dyn Fn(&TaskChangeInfo) + Send + Sync>,
     ) -> Self {
         Self {
             transport,
@@ -224,7 +273,7 @@ impl IpcServer {
             terminal_manager,
             db,
             terminal_meta,
-            Arc::new(move || emit_task_changed(&app)),
+            Arc::new(move |info: &TaskChangeInfo| emit_task_changed(&app, info)),
         )
     }
 
@@ -255,6 +304,21 @@ impl IpcServer {
             .find(|session| session.id == id)
             .map(|session| session.cwd)
             .ok_or_else(|| err_response("unknown terminal"))
+    }
+
+    /// Builds the exact camelCase `Task` JSON shape `TaskChangedEvent.task`
+    /// needs (`src/types/tasks.ts`), by reusing
+    /// `commands::tasks::get_with_project` instead of re-deriving the
+    /// project embed / `terminalAlive` computation here a second time
+    /// (task-kanban/T7 — see the module doc's "the payload used to be
+    /// empty" note). `None` only if the task disappeared between the
+    /// mutation that just committed and this lookup — should not happen in
+    /// practice, and callers degrade to omitting `task` rather than
+    /// panicking over a nudge event.
+    fn task_dto_json(&self, conn: &Connection, task_id: i64) -> Option<Value> {
+        crate::commands::tasks::get_with_project(conn, &self.terminal_manager, task_id)
+            .ok()
+            .and_then(|dto| serde_json::to_value(dto).ok())
     }
 
     /// Runs the accept loop **on the calling thread** — callers spawn a
@@ -312,8 +376,8 @@ impl IpcServer {
     /// a named method rather than an inline check so the unit test below
     /// can call the real production path, not a re-implementation of it.
     fn notify_if_mutated(&self, result: &RouteResult) {
-        if result.mutated {
-            (self.on_task_changed)();
+        if let Some(info) = &result.task_change {
+            (self.on_task_changed)(info);
         }
     }
 
@@ -376,17 +440,28 @@ impl IpcServer {
 
         let db = self.db();
         match tasks::service::create(db.conn(), &ctx, &args.title, args.description.as_deref()) {
-            Ok(task) => RouteResult {
-                response: ok_response(task_json(&task)),
-                mutated: true,
-            },
+            Ok(task) => {
+                let task_dto = self.task_dto_json(db.conn(), task.id);
+                RouteResult {
+                    response: ok_response(task_json(&task)),
+                    task_change: Some(TaskChangeInfo {
+                        op: "created",
+                        task: task_dto,
+                        task_id: task.id,
+                        previous_status: None,
+                    }),
+                }
+            }
             Err(err) => RouteResult::unmutated(err_response(err.to_string())),
         }
     }
 
     /// Shared by `start_task`/`complete_task`: both take only `task_id` and
     /// delegate straight to `tasks::state`'s transition table via
-    /// `tasks::service`.
+    /// `tasks::service`. Both change `status`, which is exactly a Kanban
+    /// column move — `op: "moved"`, with `previous_status` read *before*
+    /// `action` runs (a status transition, by construction, only ever
+    /// changes `status`, so "before" here means the pre-transition value).
     fn route_task_action(
         &self,
         args: Value,
@@ -398,11 +473,23 @@ impl IpcServer {
         };
 
         let db = self.db();
+        let previous_status = tasks::service::get(db.conn(), args.task_id)
+            .ok()
+            .map(|task| task.status.to_string());
+
         match action(db.conn(), args.task_id) {
-            Ok(task) => RouteResult {
-                response: ok_response(task_json(&task)),
-                mutated: true,
-            },
+            Ok(task) => {
+                let task_dto = self.task_dto_json(db.conn(), task.id);
+                RouteResult {
+                    response: ok_response(task_json(&task)),
+                    task_change: Some(TaskChangeInfo {
+                        op: "moved",
+                        task: task_dto,
+                        task_id: task.id,
+                        previous_status,
+                    }),
+                }
+            }
             Err(err) => RouteResult::unmutated(err_response(err.to_string())),
         }
     }
@@ -415,10 +502,18 @@ impl IpcServer {
 
         let db = self.db();
         match tasks::service::update_plan(db.conn(), args.task_id, &args.plan) {
-            Ok(result) => RouteResult {
-                response: ok_response(task_update_json(&result)),
-                mutated: true,
-            },
+            Ok(result) => {
+                let task_dto = self.task_dto_json(db.conn(), result.task.id);
+                RouteResult {
+                    response: ok_response(task_update_json(&result)),
+                    task_change: Some(TaskChangeInfo {
+                        op: "updated",
+                        task: task_dto,
+                        task_id: result.task.id,
+                        previous_status: None,
+                    }),
+                }
+            }
             Err(err) => RouteResult::unmutated(err_response(err.to_string())),
         }
     }
@@ -431,10 +526,18 @@ impl IpcServer {
 
         let db = self.db();
         match tasks::service::update_implementation(db.conn(), args.task_id, &args.implementation) {
-            Ok(result) => RouteResult {
-                response: ok_response(task_update_json(&result)),
-                mutated: true,
-            },
+            Ok(result) => {
+                let task_dto = self.task_dto_json(db.conn(), result.task.id);
+                RouteResult {
+                    response: ok_response(task_update_json(&result)),
+                    task_change: Some(TaskChangeInfo {
+                        op: "updated",
+                        task: task_dto,
+                        task_id: result.task.id,
+                        previous_status: None,
+                    }),
+                }
+            }
             Err(err) => RouteResult::unmutated(err_response(err.to_string())),
         }
     }
@@ -611,6 +714,9 @@ impl IpcServer {
         }
     }
 
+    // task-kanban/T7: no `task_change` here — this mutates a project row,
+    // not a task, and `TaskChangedEvent` has no shape for that (see the
+    // module doc's note on why this stopped firing `task_changed`).
     fn route_create_project(&self, args: Value) -> RouteResult {
         let args: CreateProjectArgs = match parse_args(args) {
             Ok(args) => args,
@@ -619,10 +725,7 @@ impl IpcServer {
 
         let db = self.db();
         match projects::service::create(db.conn(), &args.name, std::path::Path::new(&args.path)) {
-            Ok(project) => RouteResult {
-                response: ok_response(json!(project)),
-                mutated: true,
-            },
+            Ok(project) => RouteResult::unmutated(ok_response(json!(project))),
             Err(err) => RouteResult::unmutated(err_response(err.to_string())),
         }
     }
@@ -651,10 +754,18 @@ impl IpcServer {
 
         let db = self.db();
         match tasks::service::update_project(db.conn(), args.task_id, &args.project_id) {
-            Ok(task) => RouteResult {
-                response: ok_response(task_json(&task)),
-                mutated: true,
-            },
+            Ok(task) => {
+                let task_dto = self.task_dto_json(db.conn(), task.id);
+                RouteResult {
+                    response: ok_response(task_json(&task)),
+                    task_change: Some(TaskChangeInfo {
+                        op: "updated",
+                        task: task_dto,
+                        task_id: task.id,
+                        previous_status: None,
+                    }),
+                }
+            }
             Err(err) => RouteResult::unmutated(err_response(err.to_string())),
         }
     }
@@ -871,26 +982,32 @@ mod tests {
         }
     }
 
-    /// Test 5 of this task's Done-when: proves the connection between
-    /// `RouteResult::mutated` and `on_task_changed` by calling the exact
-    /// private method `handle_connection` calls (`notify_if_mutated`), not
-    /// a re-implementation of it — this is the honest substitute the task
-    /// brief allows for a case that can't be exercised through a live
-    /// `AppHandle` outside a running Tauri app.
+    /// Test 5 of mcp-task-server/T7's Done-when: proves the connection
+    /// between `RouteResult::task_change` and `on_task_changed` by calling
+    /// the exact private method `handle_connection` calls
+    /// (`notify_if_mutated`), not a re-implementation of it — this is the
+    /// honest substitute the task brief allows for a case that can't be
+    /// exercised through a live `AppHandle` outside a running Tauri app.
     ///
-    /// `check_active` never sets `mutated: true` (it doesn't write
-    /// anything), so no request in this task's scope reaches this path
-    /// through the real socket end to end; `T7`'s mutating tools will be
-    /// the first real callers of the `mutated: true` arm through
-    /// `route()`. This test proves the wiring downstream of that flag is
-    /// correct today, so `T7` only has to prove it *sets* the flag.
+    /// `check_active` never sets `task_change` (it doesn't write anything),
+    /// so no request in that task's scope reached this path through the
+    /// real socket end to end; task-kanban/T7's mutating routes are the
+    /// first real callers of the `Some(..)` arm through `route()` — see
+    /// `tests/ipc_server.rs` for those end-to-end. This test proves the
+    /// wiring downstream of `task_change` is correct, and — new in
+    /// task-kanban/T7 — that the actual `TaskChangeInfo` reaches
+    /// `on_task_changed` untouched, not just that *some* signal fires.
     #[test]
     fn notify_if_mutated_dispara_apenas_quando_a_rota_sinaliza_mutacao() {
         let contador = Arc::new(AtomicUsize::new(0));
         let contador_clone = Arc::clone(&contador);
-        let on_task_changed: Arc<dyn Fn() + Send + Sync> = Arc::new(move || {
-            contador_clone.fetch_add(1, Ordering::SeqCst);
-        });
+        let recebido: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+        let recebido_clone = Arc::clone(&recebido);
+        let on_task_changed: Arc<dyn Fn(&TaskChangeInfo) + Send + Sync> =
+            Arc::new(move |info: &TaskChangeInfo| {
+                contador_clone.fetch_add(1, Ordering::SeqCst);
+                *recebido_clone.lock().unwrap() = Some(info.op.to_string());
+            });
 
         let server = IpcServer::new(
             Box::new(UnusedTransport),
@@ -910,13 +1027,23 @@ mod tests {
 
         let mutou = RouteResult {
             response: json!({"ok": true}),
-            mutated: true,
+            task_change: Some(TaskChangeInfo {
+                op: "created",
+                task: None,
+                task_id: 1,
+                previous_status: None,
+            }),
         };
         server.notify_if_mutated(&mutou);
         assert_eq!(
             contador.load(Ordering::SeqCst),
             1,
             "uma rota que mutou deve disparar on_task_changed exatamente uma vez"
+        );
+        assert_eq!(
+            recebido.lock().unwrap().as_deref(),
+            Some("created"),
+            "o TaskChangeInfo real deve chegar a on_task_changed, não só um sinal vazio"
         );
     }
 }

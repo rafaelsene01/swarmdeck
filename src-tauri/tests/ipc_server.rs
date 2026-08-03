@@ -74,7 +74,7 @@ fn spawn_server(label: &str) -> SpawnedServer {
         Arc::clone(&manager),
         Arc::clone(&db),
         Arc::clone(&terminal_meta),
-        Arc::new(|| {}), // sem AppHandle real em teste — ver server.rs para o teste de wiring
+        Arc::new(|_info| {}), // sem AppHandle real em teste — ver server.rs para o teste de wiring
     ));
 
     std::thread::spawn(move || server.serve());

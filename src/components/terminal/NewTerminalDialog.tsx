@@ -1,6 +1,8 @@
-// SPEC: agent-selection (AGT-01, AGT-03, AGT-04)
+// SPEC: agent-selection (AGT-01, AGT-03, AGT-04), multi-terminal (TERM-10, TERM-11)
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { open } from '@tauri-apps/plugin-dialog'
+import { invoke } from '@tauri-apps/api/core'
 import type { AgentDescriptor } from '../../routes/settings/AgentPanel'
 
 export interface NewTerminalDialogProps {
@@ -17,6 +19,14 @@ export interface NewTerminalDialogProps {
  * (AGT-01) mas a troca de agente aqui é local a esta sessão de terminal
  * (AGT-03): fica em `useState`, nunca chama nada que mute o padrão global —
  * a prop `defaultAgentId` não é reescrita, só usada como valor inicial.
+ *
+ * O campo "Diretório" é somente-leitura (TERM-10 AC3): a única forma de
+ * preenchê-lo é o seletor nativo de pastas do SO, aberto por "buscar pasta".
+ * Cancelar o seletor (`open()` resolve `null`) limpa `cwd` (TERM-10 AC4), e
+ * "criar" fica desabilitado enquanto `cwd` estiver vazio (TERM-10 AC5). O
+ * seletor abre no "último diretório usado" (TERM-11): buscado ao montar via
+ * `terminal_picker_last_dir` e atualizado via `terminal_picker_set_last_dir`
+ * após cada seleção bem-sucedida.
  */
 export default function NewTerminalDialog({
   agents,
@@ -27,6 +37,35 @@ export default function NewTerminalDialog({
 }: NewTerminalDialogProps) {
   const [cwd, setCwd] = useState('')
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(defaultAgentId)
+  const [lastDir, setLastDir] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    void invoke<string | null>('terminal_picker_last_dir').then((path) => {
+      if (!cancelled) {
+        setLastDir(path)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleBrowse = async () => {
+    const selected = await open({ directory: true, defaultPath: lastDir ?? undefined })
+
+    if (selected === null) {
+      setCwd('')
+      return
+    }
+
+    const path = Array.isArray(selected) ? selected[0] : selected
+    setCwd(path)
+    setLastDir(path)
+    void invoke('terminal_picker_set_last_dir', { path })
+  }
 
   const handleConfirm = () => {
     onConfirm(cwd, selectedAgentId)
@@ -35,12 +74,10 @@ export default function NewTerminalDialog({
   return (
     <div className="new-terminal-dialog" role="dialog" aria-label="novo terminal">
       <label htmlFor="new-terminal-cwd">Diretório</label>
-      <input
-        id="new-terminal-cwd"
-        type="text"
-        value={cwd}
-        onChange={(event) => setCwd(event.target.value)}
-      />
+      <input id="new-terminal-cwd" type="text" value={cwd} readOnly />
+      <button type="button" onClick={handleBrowse}>
+        buscar pasta
+      </button>
 
       <label htmlFor="new-terminal-agent">Agente</label>
       <select
@@ -66,7 +103,7 @@ export default function NewTerminalDialog({
         <button type="button" onClick={onCancel}>
           cancelar
         </button>
-        <button type="button" onClick={handleConfirm}>
+        <button type="button" onClick={handleConfirm} disabled={cwd === ''}>
           criar
         </button>
       </div>

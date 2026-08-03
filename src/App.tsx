@@ -1,11 +1,21 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-07, TERM-08)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-07, TERM-08), agent-selection (AGT-01, AGT-03, AGT-04)
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { invoke } from '@tauri-apps/api/core'
 import GridLayout, { type Pane } from './components/grid/GridLayout'
 import TerminalPane from './components/terminal/TerminalPane'
 import TerminalHeader from './components/terminal/TerminalHeader'
 import NewTerminalDialog from './components/terminal/NewTerminalDialog'
+import type { AgentDescriptor } from './routes/settings/AgentPanel'
 import { type TerminalState, maximize, minimize, restore, close } from './state/terminals'
+
+// SPEC: agent-selection (AGT-01, AGT-04)
+// Forma devolvida por `agent_catalog` (T5, invólucro sobre
+// `agents::catalog::detect_installed`, T1) — `AgentDescriptor` mais o status
+// de instalação, que aqui vira `installedIds` para o diálogo.
+interface AgentCatalogEntry extends AgentDescriptor {
+  installed: boolean
+}
 
 /** Limite do v1 — ver `spec.md` → "Fora de escopo" (mais de 4 terminais). */
 const MAX_TERMINALS = 4
@@ -37,6 +47,36 @@ function evenWidths(terminals: TerminalState[]): TerminalState[] {
 export default function App() {
   const [terminals, setTerminals] = useState<TerminalState[]>(() => [defaultTerminal()])
   const [dialogOpen, setDialogOpen] = useState(false)
+
+  // SPEC: agent-selection (AGT-01, AGT-03, AGT-04)
+  // Catálogo real e padrão efetivo, buscados uma vez no mount — antes disto
+  // `NewTerminalDialog` recebia `agents={[]}`/`defaultAgentId={null}` fixos
+  // (ver git blame / relatório da task T5) e a pré-seleção do padrão (AGT-01)
+  // e a marcação de "não instalado" (AGT-04) nunca aconteciam de verdade.
+  const [agents, setAgents] = useState<AgentDescriptor[]>([])
+  const [installedIds, setInstalledIds] = useState<Set<string>>(new Set())
+  const [defaultAgentId, setDefaultAgentId] = useState<string | null>(null)
+  // Agente escolhido por sessão (AGT-03): sobrescreve o padrão só para o
+  // terminal criado com aquela escolha, sem tocar a preferência global.
+  const [agentByTerminalId, setAgentByTerminalId] = useState<Record<string, string | null>>({})
+
+  useEffect(() => {
+    let cancelled = false
+
+    void invoke<AgentCatalogEntry[]>('agent_catalog').then((entries) => {
+      if (cancelled) return
+      setAgents(entries.map(({ installed: _installed, ...agent }) => agent))
+      setInstalledIds(new Set(entries.filter((entry) => entry.installed).map((entry) => entry.id)))
+    })
+
+    void invoke<string | null>('agent_default').then((id) => {
+      if (!cancelled) setDefaultAgentId(id)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const panes: Pane[] = terminals.map((t) => ({
     id: t.id,
@@ -72,10 +112,21 @@ export default function App() {
 
   const handleCloseTerminal = (id: string) => {
     setTerminals((prev) => evenWidths(close(prev, id)))
+    setAgentByTerminalId((prev) => {
+      const { [id]: _removed, ...rest } = prev
+      return rest
+    })
   }
 
-  const handleCreate = (cwd: string, _agentId: string | null) => {
-    setTerminals((prev) => evenWidths([...prev, { ...defaultTerminal(), cwd: cwd.trim() || '.' }]))
+  // SPEC: agent-selection (AGT-03)
+  // `agentId` escolhido no diálogo (troca local à sessão, `NewTerminalDialog`
+  // já garante isso) precisa sobreviver até `TerminalPane`/`pty_spawn` — antes
+  // desta task o parâmetro era descartado (`_agentId`) e todo terminal
+  // arrancava sem `agent`, caindo sempre no shell puro.
+  const handleCreate = (cwd: string, agentId: string | null) => {
+    const terminal = { ...defaultTerminal(), cwd: cwd.trim() || '.' }
+    setTerminals((prev) => evenWidths([...prev, terminal]))
+    setAgentByTerminalId((prev) => ({ ...prev, [terminal.id]: agentId }))
     setDialogOpen(false)
   }
 
@@ -144,18 +195,25 @@ export default function App() {
 
       <div className="app-toolbar">
         <span className="app-toolbar__title">SwarmDeck</span>
-        <button
-          type="button"
-          onClick={() => setDialogOpen(true)}
-          disabled={terminals.length >= MAX_TERMINALS}
-          title={
-            terminals.length >= MAX_TERMINALS
-              ? `Limite de ${MAX_TERMINALS} terminais atingido`
-              : undefined
-          }
-        >
-          + novo terminal
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            type="button"
+            onClick={() => setDialogOpen(true)}
+            disabled={terminals.length >= MAX_TERMINALS}
+            title={
+              terminals.length >= MAX_TERMINALS
+                ? `Limite de ${MAX_TERMINALS} terminais atingido`
+                : undefined
+            }
+          >
+            + novo terminal
+          </button>
+          {/* SPEC: settings-shell (SET-01) — abre/foca a janela dedicada de
+              Configurações; ver `src-tauri/src/windows/settings.rs`. */}
+          <button type="button" onClick={() => void invoke('settings_open')}>
+            Configurações
+          </button>
+        </div>
       </div>
 
       <div className="app-grid-area">
@@ -191,7 +249,7 @@ export default function App() {
                   onClose={() => handleCloseTerminal(terminal.id)}
                 />
                 <div className="app-pane__body">
-                  <TerminalPane cwd={terminal.cwd} />
+                  <TerminalPane cwd={terminal.cwd} agent={agentByTerminalId[terminal.id] ?? undefined} />
                 </div>
               </div>
             )
@@ -202,16 +260,9 @@ export default function App() {
       {dialogOpen && (
         <div className="app-dialog-backdrop">
           <NewTerminalDialog
-            // NOTA (DESVIO desta task): nenhum comando Tauri expõe o
-            // catálogo de agentes (`agents::catalog`/`detect_installed`)
-            // nem a preferência padrão (`agents::prefs`) ao frontend — gap
-            // da feature `agent-selection`, não desta. Lista vazia evita
-            // simular "instalado" para o que não foi checado; criar sem
-            // agente ainda funciona (T2 de `agent-selection` cai para shell
-            // puro).
-            agents={[]}
-            installedIds={new Set()}
-            defaultAgentId={null}
+            agents={agents}
+            installedIds={installedIds}
+            defaultAgentId={defaultAgentId}
             onConfirm={handleCreate}
             onCancel={() => setDialogOpen(false)}
           />

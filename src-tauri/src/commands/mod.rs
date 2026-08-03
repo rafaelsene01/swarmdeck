@@ -1,5 +1,7 @@
 //! Comandos Tauri expostos ao frontend.
 
+// SPEC: agent-selection (AGT-01, AGT-03, AGT-04)
+pub mod agents;
 pub mod projects;
 // SPEC: task-kanban (KAN-01, KAN-04)
 pub mod tasks;
@@ -12,3 +14,8 @@ pub mod update;
 // `invoke_handler!` (ver o relatório da task T1).
 #[path = "../windows/kanban.rs"]
 pub mod kanban;
+// SPEC: settings-shell (SET-01)
+// Mesmo mecanismo de `kanban.rs` acima: `settings.rs` mora em
+// `src-tauri/src/windows/` e é declarado aqui via `#[path]`.
+#[path = "../windows/settings.rs"]
+pub mod settings;

@@ -68,7 +68,7 @@ Olhar para 4 terminais e descobrir qual precisa de você exige ler a saída de c
 2. QUANDO o agente reporta uma atividade ENTÃO o sistema DEVE anexá-la ao log com horário e **não** alterar o título da aba
 3. QUANDO o usuário passa o mouse sobre o terminal ENTÃO o sistema DEVE mostrar a atividade mais recente
 4. QUANDO o usuário abre o log ENTÃO o sistema DEVE listar as atividades em ordem cronológica inversa, com horário
-5. QUANDO o usuário renomeia o terminal manualmente ENTÃO o nome do usuário DEVE vencer e títulos posteriores do agente DEVEM ser descartados
+5. ~~QUANDO o usuário renomeia o terminal manualmente ENTÃO o nome do usuário DEVE vencer e títulos posteriores do agente DEVEM ser descartados~~ — **revogado na triagem 006 (03/08/2026)**: era `STAT-07`, duplicava `multi-terminal/TERM-06`. Requisito e implementação agora vivem só em `multi-terminal/spec.md`
 6. QUANDO o log passa de 200 entradas ENTÃO o sistema DEVE descartar as mais antigas
 
 **Teste independente**: mandar 10 atividades seguidas e confirmar que o título da aba não mudou nenhuma vez.
@@ -99,16 +99,16 @@ Olhar para 4 terminais e descobrir qual precisa de você exige ler a saída de c
 
 | ID | História | Fase | Status |
 |---|---|---|---|
-| STAT-01 | P1: Badge de status | Design | Pending |
-| STAT-02 | P1: Catálogo — CRUD | Design | Pending |
-| STAT-03 | P1: Catálogo — ordem e prioridade | Design | Pending |
-| STAT-04 | P1: Propagação na próxima sessão | Design | Pending |
-| STAT-05 | P1: Título geral estável | Design | Pending |
-| STAT-06 | P1: Log de atividade | Design | Pending |
-| STAT-07 | P1: Rename manual vence | Design | Pending |
-| STAT-08 | P2: Filtro por status | — | Pending |
+| STAT-01 | P1: Badge de status | Tasks | Done no gate — `T4`, mas **não integrado ao header real** — ver "Cobertura" abaixo e `T5` (nova, triagem 006) |
+| STAT-02 | P1: Catálogo — CRUD | Tasks | Done — `T1, T3` |
+| STAT-03 | P1: Catálogo — ordem e prioridade | Tasks | Done — `T1, T3` |
+| STAT-04 | P1: Propagação na próxima sessão | Tasks | Done — `T2` |
+| STAT-05 | P1: Título geral estável | Tasks | Done no gate — `T4` |
+| STAT-06 | P1: Log de atividade | Tasks | Done no gate — `T4`, mesma ressalva de integração de STAT-01 |
+| STAT-07 | ~~P1: Rename manual vence~~ **REVOGADO** | — | **Revogado na triagem 006 (03/08/2026, decisão do usuário).** Duplicava `multi-terminal/TERM-06` (mesma regra: "rename manual do terminal vence o agente"). `TERM-06` fica como dono único do requisito — já é mais amplo (também cobre exibição de branch/git no header) e mora na feature que já possui `TerminalHeader`. A implementação (task nova) entra em `multi-terminal/tasks.md`, não aqui. |
+| STAT-08 | P2: Filtro por status | — | **Não coberto** — pertence à UI do Kanban (`task-kanban/BoardFilters.tsx` hoje só filtra por projeto e texto, não por status — `KAN-06` também não cita este requisito), sem task em nenhuma das duas features |
 
-**Cobertura:** 8 requisitos, 0 mapeados para tarefas ⚠️
+**Cobertura (corrigida na triagem 006, 02/08/2026 — a tabela dizia "0 mapeados" com `tasks.md` já tendo T1-T4 implementadas e testadas):** 8 requisitos, **6 mapeados no gate** (`STAT-01..06`), **2 sem cobertura nenhuma** (`STAT-07`, `STAT-08`) ⚠️. Dos 6 mapeados, `STAT-01`/`STAT-06` (badge e log) existem como componentes isolados e testados, mas `TerminalHeader.tsx` não os importa (`grep -n "StatusBadge\|ActivityLog" src/components/terminal/TerminalHeader.tsx` → vazio) — não visíveis a um usuário real hoje. Ver `T5` (nova, triagem 006) em `tasks.md`.
 
 ---
 

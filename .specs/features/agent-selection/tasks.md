@@ -119,13 +119,69 @@ multi-terminal/T5 → T1 → T2 → ┬→ T3 [P]
 - [ ] Card de agente não instalado é marcado, com explicação
 - [ ] Diálogo de novo terminal pré-seleciona o padrão e permite sobrescrever só naquela sessão
 - [ ] Gate passa: `cargo test --lib && npm run test`
-- [ ] Contagem: 4 testes passam (renderiza catálogo, selo de beta, marca não instalado, sobrescrita não altera o padrão)
+- [ ] Contagem: 4 testes passam (renderiza catálogo, selo de beta, marca não instalado — 3 em `AgentPanel.test.tsx`; sobrescrita não altera o padrão — 1 em `NewTerminalDialog.test.tsx`, não em `AgentPanel.test.tsx` como o `Verify` original sugeria) — esclarecido na triagem 006: `npm run test AgentPanel` sozinho mostra só 3
 
 **Tests**: unit · **Gate**: quick
 
-**Verify**: `npm run test AgentPanel` → 4 passam.
+**Verify**: `npm run test AgentPanel` → 3 passam; `npm run test NewTerminalDialog` → 1 passa (o 4º teste). Texto original dizia "4 passam" só com o filtro `AgentPanel` — corrigido na triagem 006.
 
 **Commit**: `feat(ui): agent selection panel and new terminal dialog`
+
+---
+
+### T5: Expor o catálogo de agentes ao frontend e usar o agente escolhido de verdade (nova, triagem 006)
+
+**O quê**: Dois gaps reais achados na auditoria desta triagem, independentes da questão de onde a UI de configurações vai morar (ver `⛔ NEEDS-DECISION` abaixo — essa parte fica de fora desta task): (1) nenhum comando Tauri expõe `agents::catalog`/`detect_installed`/`prefs::resolve_effective_default` ao frontend — `App.tsx` hoje passa `agents={[]}`, `installedIds={new Set()}`, `defaultAgentId={null}` fixos ao `NewTerminalDialog`, então a pré-seleção do padrão (AGT-01) e a marcação de "não instalado" (AGT-04) nunca acontecem de verdade; (2) mesmo quando o usuário troca o agente no diálogo, `App.tsx::handleCreate` descarta a escolha (`_agentId`, parâmetro nunca repassado) — a sobrescrita por sessão (AGT-03) não chega ao `pty_spawn`, que já aceita um campo `agent` (`commands/terminal.rs::pty_spawn`).
+**Onde**: `src-tauri/src/commands/agents.rs` (novo — `agent_catalog`, `agent_default` ou equivalente, invólucros finos sobre `agents::catalog`/`agents::prefs`), `src-tauri/src/lib.rs` (registra os comandos novos no `invoke_handler!`), `src/App.tsx` (busca o catálogo real no mount, repassa `agentId` de `handleCreate` para `pty_spawn`)
+**Depende de**: nenhuma (não depende da UI de Settings existir — só do diálogo de novo terminal, que já está montado)
+**Reusa**: `agents::catalog::detect_installed`, `agents::prefs::resolve_effective_default` (T1-T3, já existem e testados), `pty_spawn` (multi-terminal/T6, já aceita `agent: Option<String>`)
+**Requisito**: AGT-01, AGT-03, AGT-04
+
+**Ferramentas**: MCP: NENHUM · Skill: NENHUMA
+
+**Done when**:
+- [ ] `App.tsx` busca o catálogo real e o padrão efetivo no mount, e passa isso ao `NewTerminalDialog` em vez de `[]`/`null` fixos
+- [ ] `handleCreate` repassa o `agentId` escolhido para `pty_spawn`
+- [ ] Terminal criado com um agente específico realmente inicia esse agente (não só o shell puro)
+- [ ] Gate passa: `cargo build && npm run build`
+
+**Tests**: none *(fiação — a lógica de catálogo/preferência já é testada em T1/T3; comandos são invólucro fino)* · **Gate**: build
+
+**Verify**: `uat-agent` — abrir "novo terminal", confirmar que a lista de agentes reflete o catálogo real (não vazia) e que o padrão vem pré-selecionado; trocar para outro agente instalado e confirmar que o terminal criado roda esse agente, não o shell puro.
+
+**Commit**: `feat(agents): expose catalog to frontend and honor chosen agent on spawn`
+
+---
+
+> ✅ **Resolvida na triagem 006 (03/08/2026, decisão do usuário).** `AgentPanel.tsx` (T4) segue sem janela real, mas a decisão foi: cria-se uma feature nova, `settings-shell`, dona do container — não entra dentro desta feature. `AgentPanel` fica montado dentro dela quando `settings-shell/T2` fechar (`.specs/features/settings-shell/tasks.md`). `T5` (acima) resolve a sobrescrita por sessão via `NewTerminalDialog`, que já está na tela, independente disso.
+
+---
+
+### T6: Resumir ou iniciar nova sessão do agente (nova, sessão de 03/08/2026)
+
+**O quê**: Implementa AGT-06 — persistir o identificador da última sessão (conversa) de cada par projeto+agente, oferecer "Resume Session"/"New Session" na tela de agente, e lançar o CLI com a flag/mecanismo de retomada equivalente a `--resume` quando o usuário escolhe retomar.
+**Onde**: `src-tauri/src/agents/session.rs` (novo — persistência do último `session_id`/`conversation_id` por `(project_id, agent_id)`), migração nova (número a confirmar), `src-tauri/src/agents/launch.rs` (modifica — aceita `resume: bool`), `src/components/terminal/NewTerminalDialog.tsx` (passo AGENT — botões "Resume Session"/"New Session")
+**Depende de**: T2 (lançamento do agente), `projects/T1` (projeto precisa existir para ter `project_id`)
+**Reusa**: `agents::launch` (T2), catálogo (T1, cada agente precisa de um campo indicando se suporta retomada)
+**Requisito**: AGT-06
+
+**Ferramentas**: MCP: NENHUM · Skill: NENHUMA
+
+**Done when**:
+- [ ] Migração cria tabela de sessão por `(project_id, agent_id)` guardando o identificador necessário para retomar
+- [ ] Depois de uma sessão nova, o par projeto+agente passa a ter uma sessão retomável
+- [ ] "Resume Session" só aparece habilitado quando existe sessão anterior **e** o agente escolhido suporta retomada
+- [ ] Escolher "Resume Session" lança o CLI com a flag de retomada (ex.: `--resume`) apontando para a sessão persistida
+- [ ] Escolher "New Session" lança normalmente (AGT-03) e a sessão resultante vira a nova candidata de retomada
+- [ ] Retomada que falha cai para "New Session" automaticamente e avisa (ver Casos de borda da spec)
+- [ ] Gate passa: `cargo test`
+- [ ] Contagem: 6 testes passam (grava sessão nova, sem sessão anterior desabilita Resume, agente sem suporte a resume desabilita Resume, resume lança com flag correta, resume atualiza sessão candidata, falha na retomada cai para New Session)
+
+**Tests**: integration · **Gate**: full
+
+**Verify**: `cargo test agents::session` → 6 passam.
+
+**Commit**: `feat(agents): resume or start new agent session per project`
 
 ---
 
@@ -137,6 +193,8 @@ multi-terminal/T5 → T1 → T2 → ┬→ T3 [P]
 | T2 | 1 comportamento de lançamento | ✅ |
 | T3 | 1 preferência + 1 migração | ✅ coeso |
 | T4 | 2 componentes irmãos, mesmo fluxo | ✅ coeso |
+| T5 | 2 gaps de fiação, mesmo componente | ✅ coeso |
+| T6 | 1 migração + 1 comportamento de retomada | ✅ coeso |
 
 ## Check 2 — Diagrama × definição
 
@@ -146,6 +204,8 @@ multi-terminal/T5 → T1 → T2 → ┬→ T3 [P]
 | T2 | T1 | T1→T2 | ✅ |
 | T3 | T2 | T2→T3 [P] | ✅ |
 | T4 | T2 | T2→T4 [P] | ✅ |
+| T5 | — (nenhuma, gap de fiação) | não diagramada | ⚠️ nota |
+| T6 | T2, projects/T1 | não diagramada | ⚠️ nota |
 
 ⚠️ T3 tem `Tests: integration`, que **não é parallel-safe** por TESTING.md. O `[P]` vale para o código, mas na execução T3 e T4 não devem rodar suítes ao mesmo tempo — T4 é Vitest e T3 é `cargo test`, suítes distintas sem recurso compartilhado, então o par específico é seguro. **Regra**: T3 nunca em paralelo com outra tarefa `integration` de Rust.
 
@@ -157,5 +217,7 @@ multi-terminal/T5 → T1 → T2 → ┬→ T3 [P]
 | T2 | gerência PTY | integration | integration | ✅ |
 | T3 | banco/prefs | integration | integration | ✅ |
 | T4 | componente React com lógica | unit | unit | ✅ |
+| T5 | comandos Tauri (finos) + fiação de App.tsx | none | none | ✅ |
+| T6 | banco/sessão | integration | integration | ✅ |
 
 Nenhuma violação.

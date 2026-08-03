@@ -11,7 +11,7 @@ Inventário derivado da varredura de UI de 28/07/2026. Ver `.specs/research/UI-I
 
 **Não é um milestone**: é a faixa que atravessa todos eles. Está aqui porque uma parte entra **agora**, antes do M1 fechar, e o resto depende de existir um app que valha a pena instalar.
 
-**Release e distribuição** — IN PROGRESS. 10 de 21 tarefas `✅ Done` (`T1, T3, T4, T13, T14, T15, T16, T17, T18, T20` — o Bloco D inteiro fechou na run `spec-loop` 004, 01/08/2026); `T2, T21` implementadas e verificadas localmente, mas o push já aconteceu (fora desta skill, entre a 004 e a 005) e o CI real rodou duas vezes — **as duas falharam**, por um bug ainda não diagnosticado em `agent_prefs.rs` no Linux (ver `STATE.md`, AD de 02/08/2026); `T5` (chave de assinatura), a cadeia `T6–T12`, e `T19` (verificação ponta a ponta) são `human-only`. → `.specs/features/release-distribution/`
+**Release e distribuição** — IN PROGRESS. **Corrigido na triagem 006 (02/08/2026): o release realmente saiu.** `origin/master` está em `5c81ed2` (`chore(release): v0.1.1`, tag `v0.1.1`), 1 commit à frente do HEAD auditado nesta triagem (`259b96e`) — publicado fora desta skill entre a triagem 005 e esta. `gh run list` confirma `CI` verde em `259b96e` (`30778057309`) e `Release` verde via `workflow_dispatch` (`30778409874`, 03/08/2026 02:05 UTC). Isso resolve, na prática, o bloqueio que `T2/T21` registravam ("CI real rodou duas vezes, as duas falharam") — **não re-auditado tarefa a tarefa nesta triagem** (`T5`, a cadeia `T6-T12`, `T19` continuam com o texto antigo em `tasks.md`, pendente de uma passada dedicada para reconciliar cada uma contra o release real). 10 de 21 tarefas `✅ Done` no gate antes desta descoberta (`T1, T3, T4, T13-T18, T20`) — **ressalva**: `T3` (`git-cliff`) segue com 2 de 4 itens `[ ]` e nota "git-cliff não instalado" ainda válida (`git cliff --version` falha), então "Done" ali é otimista; `UpdateSettings.tsx` (T17) segue sem janela real até `settings-shell` entregar o container. Ver `project/STATE.md`. → `.specs/features/release-distribution/`
 
 | Bloco | O que entrega | Entra quando |
 |---|---|---|
@@ -29,22 +29,24 @@ Inventário derivado da varredura de UI de 28/07/2026. Ver `.specs/research/UI-I
 
 ### Features
 
-**Multi-terminal em grid** — 11 de 12 tarefas `✅ Done`; `T6` confirmado visualmente (run 004); `T7, T9, T10, T11` com gate automatizado passando mas `Verify` visual pendente de **`T12` (nova, triagem 005, 02/08/2026)** — a task que finalmente monta `GridLayout`/`TerminalPane`/`TerminalHeader` em `App.tsx`, hoje ainda o placeholder do scaffolding → `.specs/features/multi-terminal/`
+**Multi-terminal em grid** — 12 de 15 tarefas `✅ Done no gate`; `T12` (montagem real de `App.tsx`) **já executada e confirmada** (`multi-terminal/tasks.md` tem a seção "Verify (executado)" da run 005, 02/08/2026, com achados reais registrados: divisória não redimensiona visualmente, scrollback perdido ao minimizar/restaurar, persistência de layout não integrada) — **corrigido na triagem 006 (02/08/2026)**: esta linha ainda dizia `App.tsx` "hoje ainda o placeholder do scaffolding", o que já era falso desde a run 005; `App.tsx` monta a árvore real (`GridLayout`/`TerminalPane`/`TerminalHeader`/`NewTerminalDialog`) → `.specs/features/multi-terminal/`. **+3 tarefas (T13, T14, T15), pendentes**, adicionadas em 02/08/2026 para `TERM-10`/`TERM-11` — seletor nativo de pasta ao criar terminal.
 - Grid de até 4 terminais com divisórias arrastáveis
 - PTY real por terminal (shell nativo do SO)
 - Header por terminal: título, número, badge de status, ações
 - Fechar / maximizar / minimizar terminal
 - Persistência de layout entre reinícios
 
-**Seleção de agente** — 4 de 4 tarefas `✅ Done` (run `spec-loop` 004, 01/08/2026) → `.specs/features/agent-selection/`
+**Seleção de agente** — 4 de 4 tarefas `✅ Done no gate` (run `spec-loop` 004, 01/08/2026), **+1 tarefa nova (T5)** para usar de verdade o agente escolhido no `pty_spawn` (achado: `App.tsx::handleCreate` descartava `agentId`). O card de padrão global (`AgentPanel.tsx`) segue sem janela até `settings-shell` (nova feature, ver abaixo) entregar o container — **achado na triagem 006 (02/08/2026)**, ver `project/STATE.md` → `.specs/features/agent-selection/`
 - Catálogo de agentes: Claude Code, Codex CLI, Antigravity CLI, opencode, Kimi Code
 - Agente padrão configurável, sobrescrevível por sessão
 - Indicador do agente ativo no header do terminal
 
-**Projetos** — 4 de 4 tarefas `✅ Done` (run `spec-loop` 004, 01/08/2026) → `.specs/features/projects/`
+**Projetos** — 4 de 4 tarefas `✅ Done no gate` (run `spec-loop` 004, 01/08/2026), mas o CRUD de projeto por UI (`ProjectsPanel.tsx`) tem o mesmo gap de `agent-selection`: nunca é importado fora do próprio teste. A resolução automática por diretório (`PROJ-03/04`) roda no backend e não depende dessa UI. **Achado na triagem 006 (02/08/2026), desbloqueado por `settings-shell` (nova feature, ver abaixo)** → `.specs/features/projects/`
 - CRUD de projeto: nome, diretório, cor
 - Detecção automática do projeto pelo diretório do terminal
 - Contagem de tarefas por projeto, ordenação por último uso
+
+**Janela de Configurações (settings-shell)** — NOVA (triagem 006, 03/08/2026, decisão do usuário). Container que faltava para `AgentPanel`, `ProjectsPanel`, `StatusesPanel` e `UpdateSettings` — todos já existiam prontos e testados, nenhum alcançável. **Não redesenha nenhum dos 4 painéis** (ver `settings-shell/spec.md` → "Fora de escopo") — só entrega a janela, a navegação entre eles, e monta os componentes que já existem. 0 de 2 tarefas → `.specs/features/settings-shell/`
 
 ---
 
@@ -61,13 +63,13 @@ Inventário derivado da varredura de UI de 28/07/2026. Ver `.specs/research/UI-I
 - Auto-detecção de terminal e projeto a partir do ambiente da sessão
 - Handshake `check_active` — agentes fora do app ignoram o protocolo
 
-**Kanban de tarefas** — IN PROGRESS (liberada na triagem 005, 02/08/2026) → `.specs/features/task-kanban/`
+**Kanban de tarefas** — IN PROGRESS — 6 de 8 tarefas `✅ Done no gate` (`T1-T6`), mas **inacessível a um usuário real**: a janela "Kanban" hoje mostra o grid de terminais (não existe rota/roteamento no front) e o evento de atualização em tempo real (`task_changed`) é emitido com payload vazio, quebrando `useTaskStore` em runtime. `+2 tarefas novas (T7, T8)`, adicionadas na triagem 006 (02/08/2026), para montar o board real e o formulário de criação manual → `.specs/features/task-kanban/`
 - Janela dedicada, 4 colunas: Pending / In Progress / In Testing / Completed
 - Card: chip de projeto, número, título, descrição, data, excluir, enviar-ao-terminal
 - Filtro por projeto, busca textual, ordenação por coluna
 - Fluxo obrigatório de teste: In Progress → In Testing → Completed
 
-**Status e atividade de terminal** — IN PROGRESS (liberada na triagem 005, 02/08/2026) → `.specs/features/terminal-statuses/`
+**Status e atividade de terminal** — IN PROGRESS — 4 de 5 tarefas `✅ Done no gate` (`T1-T4`), mas o badge/log (`T4`) não está integrado ao `TerminalHeader` real — existe só como componente isolado testado. `+1 tarefa nova (T5)`, adicionada na triagem 006 (02/08/2026), para montar o badge/log no header real. O CRUD do catálogo (`StatusesPanel.tsx`, T3) segue sem janela até `settings-shell` entregar o container. `STAT-07` foi **revogado** (duplicava `multi-terminal/TERM-06`) → `.specs/features/terminal-statuses/`
 - Catálogo editável de status (label, cor, instrução para o agente, ordem)
 - Badge colorido no terminal
 - Título geral fixo + log de atividade cronológico

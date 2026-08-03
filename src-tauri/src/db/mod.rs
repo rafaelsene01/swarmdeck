@@ -21,12 +21,13 @@ pub use settings::{auto_check, is_version_skipped, set_auto_check, skip_version}
 ///
 /// A ordem desta lista **é** a ordem de aplicação. Migrações novas entram
 /// no fim, sempre com versão maior — nunca reordenar nem reciclar número.
-// SPEC: release-distribution (REL-34, REL-23), mcp-task-server (MCP-02, MCP-08), agent-selection (AGT-01)
+// SPEC: release-distribution (REL-34, REL-23), mcp-task-server (MCP-02, MCP-08), agent-selection (AGT-01), multi-terminal (TERM-11)
 const MIGRATIONS: &[(i64, &str)] = &[
     (1, include_str!("migrations/001_terminal_layout.sql")),
     (2, include_str!("migrations/002_settings.sql")),
     (3, include_str!("migrations/003_tasks.sql")),
     (4, include_str!("migrations/004_agent_prefs.sql")),
+    (5, include_str!("migrations/005_terminal_picker_prefs.sql")),
 ];
 
 /// Conexão com o banco do app, já migrada.

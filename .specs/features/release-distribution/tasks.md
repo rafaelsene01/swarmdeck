@@ -218,12 +218,12 @@ T12 ─────────────────────────�
 - [x] A pasta montada contém executável, recursos e o marcador `.portable` — `scripts/make-portable.test.mjs:33-45` (executável + marcador), `:47-64` (recursos, quando presentes) — linhas corrigidas na triagem 005
 - [x] Um `LEIA-ME.txt` explica que apagar o marcador tira o app do modo portátil — `scripts/make-portable.test.mjs:66-70` (linha corrigida na triagem 005)
 - [x] Gate passa: `npm run test:scripts` — 25/25 (17 pré-existentes + 8 novos, ver T8) — reconfirmado na triagem 005
-- [x] Contagem de testes: 6 unit — confirmado
-- [ ] **Achado do auditor, triagem 005: o caminho *default* do binário está errado para este workspace.** `stageBundle`/`main()` resolvem `binary` para `join(ROOT, "src-tauri", "target", "release", "SwarmDeck.exe")` (`make-portable.mjs:118`) quando `--binary` não é passado — e `release.yml:225` chama o script **sem** `--binary`. Mas `Cargo.toml` da raiz declara `[workspace]`; um build real sai em `<raiz>/target/release/`, não em `src-tauri/target/release/` (confirmado: `cargo build --workspace` → binário em `./target/debug/...`; `src-tauri/target` não existe). Os 6 testes unitários passam `binary` explicitamente e nunca exercitam esse default — por isso o gate isolado fica verde enquanto o caminho real do release quebraria com "binary not found". Mesma classe de lacuna do bug de `T6`: gate verde, integração real nunca provada.
+- [x] Contagem de testes: ~~6~~ **8** unit — corrigido na triagem 006 (`node --test scripts/make-portable.test.mjs` → 8 tests, 8 pass)
+- [x] **Achado do auditor, triagem 005 — CORRIGIDO, confirmado na triagem 006.** O caminho *default* do binário estava errado (`join(ROOT, "src-tauri", "target", ...)` quando `--binary` não é passado). Hoje `defaultBinaryPath()` resolve sob `<raiz>/target/release/`, com 2 testes novos que verificam exatamente isso ("the default binary path resolves under the workspace's own target/, not src-tauri/target/", "running without --binary reports the workspace target/ path, not src-tauri/target/ path") — é o que explica os 8 testes (eram 6). Corrigido no commit `bc7ab64` ("Fix release workflow to correctly add files for commit").
 
 **Tests**: unit · **Gate**: scripts
 
-**Verify**: rodar contra um build local e descompactar o zip — o executável abre a partir da pasta descompactada. **Não executado nesta run** (exige binário Windows compilado; fora do escopo desta task, que cobre as funções puras). **Triagem 005: se executado com o default atual, falharia** — ver achado acima.
+**Verify**: rodar contra um build local e descompactar o zip — o executável abre a partir da pasta descompactada. **Confirmado indiretamente**: a `Release v0.1.1` publicada em 03/08/2026 (`gh run list`, ver `project/STATE.md`) rodou este script dentro do pipeline real e o workflow teve sucesso — não é o mesmo que abrir o zip manualmente, mas é evidência mais forte que "não executado".
 
 **Commit**: `feat(release): build the windows portable bundle`
 
@@ -434,7 +434,7 @@ T12 ─────────────────────────�
 - [ ] `.old` remanescente é apagado no boot seguinte
 - [ ] Download interrompido descarta o parcial
 - [ ] Gate passa: `cargo test --lib && npm run test`
-- [ ] Contagem de testes: 8 unit
+- [ ] Contagem de testes: ~~8~~ **9** unit — corrigido na triagem 006 (`cargo test --lib update::portable:: -- --list` → 9 tests)
 - [ ] **Verificação manual declarada**: a troca real e o relançamento não são automatizáveis aqui — ficam para T19
 
 **Tests**: unit · **Gate**: quick

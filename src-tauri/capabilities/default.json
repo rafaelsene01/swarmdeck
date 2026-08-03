@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Capability padrão da janela principal do SwarmDeck.",
   "windows": ["main"],
-  "permissions": ["core:default", "updater:default"]
+  "permissions": ["core:default", "updater:default", "dialog:default"]
 }

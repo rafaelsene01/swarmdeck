@@ -1,4 +1,4 @@
-// SPEC: task-kanban (KAN-01, KAN-02)
+// SPEC: task-kanban (KAN-01, KAN-02, KAN-03, KAN-04)
 
 /**
  * Raiz do board Kanban. Possui o único estado real (`useTaskStore`,
@@ -17,17 +17,26 @@
  * comentário lá), e `label`/`emptyLabel` **são** obrigatórios e ficam a
  * cargo de quem monta as 4 colunas — exatamente esta task (comentário de
  * `Column.tsx`: "decidida por quem monta as 4 colunas (KanbanBoard, T3)").
- * Ações do card (abrir detalhe, excluir, enviar-ao-terminal) continuam
- * fora daqui — Column já expõe `onOpenTask`/`onDeleteTask`/`onSendTask`
- * como opcionais, e ligá-los é escopo de T6 (KAN-04/KAN-07), não de
- * KAN-01/KAN-02.
+ *
+ * T7 (triagem 006): as ações do card (abrir detalhe, excluir,
+ * enviar-ao-terminal) ficaram sem dono depois de T3/T6 — `Column`/`TaskCard`
+ * já expunham `onOpenTask`/`onDeleteTask`/`onSendTask`, mas nada aqui os
+ * repassava, e nenhum outro arquivo montava `TaskDetail` dentro do board.
+ * Esta task fecha isso: `onOpenTask` guarda o id selecionado e monta
+ * `TaskDetail`; `onDeleteTask` pede confirmação (mesmo padrão de
+ * `TerminalHeader.tsx`'s `window.confirm`, já que `TaskCard` deliberadamente
+ * não confirma sozinho) e chama `task_delete`; `onSendTask` chama
+ * `task_send` diretamente — os dois comandos já existem e são testados em
+ * `src-tauri/src/commands/tasks.rs`/`tasks::send`.
  */
 
 import { useCallback, useMemo, useState } from 'react'
+import { invoke } from '@tauri-apps/api/core'
 import type { Task, TaskStatus } from '../../types/tasks'
 import { groupByStatus, STATUS_ORDER, useTaskStore } from './useTaskStore'
 import BoardFilters from './BoardFilters'
 import Column from './Column'
+import TaskDetail from './TaskDetail'
 
 const COLUMN_LABEL: Record<TaskStatus, string> = {
   pending: 'Pending',
@@ -50,6 +59,7 @@ export default function KanbanBoard() {
 
   const allTasks = useMemo(() => [...tasks.values()], [tasks])
   const [filteredTasks, setFilteredTasks] = useState<Task[]>(allTasks)
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
 
   // Referência estável: `BoardFilters` depende desta função no `useEffect`
   // que a chama, e uma nova função a cada render faria esse efeito
@@ -59,6 +69,39 @@ export default function KanbanBoard() {
   }, [])
 
   const columns = useMemo(() => groupByStatus(filteredTasks), [filteredTasks])
+
+  const handleOpenTask = useCallback((task: Task) => {
+    setSelectedTaskId(task.id)
+  }, [])
+
+  const handleCloseDetail = useCallback(() => {
+    setSelectedTaskId(null)
+  }, [])
+
+  // KAN-03 critério 4: `TaskCard` dispara a exclusão direto (não confirma
+  // sozinho — ver o comentário de `TaskCard.tsx`), então a confirmação mora
+  // aqui, no mesmo padrão de `TerminalHeader.tsx`'s `window.confirm`.
+  const handleDeleteTask = useCallback((task: Task) => {
+    const confirmado = window.confirm(`Excluir a tarefa #${task.id} "${task.title}"?`)
+    if (!confirmado) return
+    invoke('task_delete', { id: task.id }).catch(() => {
+      // `task_changed` (evento `deleted`) já reconcilia a UI em caso de
+      // sucesso; uma falha aqui não deixa a tarefa num estado incoerente —
+      // ela simplesmente continua visível.
+    })
+  }, [])
+
+  // KAN-04 critério 5: injeta o contexto no terminal de origem e foca a
+  // janela principal — ambos já feitos por `task_send`
+  // (`src-tauri/src/commands/tasks.rs`, delegando a `tasks::send::send`).
+  const handleSendTask = useCallback((task: Task) => {
+    invoke('task_send', { id: task.id }).catch(() => {
+      // Mesmo tratamento silencioso de `TaskDetail.tsx`'s `handleSend` para
+      // o card compacto: o botão já fica desabilitado quando
+      // `terminalAlive` é falso, então uma falha aqui é a corrida "morreu
+      // entre o render e o clique" (`design.md` → Tratamento de erros).
+    })
+  }, [])
 
   return (
     <div className="kanban-board">
@@ -72,9 +115,16 @@ export default function KanbanBoard() {
             label={COLUMN_LABEL[status]}
             emptyLabel={COLUMN_EMPTY_LABEL[status]}
             tasks={columns[status]}
+            onOpenTask={handleOpenTask}
+            onDeleteTask={handleDeleteTask}
+            onSendTask={handleSendTask}
           />
         ))}
       </div>
+
+      {selectedTaskId !== null && (
+        <TaskDetail taskId={selectedTaskId} onClose={handleCloseDetail} />
+      )}
     </div>
   )
 }

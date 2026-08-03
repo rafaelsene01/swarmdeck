@@ -19,8 +19,16 @@
 | T10 Max/min/fechar | ⚠️ Done (gate quick) — **Verify PARCIAL na run 005 (uat-agent, 02/08/2026): maximizar/fechar confirmados; minimizar→restaurar PERDE o scrollback do período minimizado — o próprio critério de Verify da task (`ping -t`, minimizar, restaurar) falhou.** | 4 unit (plano: 4) |
 | T11 Persistência | ⛔ Done (gate full) — **NEEDS-DECISION na run 005 (uat-agent, 02/08/2026): TERM-07 confirmado como não integrado ao frontend.** | 4 integration (plano: 4) |
 | T12 Montar `App.tsx` | 🆕 Criada na triagem 005 (02/08/2026) — pronta para execução | — (fiação, gate build) |
+| T13 Persistência do último diretório | 🆕 Criada nesta demanda (02/08/2026) — pronta para execução | integration (plano: 4) |
+| T14 Plugin de diálogo nativo + comandos | 🆕 Criada nesta demanda (02/08/2026) — depende de T13 | — (invólucro/config, gate build) |
+| T15 `NewTerminalDialog` — seletor de pasta | 🆕 Criada nesta demanda (02/08/2026) — depende de T14 | unit (plano: 5) |
+| T16 Rename manual do terminal | 🆕 Criada na triagem 006 (03/08/2026) — pronta para execução | — (fiação, gate build) |
+| T17 Montar picker Project→Agent dentro do painel vazio | 🆕 Criada nesta sessão (03/08/2026) — depende de `projects/T8`, `agent-selection/T4` | — (fiação, gate build) |
+| T18 `terminal::shutdown` — detectar fechamento inesperado | 🆕 Criada nesta sessão (03/08/2026) — depende de T2, T11 | integration (plano: 5) |
+| T19 `RestoreSessionModal` | 🆕 Criada nesta sessão (03/08/2026) — depende de T18, `agent-selection/T6` | unit (plano: 4) |
+| T20 Sinalização "sem remote" no header | 🆕 Criada nesta sessão (03/08/2026) — depende de T9, `projects/T5` | unit (plano: 2) |
 
-**Total atual: 40 testes passando** — `cargo test` = 31 (11 lib + 5 db + 4 layout + 6 manager + 5 session); `npm run test` = 9 (5 GridLayout + 4 terminals). Ver relatório de execução para a saída bruta de cada gate.
+**Total na época (antes de T12, mcp-task-server e task-kanban existirem): 40 testes** — `cargo test` = 31 (5 throttle + 5 db + 4 layout + 6 manager + 5 session, + outros do crate na época; "11 lib" da versão original deste número não correspondia a nenhuma suíte específica desta feature — corrigido na triagem 006); `npm run test` = 9 (5 GridLayout + 4 terminals). **Estes números estão desatualizados e não devem ser usados como baseline** — o workspace inteiro hoje (triagem 006, 03/08/2026) mede `cargo test` = 180 passando / 0 falhas (16 suítes) e `npm run test` = 67 testes / 15 arquivos / 0 falhas, cobrindo todas as features implementadas até agora, não só `multi-terminal`. Ver relatório de execução original para a saída bruta de cada gate daquela época.
 
 **Verify visual — atualização da run 004 (01/08/2026, spec-loop, modo direto, item `uat-agent`):** desta vez o ambiente TINHA display gráfico e o agente conseguiu subir o app, conectar por CDP (Chrome DevTools Protocol, via `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222`) e dirigir a janela real — a limitação registrada em 31/07/2026 (sem display) NÃO se repetiu. **T6 foi CONFIRMADO**: `pty_spawn` invocado pelo console do DevTools (a UI não tem botão de "novo terminal" ainda), bytes reais de `cmd.exe` chegaram pelo `Channel` (incluindo o handshake DSR `[6n` documentado no design.md).
 
@@ -81,6 +89,20 @@ paralelo. Combinação válida: `T8` ao lado de `T7` **ou** de `T9`, nunca `T7` 
 ```
 T7, T8, T9 → T10 → T11
 ```
+
+### Fase 5 — Seletor de pasta do terminal (sequencial: T14 registra o plugin que T15 consome; T13 é a base de dados de ambas)
+```
+T13 → T14 → T15
+```
+Não depende de T12 em código (não toca `App.tsx`), mas conceitualmente só faz sentido depois do fluxo real de "novo terminal" estar montado — por isso listada como última fase.
+
+### Fase 6 — Picker de projeto/agente inline e restauração após crash (nova, 03/08/2026)
+```
+T15, projects/T8, agent-selection/T4 → T17
+T2, T11 → T18 → T19 (também depende de agent-selection/T6)
+T9, projects/T5 → T20
+```
+T17, T18/T19 e T20 são independentes entre si — podem rodar em paralelo `[P]` (arquivos diferentes: `App.tsx`/painel de terminal, `terminal/shutdown.rs` + `RestoreSessionModal.tsx`, `TerminalHeader.tsx`).
 
 ---
 
@@ -451,6 +473,215 @@ Executado em 02/08/2026 pelo `uat-agent` da run 005, app real dirigido via CDP (
 
 ---
 
+### T13: Persistência do último diretório do seletor
+
+**O quê**: Migração + módulo que lembram o último diretório escolhido no seletor de pasta, entre reinícios do app — mesmo padrão de linha única não seedada de `agents::prefs`.
+**Onde**: `src-tauri/src/db/migrations/005_terminal_picker_prefs.sql`, `src-tauri/src/terminal/picker_prefs.rs`, `src-tauri/src/terminal/mod.rs` (declara o módulo)
+**Depende de**: T2 (camada de banco)
+**Reusa**: padrão de `src-tauri/src/agents/prefs.rs` (`agent_prefs`, linha única `id = 1`, ausência de linha = "nunca escolhido")
+**Requisito**: TERM-11
+
+**Ferramentas**: MCP: NENHUM · Skill: NENHUMA
+
+**Done when**:
+- [ ] Migração `005` cria `terminal_picker_prefs (id INTEGER PRIMARY KEY, last_dir TEXT)`, sem seed
+- [ ] `last_dir(conn)` devolve `None` num banco novo, `Some(path)` depois de `set_last_dir`
+- [ ] `set_last_dir(conn, path)` faz upsert — chamar duas vezes com paths diferentes substitui, nunca duplica linha
+- [ ] Gate passa: `cargo test`
+- [ ] Contagem: 4 testes passam (banco novo devolve `None`, set→get round-trip, set duas vezes substitui, migração idempotente)
+
+**Tests**: integration · **Gate**: full
+
+**Verify**: `cargo test picker_prefs::` → 4 passam. Abrir o `.db` gerado e conferir a tabela.
+
+**Commit**: `feat(terminal): persist last picker directory`
+
+---
+
+### T14: Plugin de diálogo nativo e comandos de leitura/gravação
+
+**O quê**: Registrar `tauri-plugin-dialog` (Rust + frontend) e expor `terminal_picker_last_dir` / `terminal_picker_set_last_dir` como comandos Tauri finos sobre `picker_prefs` (T13). O diálogo de pasta em si é aberto direto do frontend pelo plugin — nenhum comando Rust novo abre o seletor.
+**Onde**: `src-tauri/Cargo.toml` (dependência `tauri-plugin-dialog`), `src-tauri/src/lib.rs` (`.plugin(tauri_plugin_dialog::init())` + registro dos 2 comandos no `invoke_handler`), `src-tauri/src/commands/terminal.rs` (os 2 comandos), `src-tauri/capabilities/default.json` (permission do plugin — confirmar identificador exato na doc do plugin ao implementar, não assumir), `package.json` (dependência `@tauri-apps/plugin-dialog`)
+**Depende de**: T13
+**Reusa**: `picker_prefs` (T13), mesmo padrão de invólucro fino de `commands/terminal.rs` (T6)
+**Requisito**: TERM-10, TERM-11
+
+**Ferramentas**: MCP: NENHUM · Skill: NENHUMA
+
+**Done when**:
+- [ ] Plugin registrado no `Builder` e aparece disponível ao frontend (`@tauri-apps/plugin-dialog` importável sem erro de permissão)
+- [ ] `terminal_picker_last_dir` retorna `Option<String>` delegando a `picker_prefs::last_dir`
+- [ ] `terminal_picker_set_last_dir(path)` delega a `picker_prefs::set_last_dir`
+- [ ] Capability da janela `main` autoriza o diálogo de pasta (`open` com `directory: true`) sem prompt de permissão negado em runtime
+- [ ] Gate passa: `cargo build && npm run build`
+
+**Tests**: none *(invólucro fino + configuração de plugin/capability — lógica já coberta em T13)* · **Gate**: build
+
+**Verify**: `npm run tauri dev`, chamar `terminal_picker_last_dir`/`terminal_picker_set_last_dir` pelo console do devtools e confirmar round-trip. Confirmar que `capabilities/default.json` não bloqueia a chamada de `open()` do plugin de diálogo (testável já nesta task, mesmo sem UI, chamando `open()` pelo console).
+
+**Commit**: `feat(terminal): register dialog plugin and picker-dir commands`
+
+---
+
+### T15: `NewTerminalDialog` — campo somente-leitura com seletor nativo
+
+> **Correção de contexto (03/08/2026, observação ao vivo do app de referência)**: o botão que abre este seletor deixa de se chamar "buscar pasta" solto num diálogo de novo terminal — é o botão "Import Project" dentro do passo PROJECT do painel inline (ver T17 abaixo e `projects/spec.md` PROJ-06). Os critérios de aceite (TERM-10, TERM-11) e o `Done when` abaixo continuam válidos como escritos; só o botão/tela que os aciona mudou de nome e de container.
+
+**O quê**: Trocar o `<input type="text">` de "Diretório" por um campo somente-leitura + botão "buscar pasta" que abre o seletor nativo do SO, restrito a diretórios, seguindo as regras da spec (TERM-10: cancelar limpa o campo, "criar" desabilitado sem pasta escolhida; TERM-11: seletor abre no último diretório usado).
+**Onde**: `src/components/terminal/NewTerminalDialog.tsx` (modifica)
+**Depende de**: T14
+**Reusa**: `open()` de `@tauri-apps/plugin-dialog`, `invoke()` de `@tauri-apps/api/core` (já em uso no projeto — ver `UpdateSettings.tsx`, `TerminalPane.tsx`)
+**Requisito**: TERM-10, TERM-11
+
+**Ferramentas**: MCP: NENHUM · Skill: NENHUMA
+
+**Done when**:
+- [ ] Campo "Diretório" não aceita digitação — `readOnly` ou trocado por texto estático
+- [ ] Ao montar o diálogo, busca `terminal_picker_last_dir` e guarda como `defaultPath` candidato para o próximo `open()`
+- [ ] Botão "buscar pasta" chama `open({ directory: true, defaultPath })`; seleção bem-sucedida seta `cwd` e chama `terminal_picker_set_last_dir`
+- [ ] Cancelar o seletor (`open()` resolve `null`) limpa `cwd`
+- [ ] Botão "criar" fica `disabled` enquanto `cwd` estiver vazio
+- [ ] Gate passa: `cargo build && npm run test`
+- [ ] Contagem: 5 testes passam (seleção preenche `cwd` e persiste, cancelar limpa `cwd`, "criar" desabilitado com `cwd` vazio, "criar" habilitado após seleção, `defaultPath` do `open()` usa o valor de `terminal_picker_last_dir`) — mocks de `@tauri-apps/plugin-dialog` e `@tauri-apps/api/core`, mesmo padrão de mock usado nos testes existentes que tocam `invoke`
+
+**Tests**: unit · **Gate**: quick
+
+**Verify**: `npm run test NewTerminalDialog` → 5 passam (cobre a lógica). ⚠️ **O diálogo nativo do SO em si não é uma superfície do webview** — CDP/Playwright (o driver usado pelo `uat-agent` nas demais tasks desta feature) não consegue clicar em janelas nativas do sistema operacional, só no DOM da página. Por isso, diferente de T7/T9/T10/T11/T12, esta task **não tem `Verify` de `uat-agent` automatizável para a abertura real do seletor** — só a lógica em torno dele (o que os 5 testes cobrem). A confirmação de que o seletor nativo realmente abre, mostra pastas e responde a Esc/seleção fica como **verificação manual do mantenedor**, uma vez, ao rodar `npm run tauri dev` e clicar em "buscar pasta" — registrar aqui o resultado quando feita, não presumir.
+
+**Commit**: `feat(ui): native folder picker for new terminal directory`
+
+---
+
+### T16: Rename manual do terminal — comando + UI (nova, triagem 006)
+
+**O quê**: Implementa TERM-06 (metade "rename manual") — absorve `terminal-statuses/STAT-07`, revogada na triagem 006 por descrever a mesma regra ("rename manual do terminal vence o agente"). A lógica de domínio **já existe e já é testada**: `TerminalMetaService::set_title(id, title, TitleSource::User)` (`src-tauri/src/terminal/meta.rs`, feature `mcp-task-server`) já implementa "rename manual nunca é sobrescrito pelo agente" (`rename_manual_do_usuario_vence_chamada_seguinte_do_agente`, teste passando). Falta só a ponte: nenhum comando Tauri expõe esse método ao frontend, e `TerminalHeader.tsx` não tem nenhuma UI de renomear (nem duplo-clique, nem input, nem botão).
+**Onde**: `src-tauri/src/commands/terminal.rs` (novo comando, ex. `terminal_set_title`, invólucro fino sobre `TerminalMetaService::set_title` com `TitleSource::User`), `src-tauri/src/lib.rs` (registra no `invoke_handler!`), `src/components/terminal/TerminalHeader.tsx` (UI de rename — duplo-clique no título vira input, `Enter`/blur confirma, `Esc` cancela)
+**Depende de**: T9 (header já existe)
+**Reusa**: `TerminalMetaService::set_title` (mcp-task-server, já existe e testado — não reimplementar a regra de negócio aqui, só expor e consumir)
+**Requisito**: TERM-06 (rename manual)
+
+**Ferramentas**: MCP: NENHUM · Skill: NENHUMA
+
+**Done when**:
+- [ ] Duplo-clique no título do header abre um campo editável com o valor atual
+- [ ] Confirmar (Enter/blur) chama o comando novo com `TitleSource::User`
+- [ ] `Esc` cancela sem persistir
+- [ ] Depois de um rename manual, o agente chamando `set_terminal_title` (MCP) não sobrescreve — já garantido pela lógica existente, este item só confirma que a UI usa o mesmo caminho
+- [ ] Gate passa: `cargo build && npm run build`
+
+**Tests**: none *(fiação sobre lógica já testada em `meta.rs` — mesmo padrão de `multi-terminal/T12`)* · **Gate**: build
+
+**Verify**: `uat-agent` — renomear um terminal pela UI, depois fazer um agente real (ou chamada MCP simulada) tentar mudar o título — confirmar que o nome manual persiste.
+
+**Commit**: `feat(ui): manual terminal rename wins over agent title`
+
+> **Nota de escopo, não agendada nesta triagem**: a outra metade de `TERM-06` (branch git + contagem de arquivos modificados no header) continua sem task — fica para uma próxima rodada de planejamento.
+
+---
+
+### T17: Montar o picker Project→Agent dentro do painel de terminal vazio [P]
+
+**O quê**: Substituir a suposição de "diálogo de novo terminal" (modal flutuante) pelo componente inline real: quando um slot do grid está ocioso ("INITIALIZE AGENT — Select project to deploy agents"), clicar nele (ou no "+" da toolbar) monta, **dentro do próprio painel**, o passo a passo "① PROJECT → ② AGENT" — `ProjectPicker` (`projects/T8`) seguido da tela de agente (`agent-selection`, componente de UI de T4/T6 daquela feature). Ao confirmar em qualquer ponta (seleção de projeto + agente + Resume/New Session), o painel deixa de mostrar o picker e passa a hospedar `TerminalHeader` + `TerminalPane` normalmente.
+**Onde**: `src/App.tsx` (ou `src/components/terminal/TerminalPane.tsx`, dependendo de onde o estado "ocioso vs configurado" já vive após T12 — confirmar ao implementar), `src/components/terminal/NewTerminalDialog.tsx` (deixa de ser modal, vira o conteúdo do passo AGENT dentro do painel)
+**Depende de**: T15 (nesta feature), `projects/T8` (`ProjectPicker`), `agent-selection/T4` e `agent-selection/T6` (UI de seleção de agente e Resume/New Session)
+**Reusa**: `ProjectPicker` (projects), UI de agente (agent-selection), `pty_spawn` (T6)
+**Requisito**: TERM-10, TERM-11 (contexto), PROJ-06, PROJ-07, AGT-06 (integração — nenhum requisito novo aqui, só a fiação entre features)
+
+**Ferramentas**: MCP: NENHUM · Skill: NENHUMA
+
+**Done when**:
+- [ ] Slot de terminal vazio mostra o passo PROJECT ao ser acionado, não um modal separado
+- [ ] Selecionar um projeto (ou "No Project") avança para o passo AGENT dentro do mesmo painel
+- [ ] Confirmar agente + Resume/New Session spawna o terminal real (`pty_spawn`) com `cwd` do projeto escolhido
+- [ ] "X" no picker devolve o painel ao estado ocioso, sem criar terminal
+- [ ] Gate passa: `cargo build && npm run build`
+
+**Tests**: none *(fiação entre componentes já testados individualmente em suas próprias features)* · **Gate**: build
+
+**Verify**: `uat-agent` — a partir de um painel vazio, escolher um projeto existente, escolher agente com "New Session", confirmar que o terminal nasce no diretório certo; repetir escolhendo "No Project" e confirmar que nasce em `<app_data_dir>/sandbox`.
+
+**Commit**: `feat(ui): inline project/agent picker replaces new-terminal dialog`
+
+---
+
+### T18: `terminal::shutdown` — detectar fechamento inesperado [P]
+
+**O quê**: Implementar o mecanismo descrito em `design.md` (seção `terminal::shutdown`, TERM-12): flag de linha única `app_shutdown_state` setada como "sujo" no boot e só marcada "limpo" no shutdown normal; função que lista os terminais restauráveis a partir de `terminal_layout`.
+**Onde**: `src-tauri/src/db/migrations/00N_app_shutdown_state.sql` (número a confirmar no momento da implementação — regra "quem chegar primeiro pega o número"), `src-tauri/src/terminal/shutdown.rs`
+**Depende de**: T2 (camada de banco), T11 (tabela `terminal_layout` já existe e guarda o necessário para montar `RestorableTerminal`)
+**Reusa**: padrão de linha única de `agents::prefs`/`picker_prefs` (T13)
+**Requisito**: TERM-12
+
+**Ferramentas**: MCP: NENHUM · Skill: NENHUMA
+
+**Done when**:
+- [ ] Migração cria `app_shutdown_state (id INTEGER PRIMARY KEY, clean INTEGER NOT NULL DEFAULT 0)`
+- [ ] Boot seta `clean = 0` antes de qualquer outra coisa
+- [ ] `mark_clean_shutdown` seta `clean = 1`, chamado no handler de fechamento da janela principal, antes do `kill` dos PTYs
+- [ ] `was_clean(conn)` lido no próximo boot reflete o valor real
+- [ ] `restorable_candidates(conn)` monta `Vec<RestorableTerminal>` a partir da última foto de `terminal_layout`
+- [ ] Gate passa: `cargo test`
+- [ ] Contagem: 5 testes passam (boot seta sujo, shutdown limpo seta 1, was_clean lê corretamente, candidatos montados da última foto, banco vazio → lista vazia)
+
+**Tests**: integration · **Gate**: full
+
+**Verify**: `cargo test terminal::shutdown` → 5 passam.
+
+**Commit**: `feat(terminal): detect unclean shutdown for session restore`
+
+---
+
+### T19: `RestoreSessionModal` [P]
+
+**O quê**: Modal exibido no boot quando `was_clean() == false`, listando os candidatos restauráveis com checkbox, contador de slots e as ações "Start Fresh" / "Restore Selected".
+**Onde**: `src/components/terminal/RestoreSessionModal.tsx` (novo), `src/App.tsx` (monta condicionalmente no mount, antes de montar o grid normal)
+**Depende de**: T18, `agent-selection/T6` (Resume Session — "Restore Selected" retoma a sessão do agente de cada terminal marcado)
+**Reusa**: catálogo de agentes (para o ícone de cada linha), `pty_spawn` (T6, com `resume: true`)
+**Requisito**: TERM-12
+
+**Ferramentas**: MCP: NENHUM · Skill: NENHUMA
+
+**Done when**:
+- [ ] Modal aparece só quando há candidatos e o último shutdown não foi limpo
+- [ ] Cada linha mostra checkbox (pré-marcado), ícone do agente, nome do projeto (ou "Sandbox"), título da conversa
+- [ ] Contador "N/M selected · K terminal slots available" atualiza a cada toggle, nunca deixa marcar mais que 4 no total
+- [ ] "Restore Selected" spawna só os marcados, com retomada de sessão
+- [ ] "Start Fresh" fecha o modal sem spawnar nada — app abre com todos os painéis ociosos
+- [ ] Gate passa: `cargo test --lib && npm run test`
+- [ ] Contagem: 4 testes passam (renderiza candidatos, contador atualiza, limite de 4 respeitado, Start Fresh não spawna)
+
+**Tests**: unit · **Gate**: quick
+
+**Verify**: `npm run test RestoreSessionModal` → 4 passam.
+
+**Commit**: `feat(ui): restore-previous-session modal after unclean shutdown`
+
+---
+
+### T20: Sinalização "sem remote" no header do terminal [P]
+
+**O quê**: Quando o terminal aponta para um repositório git sem `remote` configurado, exibir um indicador visível no header — complementa TERM-06 (branch já previsto) e fecha PROJ-09 AC3.
+**Onde**: `src/components/terminal/TerminalHeader.tsx` (modifica)
+**Depende de**: T9 (header já existe), `projects/T5` (backend de git init/checagem de remote)
+**Reusa**: dado de git já lido para o branch (TERM-06, parte pendente — se essa leitura ainda não existir, esta task só consome o campo `git: { branch, changes, hasRemote }` do `TerminalSnapshot`, sem reimplementar a leitura de git)
+**Requisito**: PROJ-09 (AC3)
+
+**Ferramentas**: MCP: NENHUM · Skill: NENHUMA
+
+**Done when**:
+- [ ] Repositório git sem remote mostra um indicador (ex.: badge "no remote") no header
+- [ ] Repositório com remote configurado, ou diretório que não é repositório git, não mostra o indicador
+- [ ] Gate passa: `cargo test --lib && npm run test`
+- [ ] Contagem: 2 testes passam (mostra indicador sem remote, não mostra com remote/fora de git)
+
+**Tests**: unit · **Gate**: quick
+
+**Verify**: `npm run test TerminalHeader` → 2 passam (os novos, somados aos já existentes).
+
+**Commit**: `feat(ui): flag missing git remote in terminal header`
+
+---
+
 ## Check 1 — Granularidade
 
 | Tarefa | Escopo | Status |
@@ -466,6 +697,15 @@ Executado em 02/08/2026 pelo `uat-agent` da run 005, app real dirigido via CDP (
 | T9 TerminalHeader | 1 componente | ✅ |
 | T10 Max/min/fechar | 1 comportamento, 2 arquivos | ✅ coeso |
 | T11 Persistência | 1 comportamento | ✅ |
+| T12 Montar `App.tsx` | 1 integração, fiação | ✅ |
+| T13 Persistência do último diretório | 1 migração + 1 módulo | ✅ |
+| T14 Plugin de diálogo + comandos | 1 plugin, 2 invólucros finos | ✅ coeso |
+| T15 `NewTerminalDialog` — seletor | 1 componente (modifica) | ✅ |
+| T16 Rename manual | 1 comando + 1 UI, fiação | ✅ coeso |
+| T17 Montar picker inline | 1 integração cross-feature, fiação | ✅ |
+| T18 `terminal::shutdown` | 1 migração + 1 módulo | ✅ |
+| T19 `RestoreSessionModal` | 1 componente | ✅ |
+| T20 Sinalização "sem remote" | 1 componente (modifica) | ✅ |
 
 Nenhuma tarefa precisa ser dividida.
 
@@ -484,6 +724,14 @@ Nenhuma tarefa precisa ser dividida.
 | T9 | T6 | T6→T9 [P] | ✅ |
 | T10 | T7,T8,T9 | T7,T8,T9→T10 | ✅ |
 | T11 | T10, T2 | T10→T11 | ✅ (T2 é dep transitiva, já satisfeita) |
+| T13 | T2 | Fase 5, raiz | ✅ |
+| T14 | T13 | T13→T14 | ✅ |
+| T15 | T14 | T14→T15 | ✅ |
+| T16 | T9 | Fase 6 (implícito) | ✅ |
+| T17 | T15, projects/T8, agent-selection/T4 | Fase 6 | ✅ |
+| T18 | T2, T11 | Fase 6 | ✅ |
+| T19 | T18, agent-selection/T6 | Fase 6 | ✅ |
+| T20 | T9, projects/T5 | Fase 6 | ✅ |
 
 > ⚠️ **Nota**: T3 depende só de T1, não de T2. O diagrama da Fase 1 mostra `T1→T2→T3` por ser uma cadeia de execução sequencial, não de dependência real. T3 poderia rodar em paralelo com T2 — mas como T2 tem `Tests: integration` (não paralelizável) e T3 é curta, a sequência é mantida de propósito. Dependência real registrada corretamente no corpo da tarefa.
 
@@ -502,9 +750,17 @@ Nenhuma tarefa precisa ser dividida.
 | T9 | componente apresentacional | none | none | ✅ |
 | T10 | componente React com lógica | unit | unit | ✅ |
 | T11 | banco + estado | integration | integration | ✅ |
+| T13 | migração/camada de banco | integration | integration | ✅ |
+| T14 | comando Tauri (invólucro fino) + config de plugin | none | none | ✅ |
+| T15 | componente React com lógica (não mais puramente apresentacional) | unit | unit | ✅ |
+| T16 | comando Tauri (fino) + UI de rename | none | none | ✅ |
+| T17 | fiação cross-feature | none | none | ✅ |
+| T18 | migração/camada de banco | integration | integration | ✅ |
+| T19 | componente React com lógica | unit | unit | ✅ |
+| T20 | componente React com lógica | unit | unit | ✅ |
 
 Nenhuma violação. Nenhum `Tests: none` justificado por "testado em outra tarefa".
 
 ## Paralelismo
 
-Só T7, T8 e T9 são `[P]` — todas com `Tests` em `none` ou `unit`, ambos parallel-safe pela avaliação em TESTING.md. Toda tarefa com `Tests: integration` (T2, T4, T5, T11) roda sequencial por disputar arquivo SQLite, socket ou processos reais.
+T7, T8, T9 e (nesta sessão) T17, T18, T19, T20 são `[P]` entre si dentro de suas respectivas fases — todos com `Tests` em `none` ou `unit`/`unit`-equivalente exceto T18 (`integration`, disputa SQLite). T18 não roda em paralelo com outra tarefa `integration` de Rust (mesma regra já aplicada a T2, T4, T5, T11, T13). T13→T14→T15 também rodam sequenciais entre si (cadeia de dependência direta, sem paralelismo possível).

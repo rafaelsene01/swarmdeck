@@ -26,7 +26,7 @@ use serde::Serialize;
 use tauri::{AppHandle, State};
 
 use crate::db::Db;
-use crate::ipc::server::emit_task_changed;
+use crate::ipc::server::{emit_task_changed, TaskChangeInfo};
 use crate::projects::service::{self as project_service, Project};
 use crate::tasks::send::{self, SendError};
 use crate::tasks::service::{self as task_service, Task};
@@ -102,7 +102,11 @@ pub fn task_get(
     get_with_project(db.conn(), &terminal_manager, id)
 }
 
-fn get_with_project(
+// task-kanban/T7: `pub(crate)` (was private) so `ipc::server::IpcServer` can
+// build the exact same camelCase/project-embedded/`terminalAlive` shape for
+// `task_changed`'s payload instead of re-deriving it — see
+// `IpcServer::task_dto_json`.
+pub(crate) fn get_with_project(
     conn: &Connection,
     terminal_manager: &TerminalManager,
     id: i64,
@@ -126,7 +130,19 @@ fn get_with_project(
 pub fn task_delete(app: AppHandle, db: State<'_, Mutex<Db>>, id: i64) -> Result<(), String> {
     let db = db.lock().expect("db mutex poisoned");
     task_service::delete(db.conn(), id).map_err(|e| e.to_string())?;
-    emit_task_changed(&app);
+    // task-kanban/T7: `op: "deleted"` carries `task: None` per
+    // `TaskChangedEvent`'s contract (`src/types/tasks.ts`) — the row is
+    // gone, so there is nothing to embed, and `useTaskStore.ts`'s
+    // `applyTaskChangedEvent` only ever removes by `taskId` for this op.
+    emit_task_changed(
+        &app,
+        &TaskChangeInfo {
+            op: "deleted",
+            task: None,
+            task_id: id,
+            previous_status: None,
+        },
+    );
     Ok(())
 }
 

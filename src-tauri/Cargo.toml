@@ -43,6 +43,14 @@ semver = "1"
 # Versão reconfirmada no crates.io em 01/08/2026 (T16): minisign-verify 0.2.5.
 minisign-verify = "0.2.5"
 
+# SPEC: multi-terminal (TERM-10, TERM-11)
+# Seletor nativo de pasta usado pelo `NewTerminalDialog` (T15) para escolher
+# o diretório de trabalho do terminal. Versão confirmada no crates.io em
+# 03/08/2026 (T14): tauri-plugin-dialog 2.7.2 (exige `tauri ^2.10`,
+# satisfeito por `tauri = "2"` acima, mesma faixa que tauri-plugin-updater
+# já usa).
+tauri-plugin-dialog = "2.7.2"
+
 [dev-dependencies]
 tempfile = "3"
 # SPEC: release-distribution (REL-19, REL-21, REL-24)

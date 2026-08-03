@@ -16,7 +16,7 @@ O produto não é um cliente de um agente só. O usuário quer rodar Claude Code
 |---|---|
 | Instalar os CLIs dos agentes | O app usa o que já estiver no PATH; instalar é responsabilidade do usuário |
 | Gerenciar credenciais/API keys dos agentes | Cada CLI cuida da própria autenticação |
-| **Turbo Mode** | Feature PRO do original, não observável |
+| **Turbo Mode** | Feature PRO do original. **Confirmado em 03/08/2026**: o toggle "Turbo" agora *foi* observado na tela de agente (`Captura de tela 2026-08-03 003653.png`, linha "OPTIONS", ao lado de "Git Worktree"), mas o usuário decidiu manter fora de escopo — a matriz de paywall (`UI-INVENTORY.md`) confirma Turbo Mode como PRO (✗ no Starter), e a linha desta tabela não é revogada, só deixa de ser "não observável" para virar "observado e propositalmente excluído" |
 
 ---
 
@@ -64,6 +64,8 @@ Observados na instalação de referência:
 
 **Teste independente**: abrir dois terminais com agentes diferentes ao mesmo tempo e confirmar que ambos funcionam.
 
+**Nota de integração (03/08/2026)**: a mesma tela de agente mostra uma linha "OPTIONS" com um toggle "Git Worktree" (`Captura de tela 2026-08-03 003653.png`). Isso não é um requisito novo desta feature — é o ponto de acionamento de `worktrees/spec.md` (WT-01: "QUANDO o usuário abre uma conversa com worktree marcado ENTÃO o sistema DEVE criar um worktree git..."). Nenhum ID novo é criado aqui; fica registrado só para a Design saber onde esse toggle mora na UI.
+
 ---
 
 ### P2: Identificação visual do agente
@@ -88,12 +90,36 @@ Observados na instalação de referência:
 
 ---
 
+### P1: Retomar ou iniciar nova sessão do agente ⭐ MVP
+
+**Novo em 03/08/2026** — observado ao vivo no CodeAgentSwarm de referência, não fazia parte da spec anterior. Decisão do usuário nesta sessão: entra no núcleo v1 (o clone libera tudo que constrói, mesmo que no original isso se aproxime da feature PRO "Conversation History" — ver nota abaixo).
+
+**História**: Como desenvolvedor que já trabalhou num projeto antes, quero retomar a conversa de onde parei com aquele agente, em vez de começar do zero toda vez que abro um terminal novo para o mesmo projeto.
+
+**Por que P1**: É a razão de existir do botão "Resume Session" observado na tela de agente — sem isso, o passo AGENT sempre inicia sessão nova, perdendo o contexto acumulado.
+
+**Observado em**: `.specs/research/screenshots/Captura de tela 2026-08-03 003653.png` — botões "Resume Session / PICK UP WHERE YOU LEFT OFF" e "New Session / START FRESH"
+
+**Critérios de aceite**:
+1. QUANDO o passo AGENT é exibido para um projeto com uma sessão anterior daquele agente ENTÃO o sistema DEVE oferecer "Resume Session" (com o subtítulo "PICK UP WHERE YOU LEFT OFF") como opção pré-destacada, ao lado de "New Session" ("START FRESH")
+2. QUANDO não existe sessão anterior daquele agente para aquele projeto ENTÃO "Resume Session" NÃO DEVE aparecer como opção habilitada — só "New Session" é possível
+3. QUANDO o usuário clica em "Resume Session" ENTÃO o sistema DEVE lançar o CLI do agente com a flag/mecanismo de retomada equivalente ao `--resume` (o exato depende do CLI escolhido — ver Design), no `cwd` do projeto selecionado
+4. QUANDO o usuário clica em "New Session" ENTÃO o sistema DEVE lançar o CLI normalmente (comportamento já coberto por AGT-03), e essa nova sessão passa a ser a candidata de "Resume Session" da próxima vez
+5. QUANDO o agente escolhido não suporta retomada de sessão (nem todo CLI do catálogo tem esse recurso) ENTÃO "Resume Session" DEVE ficar oculto ou desabilitado para esse agente, mostrando só "New Session"
+
+**Nota sobre paywall**: a matriz de features do original (`UI-INVENTORY.md`) lista "Conversation History" (busca e restauração de conversas antigas) como PRO. "Resume Session" aqui é mais restrito — só a **última** sessão daquele projeto+agente, não um histórico buscável — e o usuário decidiu tratá-la como núcleo v1 mesmo assim, já que o clone não tem paywall.
+
+**Teste independente**: abrir um projeto pela primeira vez (só "New Session" disponível), rodar uma sessão, fechar o terminal, abrir de novo o mesmo projeto+agente e confirmar que "Resume Session" aparece e retoma o contexto.
+
+---
+
 ## Casos de borda
 
 - QUANDO o CLI do agente existe mas falha ao iniciar ENTÃO o sistema DEVE mostrar o erro no painel do terminal e manter a sessão utilizável
 - QUANDO o agente padrão é removido do sistema ENTÃO o sistema DEVE cair para o primeiro agente disponível e avisar
 - QUANDO nenhum agente do catálogo está instalado ENTÃO o app DEVE continuar funcional como multiplexador de terminais
 - QUANDO o usuário troca o agente padrão ENTÃO sessões já abertas NÃO DEVEM ser afetadas
+- QUANDO o usuário clica "Resume Session" (AGT-06) e a retomada falha (ex.: histórico corrompido, CLI mudou de formato) ENTÃO o sistema DEVE cair para "New Session" automaticamente e avisar, em vez de travar o passo AGENT
 
 ---
 
@@ -106,8 +132,9 @@ Observados na instalação de referência:
 | AGT-03 | P1: Sobrescrita por sessão | Tasks | Done — `T2, T4` |
 | AGT-04 | P2: Identificação visual | Tasks | Done — `T2, T4` |
 | AGT-05 | P2: Escopo por agente | Tasks | **Não coberto** — nenhuma task de `tasks.md` cita este ID. "Escopo por agente nas features de extensão" depende de features de M3 (MCP/Skills) que ainda não existem — plausivelmente adiado por dependência, mas isso nunca foi registrado em `ROADMAP.md` nem `STATE.md` |
+| AGT-06 | P1: Retomar ou nova sessão | Tasks | **Novo 03/08/2026** — Pending |
 
-**Cobertura (corrigida na triagem 005 — a tabela dizia "0 mapeados" com a feature 100% `✅ Done` em `tasks.md`):** 5 requisitos, **4 mapeados e implementados**, 1 sem cobertura (`AGT-05`) ⚠️
+**Cobertura:** 6 requisitos, **4 mapeados e implementados** (AGT-01 a 04), **2 sem cobertura** (`AGT-05` — adiado por dependência de M3; `AGT-06` — novo, ainda sem task) ⚠️
 
 ---
 

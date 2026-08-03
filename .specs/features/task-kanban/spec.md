@@ -121,16 +121,16 @@ Com vários agentes trabalhando em paralelo, o backlog vira o único lugar onde 
 
 | ID | História | Fase | Status |
 |---|---|---|---|
-| KAN-01 | P1: Board 4 colunas | Design | Pending |
-| KAN-02 | P1: Atualização em tempo real | Design | Pending |
-| KAN-03 | P1: Card de tarefa | Design | Pending |
-| KAN-04 | P1: Enviar-ao-terminal | Design | Pending |
-| KAN-05 | P1: Fluxo obrigatório de teste | Design | Pending |
-| KAN-06 | P2: Filtro e busca | — | Pending |
-| KAN-07 | P2: Criação manual | — | Pending |
-| KAN-08 | P3: Janela dedicada | — | Pending |
+| KAN-01 | P1: Board 4 colunas | Tasks | Done no gate — `T2, T3, T4` |
+| KAN-02 | P1: Atualização em tempo real | Tasks | **Quebrado na prática** — `T3` implementado e testado, mas `emit_task_changed` (`src-tauri/src/ipc/server.rs`) emite o evento `task_changed` com payload **vazio** (`app.emit("task_changed", ())`), enquanto `useTaskStore.ts` espera `{ op, task, taskId, previousStatus }` sem guarda de nulo — ver "Não coberto/quebrado" abaixo e `T7` em `tasks.md` |
+| KAN-03 | P1: Card de tarefa | Tasks | Done no gate — `T4, T6` |
+| KAN-04 | P1: Enviar-ao-terminal | Tasks | Done no gate — `T2, T6` |
+| KAN-05 | P1: Fluxo obrigatório de teste | Tasks | Done — implementado em `mcp-task-server/T3` (`TaskService`, máquina de estados compartilhada), não numa task própria deste arquivo |
+| KAN-06 | P2: Filtro e busca | Tasks | Done no gate — `T5` |
+| KAN-07 | P2: Criação manual | Tasks | **Parcial** — só o critério 3 (tarefa manual entra em `Pending` pelo mesmo `TaskService`) está coberto, estruturalmente, por `T6`. Critérios 1-2 (formulário com título/descrição/projeto, bloqueio de título vazio) **não têm task nenhuma**: nenhum `Onde` de `tasks.md` cita um componente de formulário/criação manual, e não existe `TaskForm.tsx` nem equivalente no código (`grep -rn "TaskForm\|CreateTask" src/` → vazio). Ver `T8` (nova, triagem 006) em `tasks.md` |
+| KAN-08 | P3: Janela dedicada | Tasks | Done no gate — `T1`, mas a janela aponta para o mesmo `index.html` da principal (sem rota `/kanban` real) — ver `T7` |
 
-**Cobertura:** 8 requisitos, 0 mapeados para tarefas ⚠️
+**Cobertura (corrigida na triagem 006, 02/08/2026 — a tabela dizia "0 mapeados" com `tasks.md` já tendo 180 testes Rust + testes Vitest reais passando para T1-T6):** 8 requisitos, **7 mapeados nesta feature + 1 (`KAN-05`) mapeado em `mcp-task-server/T3`** — cobertura de requisito completa. **Mas "mapeado" aqui significa gate automatizado verde, não uso real**: nenhuma das 6 tasks é alcançável por um usuário de verdade hoje — `src/main.tsx` sempre monta `<App/>` (o grid de terminais), nunca `KanbanBoard`, porque não existe `react-router` nem qualquer outro mecanismo de rota no projeto (`grep -n "router" package.json` → vazio). Abrir a janela "Kanban" mostra uma segunda cópia do grid de terminais. Ver `T7` (nova, triagem 006) em `tasks.md` — mesma classe de gap que `multi-terminal/T12` resolveu antes dela.
 
 ---
 

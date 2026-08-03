@@ -2,9 +2,11 @@
 
 As tarefas vivem em `features/<feature>/tasks.md`. Este documento é o único lugar que mostra as **dependências entre features** — que os arquivos individuais só referenciam de passagem.
 
-**38 tarefas.** 13 podem rodar em paralelo; 25 são sequenciais.
+**60 tarefas.** 17 podem rodar em paralelo; 43 são sequenciais.
 
-*(Corrigido na triagem 001 — 28/07/2026. Dizia "37 tarefas, 12 paralelas", mas a contagem de headers `### T` nos seis `tasks.md` de M1/M2 dá 38, e os marcadores `[P]` dão 13 — que é exatamente a lista enumerada no fim deste documento. A conta 12+25=37 fechava sozinha e por isso ninguém notou.)*
+*(Recontado na run `spec-loop` 007 — 03/08/2026, item de bookkeeping transversal da triagem 006. Contagem anterior (triagem 001, 28/07/2026): 38 tarefas, 13 `[P]`. Desde então, sete `tasks.md` de M1/M2 ganharam tarefas novas — `multi-terminal` T13-T20 (8), `agent-selection` T5-T6 (2), `task-kanban` T7-T8 (2), `terminal-statuses` T5 (1), e a feature nova `settings-shell` T1-T2 (2), que passa a contar neste documento por também ser M1. `grep -cE '^### T' features/*/tasks.md` nos sete arquivos (`multi-terminal`, `agent-selection`, `mcp-task-server`, `projects`, `terminal-statuses`, `task-kanban`, `settings-shell`) dá 20+6+10+9+5+8+2 = **60**. `grep -nE '^### T.*\[P\]'` nos mesmos sete dá **17**: `multi-terminal` T7-T9,T17-T20 (7), `agent-selection` T3-T4 (2), `mcp-task-server` T8 (1), `projects` T3-T4 (2), `terminal-statuses` T3-T4 (2), `task-kanban` T3-T5 (3), `settings-shell` nenhuma (0). 60-17=43 sequenciais.
+
+**O que esta recontagem NÃO fez** — para não inventar dependência não verificada: o diagrama `mermaid` e a tabela "Onda a onda" abaixo continuam descrevendo só o escopo original de M1/M2 (as 38 tarefas da triagem 001) — não foram re-derivados para incluir as 22 tarefas novas listadas acima. Re-desenhar o grafo de ondas inteiro exigiria mapear dependência real de cada tarefa nova contra as demais, o que é mais próximo de replanejamento do que de bookkeeping — fica como item futuro, não coberto por esta run.)*
 
 ---
 
@@ -94,7 +96,7 @@ Por `codebase/TESTING.md`:
 - Tarefas Vitest são livremente paralelizáveis entre si
 - Uma tarefa `cargo test` e uma Vitest podem coexistir: suítes distintas, sem estado compartilhado
 
-**13 tarefas paralelizáveis**: `mt/T7-T9`, `ag/T3-T4`, `pr/T3-T4`, `mcp/T8`, `ts/T3-T4`, `kb/T3-T5`. *(A lista sempre teve 13 itens; o número escrito dizia 12. Conferido por `grep '\[P\]'` na triagem 001.)*
+**17 tarefas paralelizáveis** (recontado na run 007, 03/08/2026): `mt/T7-T9, T17-T20`, `ag/T3-T4`, `pr/T3-T4`, `mcp/T8`, `ts/T3-T4`, `kb/T3-T5`. *(Baseline anterior, triagem 001: 13 itens — `mt/T7-T9`, `ag/T3-T4`, `pr/T3-T4`, `mcp/T8`, `ts/T3-T4`, `kb/T3-T5`. Esta recontagem só ACRESCENTA `mt/T17-T20` — as quatro tarefas novas de `multi-terminal` marcadas `[P]` em `tasks.md`; nenhuma tarefa nova de `agent-selection`, `task-kanban`, `terminal-statuses` ou `settings-shell` recebeu o marcador `[P]`, conferido lendo cada `tasks.md`.)*
 
 ---
 
@@ -120,8 +122,8 @@ Nenhuma tarefa com gate `pipeline` (`rd/T2`, `rd/T6`, `rd/T9–T12`, `rd/T19`, `
 
 ## Ferramentas por tarefa
 
-Todas as 38 tarefas do M1/M2 declaram **MCP: NENHUM · Skill: NENHUMA**.
+Todas as 60 tarefas do M1/M2 (incluindo as 22 novas desde a triagem 001, ver nota do topo) declaram **MCP: NENHUM · Skill: NENHUMA**.
 
-*(Corrigido na triagem 002 — 28/07/2026. Ainda dizia 37: a triagem 001 corrigiu o número no topo e na lista de paralelizáveis, mas **não** aqui, e registrou "corrigido nos dois lugares" quando eram três. Reconferido: `grep -cE '^### T' nos seis `tasks.md` de M1/M2` = 38.)*
+*(Corrigido na triagem 002 — 28/07/2026, quando eram 38. Reconferido na run `spec-loop` 007 — 03/08/2026: `grep -c "MCP: NENHUM"` bate exatamente com `grep -cE '^### T'` em cada um dos sete `tasks.md` de M1/M2 — 20+6+10+9+5+8+2 = 60/60, nenhuma tarefa nova destoou do padrão.)*
 
 Não é omissão. As tarefas são escrita de Rust e React com testes locais — nenhum MCP instalado neste ambiente (`superbullet-ai`, `godot-ai`) tem relação com o trabalho, e nenhuma skill instalada se aplica. Se algum servidor MCP útil for adicionado depois (por exemplo, um de documentação de crates), revisar esta seção antes de executar.

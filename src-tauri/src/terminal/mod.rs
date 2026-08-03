@@ -3,6 +3,7 @@
 pub mod layout;
 pub mod manager;
 pub mod meta;
+pub mod picker_prefs;
 pub mod session;
 pub mod status_catalog;
 pub mod status_snapshot;
