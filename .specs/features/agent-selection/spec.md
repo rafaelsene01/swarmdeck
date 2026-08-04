@@ -92,7 +92,7 @@ Observados na instalação de referência:
 
 ### P1: Retomar ou iniciar nova sessão do agente ⭐ MVP
 
-**Novo em 03/08/2026** — observado ao vivo no CodeAgentSwarm de referência, não fazia parte da spec anterior. Decisão do usuário nesta sessão: entra no núcleo v1 (o clone libera tudo que constrói, mesmo que no original isso se aproxime da feature PRO "Conversation History" — ver nota abaixo).
+**Novo em 03/08/2026** — observado ao vivo em produto de referência, não fazia parte da spec anterior. Decisão do usuário nesta sessão: entra no núcleo v1 (o SwarmDeck libera tudo que constrói, mesmo que isso se aproxime da feature PRO "Conversation History" de produtos similares — ver nota abaixo).
 
 **História**: Como desenvolvedor que já trabalhou num projeto antes, quero retomar a conversa de onde parei com aquele agente, em vez de começar do zero toda vez que abro um terminal novo para o mesmo projeto.
 

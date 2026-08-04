@@ -1,12 +1,12 @@
 # Specs — SwarmDeck
 
-Clone funcional do CodeAgentSwarm, especificado por **engenharia reversa da UI** (nenhum código-fonte do original foi lido). Metodologia: `tlc-spec-driven`.
+Especificação e documentação de produto do SwarmDeck. Metodologia: `tlc-spec-driven`.
 
 ## Por onde começar
 
 1. `project/PROJECT.md` — visão, stack, escopo do v1
 2. `project/ROADMAP.md` — os 5 milestones e o que entra em cada um
-3. `research/UI-INVENTORY.md` — o que foi observado no original, com screenshots
+3. `research/UI-INVENTORY.md` — o que foi observado em produto de referência, com screenshots
 4. `project/STATE.md` — decisões, bloqueios e riscos abertos
 
 ## Features especificadas
@@ -68,4 +68,4 @@ As 9 features restantes são pequenas o bastante para pular Design e ir direto a
 
 ## Nota sobre origem
 
-As especificações descrevem **comportamento funcional observável**. Nenhum código, asset gráfico, ícone, texto de marca ou nome do produto original foi copiado. O nome "SwarmDeck" é provisório e não tem relação com o original.
+As especificações descrevem o comportamento funcional planejado para o produto. Nenhum código, asset gráfico, ícone ou texto de marca de terceiros é copiado no projeto. O nome "SwarmDeck" é provisório.

@@ -1,4 +1,4 @@
-# Inventário de UI — CodeAgentSwarm (referência)
+# Inventário de UI — produto de referência
 
 **Data da varredura:** 28/07/2026
 **Versão observada:** instalação local em Windows 11, conta no plano **FREE**
@@ -97,7 +97,7 @@ Ações: **+ Add status**, **Restore defaults**. Linhas reordenáveis por arrast
 ## 3. Kanban — janela separada
 `screenshots/12-kanban-board.png`
 
-Abre em uma **janela própria** (`Kanban - CodeAgentSwarm`), não como painel dentro da principal.
+Abre em uma **janela própria**, não como painel dentro da principal.
 
 **Header:** logo KANBAN · busca de tarefas · seletor **Project: All Projects** · **Create Project** · botão de ícone · **+ Add Task** · **Refresh** · **← Back to Terminals**
 

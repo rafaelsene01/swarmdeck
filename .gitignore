@@ -14,3 +14,6 @@ src-tauri/gen/schemas/
 *.db
 *.db-shm
 *.db-wal
+
+# Estado local do daemon ruflo
+.claude-flow/

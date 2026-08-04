@@ -81,7 +81,7 @@ Quem roda vários agentes de codificação hoje abre várias janelas de terminal
 
 ### P1: Seletor de pasta ao criar terminal ⭐ MVP
 
-**Correção em 03/08/2026** (observação ao vivo do CodeAgentSwarm de referência — `.specs/research/screenshots/Captura de tela 2026-08-03 003525.png`): o texto abaixo falava em "diálogo de novo terminal" como se fosse uma janela/modal flutuante. Não é — é um painel renderizado **dentro do próprio slot de terminal** vazio (o painel mostra "① PROJECT → ② AGENT" no lugar do terminal ainda não iniciado). Os critérios de aceite abaixo continuam válidos como estavam; só o container mudou de nome conceitual. Além disso, este seletor agora é alcançado por dentro do passo PROJECT (botão "Import Project"), não como primeira tela — a primeira tela é o picker de projetos, especificado em `.specs/features/projects/spec.md` (PROJ-06). O único fluxo que continua sendo um modal flutuante de verdade é "Create New Project" (PROJ-01).
+**Correção em 03/08/2026** (observação ao vivo do produto de referência — `.specs/research/screenshots/Captura de tela 2026-08-03 003525.png`): o texto abaixo falava em "diálogo de novo terminal" como se fosse uma janela/modal flutuante. Não é — é um painel renderizado **dentro do próprio slot de terminal** vazio (o painel mostra "① PROJECT → ② AGENT" no lugar do terminal ainda não iniciado). Os critérios de aceite abaixo continuam válidos como estavam; só o container mudou de nome conceitual. Além disso, este seletor agora é alcançado por dentro do passo PROJECT (botão "Import Project"), não como primeira tela — a primeira tela é o picker de projetos, especificado em `.specs/features/projects/spec.md` (PROJ-06). O único fluxo que continua sendo um modal flutuante de verdade é "Create New Project" (PROJ-01).
 
 **História**: Como desenvolvedor, quero escolher o diretório do novo terminal navegando pelas pastas do sistema, para não errar um caminho digitado e abrir o terminal exatamente como se tivesse aberto um terminal a partir daquela pasta.
 
@@ -148,7 +148,7 @@ Quem roda vários agentes de codificação hoje abre várias janelas de terminal
 
 ### P1: Restaurar sessão após fechamento inesperado ⭐ MVP
 
-**Novo em 03/08/2026** — observado ao vivo no CodeAgentSwarm de referência, não fazia parte da spec anterior. Estende `P2: Persistência de sessão` (TERM-07) para o caso de o app **não** ter fechado de forma limpa.
+**Novo em 03/08/2026** — observado ao vivo em produto de referência, não fazia parte da spec anterior. Estende `P2: Persistência de sessão` (TERM-07) para o caso de o app **não** ter fechado de forma limpa.
 
 **História**: Como desenvolvedor que teve o app fechado por uma queda (crash, energia, fechar sem querer), quero escolher quais terminais retomar — inclusive a sessão do agente que estava rodando neles — em vez de perder tudo ou ter tudo recriado sem eu confirmar.
 

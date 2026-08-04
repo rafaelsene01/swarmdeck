@@ -8,7 +8,7 @@
 
 ## ⚠️ Aviso obrigatório — este contrato é inferido, não validado
 
-Os nomes de ferramenta, parâmetros e formatos de retorno abaixo foram **inferidos a partir das instruções globais do usuário** (`~/.claude/CLAUDE.md`, seção "CodeAgentSwarm Task Management System"), não de nenhuma documentação oficial de protocolo nem de leitura direta do código-fonte de uma implementação de referência. Este documento **não teve acesso** ao `CLAUDE.md` global em si — recebeu apenas os nomes de ferramenta e assinaturas de alto nível já extraídos dele, na convenção observada em sistemas MCP de gerenciamento de tarefas equivalentes.
+Os nomes de ferramenta, parâmetros e formatos de retorno abaixo foram **inferidos a partir das instruções globais de gerenciamento de tarefas já em uso pelo usuário** (`~/.claude/CLAUDE.md`), não de nenhuma documentação oficial de protocolo nem de leitura direta do código-fonte de uma implementação de referência. Este documento **não teve acesso** ao `CLAUDE.md` global em si — recebeu apenas os nomes de ferramenta e assinaturas de alto nível já extraídos dele, na convenção observada em sistemas MCP de gerenciamento de tarefas equivalentes.
 
 **Decisão já tomada (triagem 001, 28/07/2026):** o contrato **congela** esses nomes inferidos. Não há, e não haverá antes da implementação, validação contra uma implementação de referência real. Este é o risco aceito registrado em `STATE.md`.
 

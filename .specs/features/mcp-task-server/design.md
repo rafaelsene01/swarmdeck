@@ -239,7 +239,7 @@ Não existe aresta `in_progress → completed`. A regra de negócio mais importa
 | Onde roda o servidor MCP | **Sidecar separado**, não embutido no app | O agente de CLI spawna servidores MCP como subprocesso stdio. Um app já rodando não pode ser esse subprocesso. Não há alternativa. |
 | Sidecar → app | IPC local (named pipe / unix socket) | O app precisa possuir a escrita para poder empurrar `task_changed` às janelas. Escrita direta no banco pelo sidecar impossibilitaria KAN-02. |
 | Lógica no sidecar | Nenhuma — só proxy | Regra duplicada em dois binários diverge. Uma autoridade só. |
-| Identificação do terminal | Variável de ambiente no spawn do PTY | Mesmo mecanismo observado no original (`CODEAGENTSWARM_CURRENT_QUADRANT`). Simples e à prova de falsificação acidental. |
+| Identificação do terminal | Variável de ambiente no spawn do PTY | Mesmo mecanismo já esperado pelas instruções de gerenciamento de tarefas em uso pelo usuário (`CODEAGENTSWARM_CURRENT_QUADRANT`) — nome mantido por compatibilidade. Simples e à prova de falsificação acidental. |
 | Implementação do MCP | `rmcp` oficial | SDK oficial, macros geram schema a partir do código, acompanha o rascunho atual do protocolo |
 | Id de tarefa | `INTEGER AUTOINCREMENT` | O card mostra `#2` — números curtos e legíveis importam mais que unicidade global aqui |
 | Propagação do catálogo de status | Snapshot no início da sessão | A própria UI do original diz "Changes reach agents on their next session". Trocar o catálogo no meio quebraria uma sessão em andamento. |

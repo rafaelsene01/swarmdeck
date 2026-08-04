@@ -1,6 +1,6 @@
 # SwarmDeck
 
-> Nome provisório. Clone funcional do CodeAgentSwarm, especificado por engenharia reversa da UI.
+> Nome provisório.
 
 **Visão:** Um orquestrador desktop de múltiplos agentes de IA de linha de comando, onde cada agente roda no seu próprio terminal, dentro do seu próprio projeto, e reporta o que está fazendo através de um quadro Kanban compartilhado.
 

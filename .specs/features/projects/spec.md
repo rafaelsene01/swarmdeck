@@ -72,7 +72,7 @@ Um desenvolvedor rodando 4 agentes raramente está em um repositório só. Sem u
 
 ### P1: Selecionar projeto ao iniciar um terminal ⭐ MVP
 
-**Novo em 03/08/2026** — observado ao vivo no CodeAgentSwarm de referência, não fazia parte da spec anterior.
+**Novo em 03/08/2026** — observado ao vivo em produto de referência, não fazia parte da spec anterior.
 
 **História**: Como desenvolvedor, quero escolher a que projeto um terminal novo pertence a partir de uma lista dos projetos que já abri, para não navegar pelo sistema de arquivos toda vez que reabro um projeto conhecido.
 
@@ -104,7 +104,7 @@ Um desenvolvedor rodando 4 agentes raramente está em um repositório só. Sem u
 
 **História**: Como desenvolvedor, quero abrir um terminal sem vincular a nenhum projeto meu, para testar um agente rapidamente sem sujar minha lista de projetos.
 
-**Observado em**: `.specs/research/screenshots/Captura de tela 2026-08-03 003653.png` — projeto "Sandbox", `C:\Users\rafae\.codeagentswarm\sandbox`
+**Observado em**: `.specs/research/screenshots/Captura de tela 2026-08-03 003653.png` — projeto "Sandbox", caminho de configuração local do produto de referência (pasta oculta no perfil do usuário)
 
 **Critérios de aceite**:
 1. QUANDO o usuário clica em "No Project" no passo PROJECT ENTÃO o sistema DEVE avançar direto para o passo AGENT com um pseudo-projeto fixo chamado "Sandbox"
