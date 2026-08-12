@@ -111,46 +111,6 @@
         "confidence": "INFERRED",
         "confidence_score": 0.85,
         "source_file": ".specs/features/task-kanban/tasks.md"
-      },
-      {
-        "id": "wave_shared_territory_serialization",
-        "label": "Waves serialize tasks over shared files (lib.rs/App.tsx/TerminalHeader.tsx)",
-        "nodes": [
-          "specs_runs_007_2026_08_03_journal_wavesequencing",
-          "feature_multi_terminal",
-          "feature_agent_selection",
-          "feature_settings_shell"
-        ],
-        "relation": "participate_in",
-        "confidence": "EXTRACTED",
-        "confidence_score": 1.0,
-        "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md"
-      },
-      {
-        "id": "task_kanban_t8_returned_to_triage",
-        "label": "task-kanban/T8 blocked and returned to triage for a decision",
-        "nodes": [
-          "specs_runs_007_2026_08_03_journal_t8needsdecision",
-          "feature_task_kanban",
-          "specs_runs_007_2026_08_03_triage"
-        ],
-        "relation": "participate_in",
-        "confidence": "EXTRACTED",
-        "confidence_score": 1.0,
-        "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md"
-      },
-      {
-        "id": "acl_gap_affects_two_windows",
-        "label": "ACL capabilities gap threatens both kanban and settings windows",
-        "nodes": [
-          "specs_runs_007_2026_08_03_journal_aclgap",
-          "feature_task_kanban",
-          "feature_settings_shell"
-        ],
-        "relation": "participate_in",
-        "confidence": "EXTRACTED",
-        "confidence_score": 1.0,
-        "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md"
       }
     ]
   },
@@ -1878,8 +1838,8 @@
       "source_location": "L428",
       "_origin": "ast",
       "id": "crates_swarmdeck_mcp_src_tools_testenvguard_drop",
-      "community": 4,
-      "community_name": "String",
+      "community": 3,
+      "community_name": "PtySession",
       "norm_label": ".drop()"
     },
     {
@@ -5398,8 +5358,8 @@
       "source_location": "L789",
       "_origin": "ast",
       "id": "src_tauri_src_ipc_server_is_live_terminal",
-      "community": 0,
-      "community_name": "server.rs",
+      "community": 2,
+      "community_name": "TerminalManager",
       "norm_label": "is_live_terminal()"
     },
     {
@@ -7829,8 +7789,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": "state.rs"
     },
     {
@@ -7840,8 +7800,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_taskstatus",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": "taskstatus"
     },
     {
@@ -7851,8 +7811,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_taskstatus_as_str",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": ".as_str()"
     },
     {
@@ -7862,8 +7822,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_taskstatus_valid_actions",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": ".valid_actions()"
     },
     {
@@ -7873,8 +7833,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_rs_display",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": "display"
     },
     {
@@ -7884,8 +7844,8 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_taskstatus_fmt",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": ".fmt()"
     },
     {
@@ -7895,8 +7855,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_rs_formatter",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": "formatter"
     },
     {
@@ -7906,8 +7866,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_rs_result",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": "result"
     },
     {
@@ -7917,8 +7877,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_taskaction",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": "taskaction"
     },
     {
@@ -7928,8 +7888,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_taskaction_as_str",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": ".as_str()"
     },
     {
@@ -7939,8 +7899,8 @@
       "source_location": "L80",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_taskaction_fmt",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": ".fmt()"
     },
     {
@@ -7950,8 +7910,8 @@
       "source_location": "L90",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_invalidtransition",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": "invalidtransition"
     },
     {
@@ -7961,8 +7921,8 @@
       "source_location": "L96",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_invalidtransition_fmt",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": ".fmt()"
     },
     {
@@ -7972,8 +7932,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_rs_error",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": "error"
     },
     {
@@ -7983,8 +7943,8 @@
       "source_location": "L128",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_taskstatus_try_transition",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": ".try_transition()"
     },
     {
@@ -7994,8 +7954,8 @@
       "source_location": "L157",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_start_from_pending_moves_to_in_progress",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": "start_from_pending_moves_to_in_progress()"
     },
     {
@@ -8005,8 +7965,8 @@
       "source_location": "L163",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_start_from_in_progress_is_idempotent",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": "start_from_in_progress_is_idempotent()"
     },
     {
@@ -8016,8 +7976,8 @@
       "source_location": "L171",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_start_from_in_testing_moves_to_in_progress",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": "start_from_in_testing_moves_to_in_progress()"
     },
     {
@@ -8027,8 +7987,8 @@
       "source_location": "L177",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_start_from_completed_reopens_to_in_progress",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": "start_from_completed_reopens_to_in_progress()"
     },
     {
@@ -8038,8 +7998,8 @@
       "source_location": "L183",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_complete_from_in_progress_moves_to_in_testing",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": "complete_from_in_progress_moves_to_in_testing()"
     },
     {
@@ -8049,8 +8009,8 @@
       "source_location": "L189",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_complete_from_in_testing_moves_to_completed",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": "complete_from_in_testing_moves_to_completed()"
     },
     {
@@ -8060,8 +8020,8 @@
       "source_location": "L195",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_complete_from_pending_is_rejected_no_phase_skip",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": "complete_from_pending_is_rejected_no_phase_skip()"
     },
     {
@@ -8071,8 +8031,8 @@
       "source_location": "L209",
       "_origin": "ast",
       "id": "src_tauri_src_tasks_state_invalid_transition_error_lists_valid_actions",
-      "community": 44,
-      "community_name": ".try_transition",
+      "community": 5,
+      "community_name": "tasks/service.rs",
       "norm_label": "invalid_transition_error_lists_valid_actions()"
     },
     {
@@ -8863,8 +8823,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_tauri_src_terminal_mod",
-      "community": 27,
-      "community_name": "restore",
+      "community": 3,
+      "community_name": "PtySession",
       "norm_label": "terminal/mod.rs"
     },
     {
@@ -12856,8 +12816,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service",
-      "community": 80,
-      "community_name": "task_service.rs",
+      "community": 9,
+      "community_name": "db.rs",
       "norm_label": "task_service.rs"
     },
     {
@@ -12867,8 +12827,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_temp_db_path",
-      "community": 80,
-      "community_name": "task_service.rs",
+      "community": 9,
+      "community_name": "db.rs",
       "norm_label": "temp_db_path()"
     },
     {
@@ -12878,8 +12838,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_rs_tempdir",
-      "community": 80,
-      "community_name": "task_service.rs",
+      "community": 9,
+      "community_name": "db.rs",
       "norm_label": "tempdir"
     },
     {
@@ -12889,8 +12849,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_rs_pathbuf",
-      "community": 80,
-      "community_name": "task_service.rs",
+      "community": 9,
+      "community_name": "db.rs",
       "norm_label": "pathbuf"
     },
     {
@@ -12900,8 +12860,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_ctx",
-      "community": 80,
-      "community_name": "task_service.rs",
+      "community": 9,
+      "community_name": "db.rs",
       "norm_label": "ctx()"
     },
     {
@@ -12911,8 +12871,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_rs_path",
-      "community": 80,
-      "community_name": "task_service.rs",
+      "community": 9,
+      "community_name": "db.rs",
       "norm_label": "path"
     },
     {
@@ -12922,8 +12882,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_count_tasks",
-      "community": 80,
-      "community_name": "task_service.rs",
+      "community": 9,
+      "community_name": "db.rs",
       "norm_label": "count_tasks()"
     },
     {
@@ -12933,8 +12893,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_rs_connection",
-      "community": 80,
-      "community_name": "task_service.rs",
+      "community": 9,
+      "community_name": "db.rs",
       "norm_label": "connection"
     },
     {
@@ -12944,8 +12904,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_create_com_cwd_igual_ao_path_do_projeto_infere_o_project_id",
-      "community": 80,
-      "community_name": "task_service.rs",
+      "community": 9,
+      "community_name": "db.rs",
       "norm_label": "create_com_cwd_igual_ao_path_do_projeto_infere_o_project_id()"
     },
     {
@@ -12955,8 +12915,8 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_create_com_cwd_em_subpasta_do_projeto_resolve_o_mesmo_projeto",
-      "community": 80,
-      "community_name": "task_service.rs",
+      "community": 9,
+      "community_name": "db.rs",
       "norm_label": "create_com_cwd_em_subpasta_do_projeto_resolve_o_mesmo_projeto()"
     },
     {
@@ -12966,8 +12926,8 @@
       "source_location": "L74",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_dois_projetos_candidatos_o_mais_especifico_vence_ponta_a_ponta",
-      "community": 80,
-      "community_name": "task_service.rs",
+      "community": 9,
+      "community_name": "db.rs",
       "norm_label": "dois_projetos_candidatos_o_mais_especifico_vence_ponta_a_ponta()"
     },
     {
@@ -12977,8 +12937,8 @@
       "source_location": "L98",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_create_sem_projeto_correspondente_deixa_project_id_nulo_sem_criar_projeto",
-      "community": 80,
-      "community_name": "task_service.rs",
+      "community": 9,
+      "community_name": "db.rs",
       "norm_label": "create_sem_projeto_correspondente_deixa_project_id_nulo_sem_criar_projeto()"
     },
     {
@@ -12988,8 +12948,8 @@
       "source_location": "L137",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_start_numa_task_recem_criada_vira_in_progress",
-      "community": 80,
-      "community_name": "task_service.rs",
+      "community": 9,
+      "community_name": "db.rs",
       "norm_label": "start_numa_task_recem_criada_vira_in_progress()"
     },
     {
@@ -12999,8 +12959,8 @@
       "source_location": "L151",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_complete_a_partir_de_in_progress_leva_a_in_testing_nunca_direto_a_completed",
-      "community": 80,
-      "community_name": "task_service.rs",
+      "community": 9,
+      "community_name": "db.rs",
       "norm_label": "complete_a_partir_de_in_progress_leva_a_in_testing_nunca_direto_a_completed()"
     },
     {
@@ -13010,8 +12970,8 @@
       "source_location": "L173",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_complete_a_partir_de_in_testing_leva_a_completed",
-      "community": 80,
-      "community_name": "task_service.rs",
+      "community": 9,
+      "community_name": "db.rs",
       "norm_label": "complete_a_partir_de_in_testing_leva_a_completed()"
     },
     {
@@ -13021,8 +12981,8 @@
       "source_location": "L189",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_complete_ou_start_com_task_id_inexistente_falha_sem_criar_linha",
-      "community": 80,
-      "community_name": "task_service.rs",
+      "community": 9,
+      "community_name": "db.rs",
       "norm_label": "complete_ou_start_com_task_id_inexistente_falha_sem_criar_linha()"
     },
     {
@@ -13032,8 +12992,8 @@
       "source_location": "L209",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_update_plan_acima_do_teto_trunca_e_sinaliza_abaixo_do_teto_nao_trunca",
-      "community": 80,
-      "community_name": "task_service.rs",
+      "community": 9,
+      "community_name": "db.rs",
       "norm_label": "update_plan_acima_do_teto_trunca_e_sinaliza_abaixo_do_teto_nao_trunca()"
     },
     {
@@ -13791,8 +13751,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_main",
-      "community": 81,
-      "community_name": "main.tsx",
+      "community": 25,
+      "community_name": "SettingsShell.tsx",
       "norm_label": "main.tsx"
     },
     {
@@ -13802,8 +13762,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "src_main_root",
-      "community": 81,
-      "community_name": "main.tsx",
+      "community": 25,
+      "community_name": "SettingsShell.tsx",
       "norm_label": "root"
     },
     {
@@ -13813,8 +13773,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "src_main_renderforlabel",
-      "community": 81,
-      "community_name": "main.tsx",
+      "community": 25,
+      "community_name": "SettingsShell.tsx",
       "norm_label": "renderforlabel()"
     },
     {
@@ -14495,8 +14455,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_routes_settings_projectspanel_test",
-      "community": 25,
-      "community_name": "SettingsShell.tsx",
+      "community": 36,
+      "community_name": "ProjectsPanel.tsx",
       "norm_label": "projectspanel.test.tsx"
     },
     {
@@ -14506,8 +14466,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_routes_settings_projectspanel_test_projects",
-      "community": 25,
-      "community_name": "SettingsShell.tsx",
+      "community": 36,
+      "community_name": "ProjectsPanel.tsx",
       "norm_label": "projects"
     },
     {
@@ -14517,8 +14477,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_routes_settings_projectspanel",
-      "community": 25,
-      "community_name": "SettingsShell.tsx",
+      "community": 36,
+      "community_name": "ProjectsPanel.tsx",
       "norm_label": "projectspanel.tsx"
     },
     {
@@ -14528,8 +14488,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "src_routes_settings_projectspanel_projectrow",
-      "community": 25,
-      "community_name": "SettingsShell.tsx",
+      "community": 36,
+      "community_name": "ProjectsPanel.tsx",
       "norm_label": "projectrow"
     },
     {
@@ -14539,8 +14499,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "src_routes_settings_projectspanel_projectspanelprops",
-      "community": 25,
-      "community_name": "SettingsShell.tsx",
+      "community": 36,
+      "community_name": "ProjectsPanel.tsx",
       "norm_label": "projectspanelprops"
     },
     {
@@ -14550,8 +14510,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "src_routes_settings_projectspanel_truncatepath",
-      "community": 25,
-      "community_name": "SettingsShell.tsx",
+      "community": 36,
+      "community_name": "ProjectsPanel.tsx",
       "norm_label": "truncatepath()"
     },
     {
@@ -14561,8 +14521,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "src_routes_settings_projectspanel_sortbylastused",
-      "community": 25,
-      "community_name": "SettingsShell.tsx",
+      "community": 36,
+      "community_name": "ProjectsPanel.tsx",
       "norm_label": "sortbylastused()"
     },
     {
@@ -14572,8 +14532,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "src_routes_settings_projectspanel_filterprojects",
-      "community": 25,
-      "community_name": "SettingsShell.tsx",
+      "community": 36,
+      "community_name": "ProjectsPanel.tsx",
       "norm_label": "filterprojects()"
     },
     {
@@ -14583,8 +14543,8 @@
       "source_location": "L60",
       "_origin": "ast",
       "id": "src_routes_settings_projectspanel_projectspanel",
-      "community": 25,
-      "community_name": "SettingsShell.tsx",
+      "community": 36,
+      "community_name": "ProjectsPanel.tsx",
       "norm_label": "projectspanel()"
     },
     {
@@ -14660,8 +14620,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "src_routes_settings_settingsshell_settingsshell",
-      "community": 81,
-      "community_name": "main.tsx",
+      "community": 25,
+      "community_name": "SettingsShell.tsx",
       "norm_label": "settingsshell()"
     },
     {
@@ -14671,8 +14631,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_routes_settings_statusespanel_test",
-      "community": 76,
-      "community_name": "StatusesPanel",
+      "community": 39,
+      "community_name": "StatusesPanel.tsx",
       "norm_label": "statusespanel.test.tsx"
     },
     {
@@ -14682,8 +14642,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_routes_settings_statusespanel_test_statuses",
-      "community": 76,
-      "community_name": "StatusesPanel",
+      "community": 39,
+      "community_name": "StatusesPanel.tsx",
       "norm_label": "statuses"
     },
     {
@@ -14693,8 +14653,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "src_routes_settings_statusespanel_test_renderpanel",
-      "community": 76,
-      "community_name": "StatusesPanel",
+      "community": 39,
+      "community_name": "StatusesPanel.tsx",
       "norm_label": "renderpanel()"
     },
     {
@@ -14704,8 +14664,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_routes_settings_statusespanel",
-      "community": 76,
-      "community_name": "StatusesPanel",
+      "community": 39,
+      "community_name": "StatusesPanel.tsx",
       "norm_label": "statusespanel.tsx"
     },
     {
@@ -14715,8 +14675,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "src_routes_settings_statusespanel_statusrow",
-      "community": 76,
-      "community_name": "StatusesPanel",
+      "community": 39,
+      "community_name": "StatusesPanel.tsx",
       "norm_label": "statusrow"
     },
     {
@@ -14726,8 +14686,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "src_routes_settings_statusespanel_statusespanelprops",
-      "community": 76,
-      "community_name": "StatusesPanel",
+      "community": 39,
+      "community_name": "StatusesPanel.tsx",
       "norm_label": "statusespanelprops"
     },
     {
@@ -14737,8 +14697,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "src_routes_settings_statusespanel_truncateinstruction",
-      "community": 76,
-      "community_name": "StatusesPanel",
+      "community": 39,
+      "community_name": "StatusesPanel.tsx",
       "norm_label": "truncateinstruction()"
     },
     {
@@ -14748,8 +14708,8 @@
       "source_location": "L66",
       "_origin": "ast",
       "id": "src_routes_settings_statusespanel_statusespanel",
-      "community": 76,
-      "community_name": "StatusesPanel",
+      "community": 39,
+      "community_name": "StatusesPanel.tsx",
       "norm_label": "statusespanel()"
     },
     {
@@ -15270,193 +15230,6 @@
       "norm_label": "vite.config.ts"
     },
     {
-      "label": "JOURNAL.md",
-      "file_type": "document",
-      "source_file": ".specs/runs/008-2026-08-11/JOURNAL.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "specs_runs_008_2026_08_11_journal",
-      "community": 56,
-      "community_name": "Run 008 \u2014 11/08/2026 (spec-loop)",
-      "norm_label": "journal.md"
-    },
-    {
-      "label": "Run 008 \u2014 11/08/2026 (spec-loop)",
-      "file_type": "document",
-      "source_file": ".specs/runs/008-2026-08-11/JOURNAL.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "specs_runs_008_2026_08_11_journal_run_008_11_08_2026_spec_loop",
-      "community": 56,
-      "community_name": "Run 008 \u2014 11/08/2026 (spec-loop)",
-      "norm_label": "run 008 \u2014 11/08/2026 (spec-loop)"
-    },
-    {
-      "label": "Fila de execu\u00e7\u00e3o (da triagem)",
-      "file_type": "document",
-      "source_file": ".specs/runs/008-2026-08-11/JOURNAL.md",
-      "source_location": "L33",
-      "_origin": "ast",
-      "id": "specs_runs_008_2026_08_11_journal_fila_de_execu\u00e7\u00e3o_da_triagem",
-      "community": 56,
-      "community_name": "Run 008 \u2014 11/08/2026 (spec-loop)",
-      "norm_label": "fila de execucao (da triagem)"
-    },
-    {
-      "label": "Execu\u00e7\u00e3o",
-      "file_type": "document",
-      "source_file": ".specs/runs/008-2026-08-11/JOURNAL.md",
-      "source_location": "L58",
-      "_origin": "ast",
-      "id": "specs_runs_008_2026_08_11_journal_execu\u00e7\u00e3o",
-      "community": 56,
-      "community_name": "Run 008 \u2014 11/08/2026 (spec-loop)",
-      "norm_label": "execucao"
-    },
-    {
-      "label": "Devolvido para triagem",
-      "file_type": "document",
-      "source_file": ".specs/runs/008-2026-08-11/JOURNAL.md",
-      "source_location": "L70",
-      "_origin": "ast",
-      "id": "specs_runs_008_2026_08_11_journal_devolvido_para_triagem",
-      "community": 56,
-      "community_name": "Run 008 \u2014 11/08/2026 (spec-loop)",
-      "norm_label": "devolvido para triagem"
-    },
-    {
-      "label": "Gates medidos nesta run",
-      "file_type": "document",
-      "source_file": ".specs/runs/008-2026-08-11/JOURNAL.md",
-      "source_location": "L79",
-      "_origin": "ast",
-      "id": "specs_runs_008_2026_08_11_journal_gates_medidos_nesta_run",
-      "community": 56,
-      "community_name": "Run 008 \u2014 11/08/2026 (spec-loop)",
-      "norm_label": "gates medidos nesta run"
-    },
-    {
-      "label": "Estado da \u00e1rvore no \u00faltimo checkpoint",
-      "file_type": "document",
-      "source_file": ".specs/runs/008-2026-08-11/JOURNAL.md",
-      "source_location": "L94",
-      "_origin": "ast",
-      "id": "specs_runs_008_2026_08_11_journal_estado_da_\u00e1rvore_no_\u00faltimo_checkpoint",
-      "community": 56,
-      "community_name": "Run 008 \u2014 11/08/2026 (spec-loop)",
-      "norm_label": "estado da arvore no ultimo checkpoint"
-    },
-    {
-      "label": "N\u00e3o verificado",
-      "file_type": "document",
-      "source_file": ".specs/runs/008-2026-08-11/JOURNAL.md",
-      "source_location": "L107",
-      "_origin": "ast",
-      "id": "specs_runs_008_2026_08_11_journal_n\u00e3o_verificado",
-      "community": 56,
-      "community_name": "Run 008 \u2014 11/08/2026 (spec-loop)",
-      "norm_label": "nao verificado"
-    },
-    {
-      "label": "TRIAGE.md",
-      "file_type": "document",
-      "source_file": ".specs/runs/008-2026-08-11/TRIAGE.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "specs_runs_008_2026_08_11_triage",
-      "community": 45,
-      "community_name": "Triagem 008 \u2014 11/08/2026",
-      "norm_label": "triage.md"
-    },
-    {
-      "label": "Triagem 008 \u2014 11/08/2026",
-      "file_type": "document",
-      "source_file": ".specs/runs/008-2026-08-11/TRIAGE.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "specs_runs_008_2026_08_11_triage_triagem_008_11_08_2026",
-      "community": 45,
-      "community_name": "Triagem 008 \u2014 11/08/2026",
-      "norm_label": "triagem 008 \u2014 11/08/2026"
-    },
-    {
-      "label": "Perfil do projeto (Fase 0)",
-      "file_type": "document",
-      "source_file": ".specs/runs/008-2026-08-11/TRIAGE.md",
-      "source_location": "L11",
-      "_origin": "ast",
-      "id": "specs_runs_008_2026_08_11_triage_perfil_do_projeto_fase_0",
-      "community": 45,
-      "community_name": "Triagem 008 \u2014 11/08/2026",
-      "norm_label": "perfil do projeto (fase 0)"
-    },
-    {
-      "label": "Diverg\u00eancias encontradas (Fase 1)",
-      "file_type": "document",
-      "source_file": ".specs/runs/008-2026-08-11/TRIAGE.md",
-      "source_location": "L30",
-      "_origin": "ast",
-      "id": "specs_runs_008_2026_08_11_triage_diverg\u00eancias_encontradas_fase_1",
-      "community": 45,
-      "community_name": "Triagem 008 \u2014 11/08/2026",
-      "norm_label": "divergencias encontradas (fase 1)"
-    },
-    {
-      "label": "Invent\u00e1rio (Fase 2)",
-      "file_type": "document",
-      "source_file": ".specs/runs/008-2026-08-11/TRIAGE.md",
-      "source_location": "L54",
-      "_origin": "ast",
-      "id": "specs_runs_008_2026_08_11_triage_invent\u00e1rio_fase_2",
-      "community": 45,
-      "community_name": "Triagem 008 \u2014 11/08/2026",
-      "norm_label": "inventario (fase 2)"
-    },
-    {
-      "label": "Decis\u00f5es do usu\u00e1rio (Fase 3)",
-      "file_type": "document",
-      "source_file": ".specs/runs/008-2026-08-11/TRIAGE.md",
-      "source_location": "L78",
-      "_origin": "ast",
-      "id": "specs_runs_008_2026_08_11_triage_decis\u00f5es_do_usu\u00e1rio_fase_3",
-      "community": 45,
-      "community_name": "Triagem 008 \u2014 11/08/2026",
-      "norm_label": "decisoes do usuario (fase 3)"
-    },
-    {
-      "label": "Fora da execu\u00e7\u00e3o",
-      "file_type": "document",
-      "source_file": ".specs/runs/008-2026-08-11/TRIAGE.md",
-      "source_location": "L91",
-      "_origin": "ast",
-      "id": "specs_runs_008_2026_08_11_triage_fora_da_execu\u00e7\u00e3o",
-      "community": 45,
-      "community_name": "Triagem 008 \u2014 11/08/2026",
-      "norm_label": "fora da execucao"
-    },
-    {
-      "label": "N\u00e3o verificado",
-      "file_type": "document",
-      "source_file": ".specs/runs/008-2026-08-11/TRIAGE.md",
-      "source_location": "L105",
-      "_origin": "ast",
-      "id": "specs_runs_008_2026_08_11_triage_n\u00e3o_verificado",
-      "community": 45,
-      "community_name": "Triagem 008 \u2014 11/08/2026",
-      "norm_label": "nao verificado"
-    },
-    {
-      "label": "Relat\u00f3rio final",
-      "file_type": "document",
-      "source_file": ".specs/runs/008-2026-08-11/TRIAGE.md",
-      "source_location": "L115",
-      "_origin": "ast",
-      "id": "specs_runs_008_2026_08_11_triage_relat\u00f3rio_final",
-      "community": 45,
-      "community_name": "Triagem 008 \u2014 11/08/2026",
-      "norm_label": "relatorio final"
-    },
-    {
       "label": "Todo ajuste passa pela spec (rule)",
       "file_type": "document",
       "source_file": ".claude/rules/spec-driven-changes.md",
@@ -15675,10 +15448,10 @@
       "captured_at": null,
       "author": "Waldemar Neto - github.com/waldemarnt",
       "contributor": null,
-      "community": 52,
+      "community": 29,
       "norm_label": "evidence-or-zero core rule",
       "_origin": "semantic",
-      "community_name": "Validate & Verify doc",
+      "community_name": "spec-loop skill",
       "id": "claude_skills_spec_driven_eval_skill_evidence_or_zero"
     },
     {
@@ -16335,10 +16108,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 52,
+      "community": 29,
       "norm_label": "\"numero copiado para a prosa\" anti-pattern",
       "_origin": "semantic",
-      "community_name": "Validate & Verify doc",
+      "community_name": "spec-loop skill",
       "id": "claude_skills_spec_triage_references_auditor_brief_number_copied_to_prose"
     },
     {
@@ -16440,10 +16213,10 @@
       "captured_at": null,
       "author": "Felipe Rodrigues - github.com/felipfr",
       "contributor": null,
-      "community": 52,
+      "community": 30,
       "norm_label": "self-improving lessons layer",
       "_origin": "semantic",
-      "community_name": "Validate & Verify doc",
+      "community_name": "Execute (implement) doc",
       "id": "claude_skills_tlc_spec_driven_skill_lessons_layer"
     },
     {
@@ -16815,10 +16588,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 52,
+      "community": 30,
       "norm_label": "lessons self-improving layer doc",
       "_origin": "semantic",
-      "community_name": "Validate & Verify doc",
+      "community_name": "Execute (implement) doc",
       "id": "claude_skills_tlc_spec_driven_references_lessons_doc"
     },
     {
@@ -16830,10 +16603,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 52,
+      "community": 30,
       "norm_label": "scripts/lessons.py",
       "_origin": "semantic",
-      "community_name": "Validate & Verify doc",
+      "community_name": "Execute (implement) doc",
       "id": "claude_skills_tlc_spec_driven_references_lessons_script"
     },
     {
@@ -16845,10 +16618,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 52,
+      "community": 30,
       "norm_label": ".specs/lessons.json canonical state",
       "_origin": "semantic",
-      "community_name": "Validate & Verify doc",
+      "community_name": "Execute (implement) doc",
       "id": "claude_skills_tlc_spec_driven_references_lessons_json"
     },
     {
@@ -16860,10 +16633,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 52,
+      "community": 30,
       "norm_label": ".specs/lessons.md rendered playbook",
       "_origin": "semantic",
-      "community_name": "Validate & Verify doc",
+      "community_name": "Execute (implement) doc",
       "id": "claude_skills_tlc_spec_driven_references_lessons_md_file"
     },
     {
@@ -17025,10 +16798,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 52,
+      "community": 30,
       "norm_label": "verifier sub-agent (always-on)",
       "_origin": "semantic",
-      "community_name": "Validate & Verify doc",
+      "community_name": "Execute (implement) doc",
       "id": "claude_skills_tlc_spec_driven_references_sub_agents_verifier_subagent"
     },
     {
@@ -17085,10 +16858,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 52,
+      "community": 30,
       "norm_label": "validate & verify doc",
       "_origin": "semantic",
-      "community_name": "Validate & Verify doc",
+      "community_name": "Execute (implement) doc",
       "id": "claude_skills_tlc_spec_driven_references_validate_doc"
     },
     {
@@ -17100,10 +16873,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 52,
+      "community": 29,
       "norm_label": "spec-anchored acceptance criteria check",
       "_origin": "semantic",
-      "community_name": "Validate & Verify doc",
+      "community_name": "spec-loop skill",
       "id": "claude_skills_tlc_spec_driven_references_validate_spec_anchored_check"
     },
     {
@@ -17115,10 +16888,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 52,
+      "community": 30,
       "norm_label": "discrimination sensor (mutation testing)",
       "_origin": "semantic",
-      "community_name": "Validate & Verify doc",
+      "community_name": "Execute (implement) doc",
       "id": "claude_skills_tlc_spec_driven_references_validate_discrimination_sensor"
     },
     {
@@ -17130,10 +16903,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 52,
+      "community": 30,
       "norm_label": ".specs/features/[feature]/validation.md report",
       "_origin": "semantic",
-      "community_name": "Validate & Verify doc",
+      "community_name": "Execute (implement) doc",
       "id": "claude_skills_tlc_spec_driven_references_validate_validation_report"
     },
     {
@@ -17145,10 +16918,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 18,
       "norm_label": "ci workflow (ci.yml)",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "AGENTS.md",
       "id": "github_workflows_ci"
     },
     {
@@ -17160,26 +16933,11 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 18,
       "norm_label": "release workflow (release.yml)",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "AGENTS.md",
       "id": "github_workflows_release"
-    },
-    {
-      "label": "SwarmDeck Specs Index (README.md)",
-      "file_type": "document",
-      "source_file": ".specs/README.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 46,
-      "norm_label": "swarmdeck specs index (readme.md)",
-      "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
-      "id": "specs_readme"
     },
     {
       "label": "Testing Strategy (TESTING.md)",
@@ -17190,10 +16948,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 61,
+      "community": 18,
       "norm_label": "testing strategy (testing.md)",
       "_origin": "semantic",
-      "community_name": "Testing Strategy (TESTING.md)",
+      "community_name": "AGENTS.md",
       "id": "specs_codebase_testing"
     },
     {
@@ -17208,7 +16966,7 @@
       "community": 46,
       "norm_label": "agent selection spec",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_spec"
     },
     {
@@ -17223,7 +16981,7 @@
       "community": 46,
       "norm_label": "agent selection tasks",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_tasks"
     },
     {
@@ -17235,10 +16993,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 52,
       "norm_label": "conversation cleanup spec",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Conversation Cleanup Spec",
       "id": "specs_features_conversation_cleanup_spec"
     },
     {
@@ -17250,10 +17008,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 56,
       "norm_label": "mcp management spec",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "MCP Management Spec",
       "id": "specs_features_mcp_management_spec"
     },
     {
@@ -17280,10 +17038,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 61,
       "norm_label": "mcp task server design",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "MCP Task Server Design",
       "id": "specs_features_mcp_task_server_design"
     },
     {
@@ -17295,10 +17053,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 76,
       "norm_label": "mcp task server spec",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "MCP Task Server Spec",
       "id": "specs_features_mcp_task_server_spec"
     },
     {
@@ -17310,10 +17068,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 79,
       "norm_label": "mcp task server tasks",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "MCP Task Server Tasks",
       "id": "specs_features_mcp_task_server_tasks"
     },
     {
@@ -17325,10 +17083,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 80,
       "norm_label": "multi-terminal design",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Multi-terminal Design",
       "id": "specs_features_multi_terminal_design"
     },
     {
@@ -17343,7 +17101,7 @@
       "community": 46,
       "norm_label": "multi-terminal spec",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_multi_terminal_spec"
     },
     {
@@ -17355,10 +17113,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 61,
+      "community": 18,
       "norm_label": "multi-terminal tasks",
       "_origin": "semantic",
-      "community_name": "Testing Strategy (TESTING.md)",
+      "community_name": "AGENTS.md",
       "id": "specs_features_multi_terminal_tasks"
     },
     {
@@ -17370,10 +17128,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 84,
       "norm_label": "notifications spec",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Notifications Spec",
       "id": "specs_features_notifications_spec"
     },
     {
@@ -17385,10 +17143,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 85,
       "norm_label": "onboarding agent spec",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Onboarding Agent Spec",
       "id": "specs_features_onboarding_agent_spec"
     },
     {
@@ -17400,10 +17158,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 86,
       "norm_label": "projects spec",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Projects Spec",
       "id": "specs_features_projects_spec"
     },
     {
@@ -17415,10 +17173,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 277,
       "norm_label": "projects tasks",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Projects Tasks",
       "id": "specs_features_projects_tasks"
     },
     {
@@ -17430,10 +17188,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 284,
       "norm_label": "release distribution design",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Release Distribution Design",
       "id": "specs_features_release_distribution_design"
     },
     {
@@ -17445,10 +17203,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 18,
       "norm_label": "release distribution spec",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "AGENTS.md",
       "id": "specs_features_release_distribution_spec"
     },
     {
@@ -17460,10 +17218,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 285,
       "norm_label": "release distribution tasks",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Release Distribution Tasks",
       "id": "specs_features_release_distribution_tasks"
     },
     {
@@ -17475,10 +17233,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 18,
       "norm_label": "ci.yml: frontend job",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "AGENTS.md",
       "id": "github_workflows_ci_frontend_job"
     },
     {
@@ -17490,10 +17248,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 18,
       "norm_label": "ci.yml: rust job",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "AGENTS.md",
       "id": "github_workflows_ci_rust_job"
     },
     {
@@ -17505,10 +17263,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 18,
       "norm_label": "ci.yml: clippy job",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "AGENTS.md",
       "id": "github_workflows_ci_clippy_job"
     },
     {
@@ -17520,10 +17278,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 18,
       "norm_label": "ci.yml: commits job (conventional commits gate)",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "AGENTS.md",
       "id": "github_workflows_ci_commits_job"
     },
     {
@@ -17535,10 +17293,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 18,
       "norm_label": "release.yml: prepare job",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "AGENTS.md",
       "id": "github_workflows_release_prepare_job"
     },
     {
@@ -17550,10 +17308,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 18,
       "norm_label": "release.yml: build job (windows/linux matrix)",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "AGENTS.md",
       "id": "github_workflows_release_build_job"
     },
     {
@@ -17565,10 +17323,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 18,
       "norm_label": "release.yml: finalize job",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "AGENTS.md",
       "id": "github_workflows_release_finalize_job"
     },
     {
@@ -17580,10 +17338,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 18,
       "norm_label": "release.yml: cleanup job",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "AGENTS.md",
       "id": "github_workflows_release_cleanup_job"
     },
     {
@@ -17595,10 +17353,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 18,
       "norm_label": "push never publishes a release (workflow_dispatch only, structural)",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "AGENTS.md",
       "id": "specs_features_release_distribution_spec_push_never_publishes"
     },
     {
@@ -17610,10 +17368,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 18,
       "norm_label": "release stays draft until all artifacts confirmed",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "AGENTS.md",
       "id": "specs_features_release_distribution_design_release_draft_until_finalize"
     },
     {
@@ -17730,10 +17488,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 61,
+      "community": 18,
       "norm_label": "gate: quick",
       "_origin": "semantic",
-      "community_name": "Testing Strategy (TESTING.md)",
+      "community_name": "AGENTS.md",
       "id": "specs_codebase_testing_gate_quick"
     },
     {
@@ -17745,10 +17503,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 61,
+      "community": 18,
       "norm_label": "gate: full",
       "_origin": "semantic",
-      "community_name": "Testing Strategy (TESTING.md)",
+      "community_name": "AGENTS.md",
       "id": "specs_codebase_testing_gate_full"
     },
     {
@@ -17760,10 +17518,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 61,
+      "community": 18,
       "norm_label": "gate: build",
       "_origin": "semantic",
-      "community_name": "Testing Strategy (TESTING.md)",
+      "community_name": "AGENTS.md",
       "id": "specs_codebase_testing_gate_build"
     },
     {
@@ -17775,10 +17533,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 61,
+      "community": 18,
       "norm_label": "gate: scripts",
       "_origin": "semantic",
-      "community_name": "Testing Strategy (TESTING.md)",
+      "community_name": "AGENTS.md",
       "id": "specs_codebase_testing_gate_scripts"
     },
     {
@@ -17790,10 +17548,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 46,
+      "community": 18,
       "norm_label": "gate: pipeline",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "AGENTS.md",
       "id": "specs_codebase_testing_gate_pipeline"
     },
     {
@@ -17805,10 +17563,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 61,
+      "community": 30,
       "norm_label": "test coverage matrix",
       "_origin": "semantic",
-      "community_name": "Testing Strategy (TESTING.md)",
+      "community_name": "Execute (implement) doc",
       "id": "specs_codebase_testing_coverage_matrix"
     },
     {
@@ -17820,10 +17578,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 61,
+      "community": 18,
       "norm_label": "parallelism evaluation",
       "_origin": "semantic",
-      "community_name": "Testing Strategy (TESTING.md)",
+      "community_name": "AGENTS.md",
       "id": "specs_codebase_testing_parallelism_evaluation"
     },
     {
@@ -17835,10 +17593,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 61,
+      "community": 18,
       "norm_label": "uat-agent verification role",
       "_origin": "semantic",
-      "community_name": "Testing Strategy (TESTING.md)",
+      "community_name": "AGENTS.md",
       "id": "specs_codebase_testing_uat_agent"
     },
     {
@@ -17853,7 +17611,7 @@
       "community": 46,
       "norm_label": "agt-01: default agent + catalog",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_spec_agt01"
     },
     {
@@ -17868,7 +17626,7 @@
       "community": 46,
       "norm_label": "agt-02: missing cli detection",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_spec_agt02"
     },
     {
@@ -17883,7 +17641,7 @@
       "community": 46,
       "norm_label": "agt-03: per-session override",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_spec_agt03"
     },
     {
@@ -17898,7 +17656,7 @@
       "community": 46,
       "norm_label": "agt-04: visual agent identification",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_spec_agt04"
     },
     {
@@ -17913,7 +17671,7 @@
       "community": 46,
       "norm_label": "agt-05: per-agent scope in extensions",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_spec_agt05"
     },
     {
@@ -17928,7 +17686,7 @@
       "community": 46,
       "norm_label": "agt-06: resume or start new agent session",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_spec_agt06"
     },
     {
@@ -17943,7 +17701,7 @@
       "community": 46,
       "norm_label": "turbo mode (excluded pro feature)",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_spec_turbo_mode"
     },
     {
@@ -17958,7 +17716,7 @@
       "community": 46,
       "norm_label": "claude code (agent, anthropic)",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_spec_claude_code"
     },
     {
@@ -17973,7 +17731,7 @@
       "community": 46,
       "norm_label": "codex cli (agent, openai)",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_spec_codex_cli"
     },
     {
@@ -17988,7 +17746,7 @@
       "community": 46,
       "norm_label": "antigravity cli (agent, google)",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_spec_antigravity_cli"
     },
     {
@@ -18003,7 +17761,7 @@
       "community": 46,
       "norm_label": "opencode (agent, sst)",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_spec_opencode"
     },
     {
@@ -18018,7 +17776,7 @@
       "community": 46,
       "norm_label": "kimi code (agent, moonshot ai, beta)",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_spec_kimi_code"
     },
     {
@@ -18033,7 +17791,7 @@
       "community": 46,
       "norm_label": "t1: agent catalog + path detection",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_tasks_t1"
     },
     {
@@ -18048,7 +17806,7 @@
       "community": 46,
       "norm_label": "t2: launch agent in session",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_tasks_t2"
     },
     {
@@ -18063,7 +17821,7 @@
       "community": 46,
       "norm_label": "t3: default agent preference",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_tasks_t3"
     },
     {
@@ -18078,7 +17836,7 @@
       "community": 46,
       "norm_label": "t4: agent selection ui",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_tasks_t4"
     },
     {
@@ -18093,7 +17851,7 @@
       "community": 46,
       "norm_label": "t5: expose catalog to frontend + honor chosen agent",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_tasks_t5"
     },
     {
@@ -18108,7 +17866,7 @@
       "community": 46,
       "norm_label": "t6: resume or start new agent session",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_agent_selection_tasks_t6"
     },
     {
@@ -19788,7 +19546,7 @@
       "community": 46,
       "norm_label": "t1: projectservice",
       "_origin": "semantic",
-      "community_name": "SwarmDeck Specs Index (README.md)",
+      "community_name": "Agent Selection Spec",
       "id": "specs_features_projects_tasks_t1"
     },
     {
@@ -20565,10 +20323,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 61,
+      "community": 18,
       "norm_label": "t1: single version writer script",
       "_origin": "semantic",
-      "community_name": "Testing Strategy (TESTING.md)",
+      "community_name": "AGENTS.md",
       "id": "specs_features_release_distribution_tasks_t1"
     },
     {
@@ -20883,7 +20641,7 @@
       "community": 47,
       "norm_label": "settings shell feature (janela de configuracoes)",
       "_origin": "semantic",
-      "community_name": "Settings Shell feature (Janela de Configura\u00e7\u00f5es)",
+      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
       "id": "specs_features_settings_shell_spec_feature"
     },
     {
@@ -20898,7 +20656,7 @@
       "community": 47,
       "norm_label": "set-01: open settings in its own window",
       "_origin": "semantic",
-      "community_name": "Settings Shell feature (Janela de Configura\u00e7\u00f5es)",
+      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
       "id": "specs_features_settings_shell_spec_set_01"
     },
     {
@@ -20913,7 +20671,7 @@
       "community": 47,
       "norm_label": "set-02: navigate between the 4 settings sections",
       "_origin": "semantic",
-      "community_name": "Settings Shell feature (Janela de Configura\u00e7\u00f5es)",
+      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
       "id": "specs_features_settings_shell_spec_set_02"
     },
     {
@@ -20928,7 +20686,7 @@
       "community": 47,
       "norm_label": "agentpanel.tsx",
       "_origin": "semantic",
-      "community_name": "Settings Shell feature (Janela de Configura\u00e7\u00f5es)",
+      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
       "id": "specs_features_settings_shell_spec_agentpanel"
     },
     {
@@ -20943,7 +20701,7 @@
       "community": 47,
       "norm_label": "projectspanel.tsx",
       "_origin": "semantic",
-      "community_name": "Settings Shell feature (Janela de Configura\u00e7\u00f5es)",
+      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
       "id": "specs_features_settings_shell_spec_projectspanel"
     },
     {
@@ -20958,7 +20716,7 @@
       "community": 47,
       "norm_label": "statusespanel.tsx",
       "_origin": "semantic",
-      "community_name": "Settings Shell feature (Janela de Configura\u00e7\u00f5es)",
+      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
       "id": "specs_features_settings_shell_spec_statusespanel"
     },
     {
@@ -20973,7 +20731,7 @@
       "community": 47,
       "norm_label": "updatesettings.tsx",
       "_origin": "semantic",
-      "community_name": "Settings Shell feature (Janela de Configura\u00e7\u00f5es)",
+      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
       "id": "specs_features_settings_shell_spec_updatesettings"
     },
     {
@@ -20989,7 +20747,7 @@
       "community": 47,
       "norm_label": "decision: settings is a second tauri window, not a modal",
       "_origin": "semantic",
-      "community_name": "Settings Shell feature (Janela de Configura\u00e7\u00f5es)",
+      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
       "id": "specs_features_settings_shell_spec_second_window_decision"
     },
     {
@@ -21004,7 +20762,7 @@
       "community": 47,
       "norm_label": "settings-shell t1: secondary settings window",
       "_origin": "semantic",
-      "community_name": "Settings Shell feature (Janela de Configura\u00e7\u00f5es)",
+      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
       "id": "specs_features_settings_shell_tasks_t1"
     },
     {
@@ -21019,7 +20777,7 @@
       "community": 47,
       "norm_label": "settings-shell t2: navigation and mounting the 4 real panels",
       "_origin": "semantic",
-      "community_name": "Settings Shell feature (Janela de Configura\u00e7\u00f5es)",
+      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
       "id": "specs_features_settings_shell_tasks_t2"
     },
     {
@@ -21031,10 +20789,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 21,
+      "community": 45,
       "norm_label": "skills manager feature (gerenciador de skills)",
       "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
+      "community_name": "Skills Manager feature (Gerenciador de Skills)",
       "id": "specs_features_skills_manager_spec_feature"
     },
     {
@@ -21046,10 +20804,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 21,
+      "community": 45,
       "norm_label": "skl-01: list installed skills",
       "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
+      "community_name": "Skills Manager feature (Gerenciador de Skills)",
       "id": "specs_features_skills_manager_spec_skl_01"
     },
     {
@@ -21061,10 +20819,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 21,
+      "community": 45,
       "norm_label": "skl-02: filter by agent and search",
       "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
+      "community_name": "Skills Manager feature (Gerenciador de Skills)",
       "id": "specs_features_skills_manager_spec_skl_02"
     },
     {
@@ -21076,10 +20834,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 21,
+      "community": 45,
       "norm_label": "skl-03: open, remove, export skills",
       "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
+      "community_name": "Skills Manager feature (Gerenciador de Skills)",
       "id": "specs_features_skills_manager_spec_skl_03"
     },
     {
@@ -21091,10 +20849,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 21,
+      "community": 45,
       "norm_label": "skl-04: skills marketplace",
       "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
+      "community_name": "Skills Manager feature (Gerenciador de Skills)",
       "id": "specs_features_skills_manager_spec_skl_04"
     },
     {
@@ -21109,7 +20867,7 @@
       "community": 47,
       "norm_label": "kanbanwindow (rust)",
       "_origin": "semantic",
-      "community_name": "Settings Shell feature (Janela de Configura\u00e7\u00f5es)",
+      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
       "id": "specs_features_task_kanban_design_kanbanwindow"
     },
     {
@@ -21215,7 +20973,7 @@
       "community": 47,
       "norm_label": "decision: kanban as a second tauri window",
       "_origin": "semantic",
-      "community_name": "Settings Shell feature (Janela de Configura\u00e7\u00f5es)",
+      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
       "id": "specs_features_task_kanban_design_second_window_decision"
     },
     {
@@ -21658,111 +21416,6 @@
       "id": "specs_features_worktrees_spec_wt_07"
     },
     {
-      "label": "SwarmDeck (project)",
-      "file_type": "document",
-      "source_file": ".specs/project/PROJECT.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 21,
-      "norm_label": "swarmdeck (project)",
-      "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
-      "id": "specs_project_project_swarmdeck"
-    },
-    {
-      "label": "M1 \u2014 Terminal core milestone",
-      "file_type": "document",
-      "source_file": ".specs/project/ROADMAP.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 47,
-      "norm_label": "m1 \u2014 terminal core milestone",
-      "_origin": "semantic",
-      "community_name": "Settings Shell feature (Janela de Configura\u00e7\u00f5es)",
-      "id": "specs_project_roadmap_m1"
-    },
-    {
-      "label": "M2 \u2014 Agent<->app loop milestone",
-      "file_type": "document",
-      "source_file": ".specs/project/ROADMAP.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 32,
-      "norm_label": "m2 \u2014 agent<->app loop milestone",
-      "_origin": "semantic",
-      "community_name": "Task Kanban feature (Kanban de tarefas)",
-      "id": "specs_project_roadmap_m2"
-    },
-    {
-      "label": "M3 \u2014 Extensibility milestone",
-      "file_type": "document",
-      "source_file": ".specs/project/ROADMAP.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 21,
-      "norm_label": "m3 \u2014 extensibility milestone",
-      "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
-      "id": "specs_project_roadmap_m3"
-    },
-    {
-      "label": "M4 \u2014 Hygiene and environment milestone",
-      "file_type": "document",
-      "source_file": ".specs/project/ROADMAP.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 21,
-      "norm_label": "m4 \u2014 hygiene and environment milestone",
-      "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
-      "id": "specs_project_roadmap_m4"
-    },
-    {
-      "label": "M5 \u2014 Polish milestone",
-      "file_type": "document",
-      "source_file": ".specs/project/ROADMAP.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 277,
-      "norm_label": "m5 \u2014 polish milestone",
-      "_origin": "semantic",
-      "community_name": "M5 \u2014 Polish milestone",
-      "id": "specs_project_roadmap_m5"
-    },
-    {
-      "label": "Transversal track: release-distribution",
-      "file_type": "document",
-      "source_file": ".specs/project/ROADMAP.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 50,
-      "norm_label": "transversal track: release-distribution",
-      "_origin": "semantic",
-      "community_name": "Run 005 spec-loop execution (02/08/2026)",
-      "id": "specs_project_roadmap_release_track"
-    },
-    {
       "label": "UI-INVENTORY.md: reference-product UI inventory",
       "file_type": "document",
       "source_file": ".specs/research/UI-INVENTORY.md",
@@ -21771,10 +21424,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 21,
+      "community": 44,
       "norm_label": "ui-inventory.md: reference-product ui inventory",
       "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
+      "community_name": "UI-INVENTORY.md: reference-product UI inventory",
       "id": "specs_research_ui_inventory_doc"
     },
     {
@@ -21786,10 +21439,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 21,
+      "community": 44,
       "norm_label": "observed: settings modal with 12-section side rail",
       "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
+      "community_name": "UI-INVENTORY.md: reference-product UI inventory",
       "id": "specs_research_ui_inventory_settings_modal"
     },
     {
@@ -21801,10 +21454,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 21,
+      "community": 44,
       "norm_label": "observed: terminal statuses settings section (4 default statuses)",
       "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
+      "community_name": "UI-INVENTORY.md: reference-product UI inventory",
       "id": "specs_research_ui_inventory_terminal_statuses_ui"
     },
     {
@@ -21816,10 +21469,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 21,
+      "community": 44,
       "norm_label": "observed: skills settings section (installed/marketplace tabs)",
       "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
+      "community_name": "UI-INVENTORY.md: reference-product UI inventory",
       "id": "specs_research_ui_inventory_skills_ui"
     },
     {
@@ -21831,10 +21484,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 21,
+      "community": 44,
       "norm_label": "observed: worktrees settings section (safe/review/kept)",
       "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
+      "community_name": "UI-INVENTORY.md: reference-product UI inventory",
       "id": "specs_research_ui_inventory_worktrees_ui"
     },
     {
@@ -21846,10 +21499,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 21,
+      "community": 44,
       "norm_label": "observed: kanban board in its own window",
       "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
+      "community_name": "UI-INVENTORY.md: reference-product UI inventory",
       "id": "specs_research_ui_inventory_kanban_window"
     },
     {
@@ -21861,10 +21514,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 21,
+      "community": 44,
       "norm_label": "observed: onboarding agent floating panel",
       "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
+      "community_name": "UI-INVENTORY.md: reference-product UI inventory",
       "id": "specs_research_ui_inventory_onboarding_agent"
     },
     {
@@ -21876,226 +21529,11 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 21,
+      "community": 44,
       "norm_label": "observed: pro paywall feature matrix",
       "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
+      "community_name": "UI-INVENTORY.md: reference-product UI inventory",
       "id": "specs_research_ui_inventory_paywall_matrix"
-    },
-    {
-      "label": "Triagem 001 (28/07/2026)",
-      "file_type": "document",
-      "source_file": ".specs/runs/001-2026-07-28/TRIAGE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 50,
-      "norm_label": "triagem 001 (28/07/2026)",
-      "_origin": "semantic",
-      "community_name": "Run 005 spec-loop execution (02/08/2026)",
-      "id": "specs_runs_001_2026_07_28_triage_run"
-    },
-    {
-      "label": "Triagem 002 (28/07/2026)",
-      "file_type": "document",
-      "source_file": ".specs/runs/002-2026-07-28/TRIAGE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 50,
-      "norm_label": "triagem 002 (28/07/2026)",
-      "_origin": "semantic",
-      "community_name": "Run 005 spec-loop execution (02/08/2026)",
-      "id": "specs_runs_002_2026_07_28_triage_run"
-    },
-    {
-      "label": "Triagem 004 (01/08/2026)",
-      "file_type": "document",
-      "source_file": ".specs/runs/004-2026-08-01/TRIAGE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 50,
-      "norm_label": "triagem 004 (01/08/2026)",
-      "_origin": "semantic",
-      "community_name": "Run 005 spec-loop execution (02/08/2026)",
-      "id": "specs_runs_004_2026_08_01_triage_run"
-    },
-    {
-      "label": "Run 004 spec-loop execution (01/08/2026)",
-      "file_type": "document",
-      "source_file": ".specs/runs/004-2026-08-01/JOURNAL.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 50,
-      "norm_label": "run 004 spec-loop execution (01/08/2026)",
-      "_origin": "semantic",
-      "community_name": "Run 005 spec-loop execution (02/08/2026)",
-      "id": "specs_runs_004_2026_08_01_journal_run"
-    },
-    {
-      "label": "Finding: App.tsx still scaffolding placeholder, terminal components never mounted",
-      "file_type": "rationale",
-      "source_file": ".specs/runs/004-2026-08-01/JOURNAL.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "rationale": "multi-terminal/T7,T9,T10,T11 pass isolated gates but are unreachable by a real user because App.tsx never imports GridLayout/TerminalPane/TerminalHeader/state/terminals.ts.",
-      "community": 50,
-      "norm_label": "finding: app.tsx still scaffolding placeholder, terminal components never mounted",
-      "_origin": "semantic",
-      "community_name": "Run 005 spec-loop execution (02/08/2026)",
-      "id": "specs_runs_004_2026_08_01_journal_apptsx_gap"
-    },
-    {
-      "label": "Triagem 005 (02/08/2026)",
-      "file_type": "document",
-      "source_file": ".specs/runs/005-2026-08-02/TRIAGE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 50,
-      "norm_label": "triagem 005 (02/08/2026)",
-      "_origin": "semantic",
-      "community_name": "Run 005 spec-loop execution (02/08/2026)",
-      "id": "specs_runs_005_2026_08_02_triage_run"
-    },
-    {
-      "label": "Finding: real Linux CI failed twice (agent_prefs.rs PATH detection bug)",
-      "file_type": "rationale",
-      "source_file": ".specs/runs/005-2026-08-02/TRIAGE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "rationale": "PathIsoladoGuard::with_only_codex_instalado always wrote codex.exe even off Windows, hiding the fake binary from catalog::command_exists_in_dir on Linux; fixed with cfg!(windows) outside this skill, not yet re-proven in real CI.",
-      "community": 50,
-      "norm_label": "finding: real linux ci failed twice (agent_prefs.rs path detection bug)",
-      "_origin": "semantic",
-      "community_name": "Run 005 spec-loop execution (02/08/2026)",
-      "id": "specs_runs_005_2026_08_02_triage_ci_linux_bug"
-    },
-    {
-      "label": "Run 005 spec-loop execution (02/08/2026)",
-      "file_type": "document",
-      "source_file": ".specs/runs/005-2026-08-02/JOURNAL.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 50,
-      "norm_label": "run 005 spec-loop execution (02/08/2026)",
-      "_origin": "semantic",
-      "community_name": "Run 005 spec-loop execution (02/08/2026)",
-      "id": "specs_runs_005_2026_08_02_journal_run"
-    },
-    {
-      "label": "Bug found and fixed: release.yml:135 git add referenced nonexistent Cargo.toml/Cargo.lock paths",
-      "file_type": "rationale",
-      "source_file": ".specs/runs/005-2026-08-02/JOURNAL.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "rationale": "The version moved to the workspace root Cargo.toml but T6's git add still referenced the reference repo's src-tauri path, which under set -euo pipefail would abort the prepare job before any commit/tag.",
-      "community": 50,
-      "norm_label": "bug found and fixed: release.yml:135 git add referenced nonexistent cargo.toml/cargo.lock paths",
-      "_origin": "semantic",
-      "community_name": "Run 005 spec-loop execution (02/08/2026)",
-      "id": "specs_runs_005_2026_08_02_journal_release_yml_bug"
-    },
-    {
-      "label": "Bug found and fixed: make-portable.mjs default binary path pointed to wrong build output",
-      "file_type": "rationale",
-      "source_file": ".specs/runs/005-2026-08-02/JOURNAL.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "rationale": "defaultBinaryPath() resolved to src-tauri/target/release/... but the Cargo workspace builds to <root>/target/release/; release.yml called the script without --binary, so it would have hit the broken default in production.",
-      "community": 50,
-      "norm_label": "bug found and fixed: make-portable.mjs default binary path pointed to wrong build output",
-      "_origin": "semantic",
-      "community_name": "Run 005 spec-loop execution (02/08/2026)",
-      "id": "specs_runs_005_2026_08_02_journal_make_portable_bug"
-    },
-    {
-      "label": "Blocked/stationed: mcp-task-server/T9 cannot start IpcServer without touching out-of-scope files",
-      "file_type": "rationale",
-      "source_file": ".specs/runs/005-2026-08-02/JOURNAL.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "rationale": "IpcServer::for_app requires Arc-wrapped TerminalManager/Mutex<Db>/TerminalMetaService, but lib.rs manages them as bare types consumed by commands/terminal.rs and update/check.rs, outside T9's authorized file list \u2014 an architecture decision, not an ambiguity.",
-      "community": 50,
-      "norm_label": "blocked/stationed: mcp-task-server/t9 cannot start ipcserver without touching out-of-scope files",
-      "_origin": "semantic",
-      "community_name": "Run 005 spec-loop execution (02/08/2026)",
-      "id": "specs_runs_005_2026_08_02_journal_ipcserver_gap"
-    },
-    {
-      "label": "Triagem 006 (02-03/08/2026)",
-      "file_type": "document",
-      "source_file": ".specs/runs/006-2026-08-02/TRIAGE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 32,
-      "norm_label": "triagem 006 (02-03/08/2026)",
-      "_origin": "semantic",
-      "community_name": "Task Kanban feature (Kanban de tarefas)",
-      "id": "specs_runs_006_2026_08_02_triage_run"
-    },
-    {
-      "label": "JOURNAL.md (Run 007, spec-loop)",
-      "file_type": "document",
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 18,
-      "norm_label": "journal.md (run 007, spec-loop)",
-      "_origin": "semantic",
-      "community_name": "AGENTS.md",
-      "id": "specs_runs_007_2026_08_03_journal"
-    },
-    {
-      "label": "TRIAGE.md (Run 007)",
-      "file_type": "document",
-      "source_file": ".specs/runs/007-2026-08-03/TRIAGE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 18,
-      "norm_label": "triage.md (run 007)",
-      "_origin": "semantic",
-      "community_name": "AGENTS.md",
-      "id": "specs_runs_007_2026_08_03_triage"
     },
     {
       "label": "AGENTS.md",
@@ -22151,10 +21589,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 81,
+      "community": 25,
       "norm_label": "index.html",
       "_origin": "semantic",
-      "community_name": "main.tsx",
+      "community_name": "SettingsShell.tsx",
       "id": "index"
     },
     {
@@ -22233,21 +21671,6 @@
       "id": "feature_terminal_statuses"
     },
     {
-      "label": "settings-shell (feature)",
-      "file_type": "concept",
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 18,
-      "norm_label": "settings-shell (feature)",
-      "_origin": "semantic",
-      "community_name": "AGENTS.md",
-      "id": "feature_settings_shell"
-    },
-    {
       "label": "projects (feature)",
       "file_type": "concept",
       "source_file": "AGENTS.md",
@@ -22294,22 +21717,6 @@
       "id": "agents_traceabilitymarker"
     },
     {
-      "label": "Wave sequencing rationale (shared file territory)",
-      "file_type": "rationale",
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "rationale": "lib.rs, App.tsx, TerminalHeader.tsx and commands/terminal.rs are shared territory touched by multiple tasks across features (multi-terminal/T14, T16; agent-selection/T5; settings-shell/T1; terminal-statuses/T5). To avoid concurrent-edit conflicts, tasks touching the same file are serialized into different execution waves instead of running in parallel.",
-      "community": 18,
-      "norm_label": "wave sequencing rationale (shared file territory)",
-      "_origin": "semantic",
-      "community_name": "AGENTS.md",
-      "id": "specs_runs_007_2026_08_03_journal_wavesequencing"
-    },
-    {
       "label": "cargo build --workspace redundancy (corrected gate description)",
       "file_type": "rationale",
       "source_file": "AGENTS.md",
@@ -22319,59 +21726,11 @@
       "author": null,
       "contributor": null,
       "rationale": "The Cargo workspace has no default-members restriction, so plain `cargo build` already compiles both src-tauri and crates/swarmdeck-mcp; `--workspace` is valid but redundant, not required. Triage 007 found the run-006 claim (that --workspace was needed) false via `cargo metadata` and corrected AGENTS.md's Build & test table.",
-      "community": 18,
+      "community": 50,
       "norm_label": "cargo build --workspace redundancy (corrected gate description)",
       "_origin": "semantic",
-      "community_name": "AGENTS.md",
+      "community_name": "cargo build --workspace redundancy (corrected gate description)",
       "id": "agents_cargobuildredundancy"
-    },
-    {
-      "label": "ACL capabilities gap (kanban/settings windows)",
-      "file_type": "rationale",
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "rationale": "src-tauri/capabilities/default.json only lists \"windows\": [\"main\"], so neither the kanban window nor the new settings window appear in the capability. Under Tauri 2 ACL this suggests no invoke() call from those windows would be permitted at runtime, which would block task-kanban/T7 (invoke('task_delete')/invoke('task_send')) and all of settings-shell/T2 navigation. Not fixed in run 007 \u2014 no queued task authorized editing capabilities/default.json for this purpose; flagged for the next spec-triage with priority, since if confirmed it is a real bug blocking two whole windows.",
-      "community": 18,
-      "norm_label": "acl capabilities gap (kanban/settings windows)",
-      "_origin": "semantic",
-      "community_name": "AGENTS.md",
-      "id": "specs_runs_007_2026_08_03_journal_aclgap"
-    },
-    {
-      "label": "TerminalId integration gap (rename UI has no real path)",
-      "file_type": "rationale",
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "rationale": "The real TerminalId returned by pty_spawn only exists today as a local variable inside TerminalPane.tsx; it never propagates up to App.tsx nor down into TerminalHeader.tsx. So even though the manual-rename UI (multi-terminal/T16) and the terminal_set_title command are complete and compile, there is no real end-to-end path to exercise them today. Same gap class that originated task T12; needs a future task wiring TerminalPane -> App.tsx -> TerminalHeader.",
-      "community": 18,
-      "norm_label": "terminalid integration gap (rename ui has no real path)",
-      "_origin": "semantic",
-      "community_name": "AGENTS.md",
-      "id": "specs_runs_007_2026_08_03_journal_terminalidgap"
-    },
-    {
-      "label": "task-kanban/T8 blocked \u2014 architecture decision needed",
-      "file_type": "rationale",
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "rationale": "The only task-creation path (tasks::service::create) requires a TerminalContext and derives project_id from cwd \u2014 it does not accept an explicit project. Three options were surfaced: (1) expand T8 to add task_create to the backend plus decide manual terminal_id semantics; (2) split into a backend task and a UI task; (3) reduce this round's criterion (no project selector) with an explicit AD admitting the reduction. Marked \u26d4 NEEDS-DECISION in task-kanban/tasks.md; no file was touched by the attempt.",
-      "community": 18,
-      "norm_label": "task-kanban/t8 blocked \u2014 architecture decision needed",
-      "_origin": "semantic",
-      "community_name": "AGENTS.md",
-      "id": "specs_runs_007_2026_08_03_journal_t8needsdecision"
     },
     {
       "label": ".claude/rules/spec-driven-changes.md (traceability marker rule)",
@@ -22387,81 +21746,6 @@
       "_origin": "semantic",
       "community_name": "AGENTS.md",
       "id": "claude_rules_spec_driven_changes"
-    },
-    {
-      "label": ".specs/runs/006-2026-08-02/TRIAGE.md (Run 006)",
-      "file_type": "document",
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 18,
-      "norm_label": ".specs/runs/006-2026-08-02/triage.md (run 006)",
-      "_origin": "semantic",
-      "community_name": "AGENTS.md",
-      "id": "specs_runs_006_2026_08_02_triage"
-    },
-    {
-      "label": "STATE.md (project decision log)",
-      "file_type": "document",
-      "source_file": ".specs/runs/007-2026-08-03/TRIAGE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 18,
-      "norm_label": "state.md (project decision log)",
-      "_origin": "semantic",
-      "community_name": "AGENTS.md",
-      "id": "specs_project_state"
-    },
-    {
-      "label": "ROADMAP.md (project roadmap)",
-      "file_type": "document",
-      "source_file": ".specs/runs/007-2026-08-03/TRIAGE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 18,
-      "norm_label": "roadmap.md (project roadmap)",
-      "_origin": "semantic",
-      "community_name": "AGENTS.md",
-      "id": "specs_project_roadmap"
-    },
-    {
-      "label": "EXECUTION.md (task execution bookkeeping)",
-      "file_type": "document",
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 18,
-      "norm_label": "execution.md (task execution bookkeeping)",
-      "_origin": "semantic",
-      "community_name": "AGENTS.md",
-      "id": "specs_project_execution"
-    },
-    {
-      "label": "git-cliff (changelog generator, cliff.toml)",
-      "file_type": "concept",
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 18,
-      "norm_label": "git-cliff (changelog generator, cliff.toml)",
-      "_origin": "semantic",
-      "community_name": "AGENTS.md",
-      "id": "git_cliff_tool"
     },
     {
       "label": ".github/workflows/release.yml",
@@ -22522,21 +21806,6 @@
       "_origin": "semantic",
       "community_name": "AGENTS.md",
       "id": "src_tauri_commands_agents"
-    },
-    {
-      "label": "getCurrentWebviewWindow() (@tauri-apps/api v2.11.1)",
-      "file_type": "concept",
-      "source_file": ".specs/runs/007-2026-08-03/TRIAGE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 18,
-      "norm_label": "getcurrentwebviewwindow() (@tauri-apps/api v2.11.1)",
-      "_origin": "semantic",
-      "community_name": "AGENTS.md",
-      "id": "tauri_api_getcurrentwebviewwindow"
     },
     {
       "label": "SwarmDeck Main Grid Screenshot",
@@ -23467,261 +22736,6 @@
       "_origin": "semantic",
       "community_name": "Settings - Terminal Statuses screenshot",
       "id": "specs_research_screenshots_04_settings_terminal_statuses_deleteaction"
-    },
-    {
-      "label": "05-paywall-feature-matrix.png",
-      "file_type": "image",
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 36,
-      "norm_label": "05-paywall-feature-matrix.png",
-      "_origin": "semantic",
-      "community_name": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "id": "specs_research_screenshots_05_paywall_feature_matrix_image"
-    },
-    {
-      "label": "Upgrade Plan Paywall Modal",
-      "file_type": "concept",
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 36,
-      "norm_label": "upgrade plan paywall modal",
-      "_origin": "semantic",
-      "community_name": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "id": "specs_research_screenshots_05_paywall_feature_matrix_upgrademodal"
-    },
-    {
-      "label": "Tool Permissions (gated feature)",
-      "file_type": "concept",
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 36,
-      "norm_label": "tool permissions (gated feature)",
-      "_origin": "semantic",
-      "community_name": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "id": "specs_research_screenshots_05_paywall_feature_matrix_toolpermissionsfeature"
-    },
-    {
-      "label": "Starter Plan (\u20ac2.99/month)",
-      "file_type": "concept",
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 36,
-      "norm_label": "starter plan (\u20ac2.99/month)",
-      "_origin": "semantic",
-      "community_name": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "id": "specs_research_screenshots_05_paywall_feature_matrix_starterplan"
-    },
-    {
-      "label": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "file_type": "concept",
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 36,
-      "norm_label": "pro plan (\u20ac6.99/month, best value)",
-      "_origin": "semantic",
-      "community_name": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "id": "specs_research_screenshots_05_paywall_feature_matrix_proplan"
-    },
-    {
-      "label": "Terminal Count Limit (4 vs 25 terminals)",
-      "file_type": "concept",
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 36,
-      "norm_label": "terminal count limit (4 vs 25 terminals)",
-      "_origin": "semantic",
-      "community_name": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "id": "specs_research_screenshots_05_paywall_feature_matrix_terminallimitfeature"
-    },
-    {
-      "label": "Project Count Limit (4 vs unlimited projects)",
-      "file_type": "concept",
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 36,
-      "norm_label": "project count limit (4 vs unlimited projects)",
-      "_origin": "semantic",
-      "community_name": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "id": "specs_research_screenshots_05_paywall_feature_matrix_projectlimitfeature"
-    },
-    {
-      "label": "Terminal Shortcuts (1 vs unlimited)",
-      "file_type": "concept",
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 36,
-      "norm_label": "terminal shortcuts (1 vs unlimited)",
-      "_origin": "semantic",
-      "community_name": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "id": "specs_research_screenshots_05_paywall_feature_matrix_terminalshortcutfeature"
-    },
-    {
-      "label": "Project Shortcuts (1 vs 6, 6x Boost)",
-      "file_type": "concept",
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 36,
-      "norm_label": "project shortcuts (1 vs 6, 6x boost)",
-      "_origin": "semantic",
-      "community_name": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "id": "specs_research_screenshots_05_paywall_feature_matrix_projectshortcutfeature"
-    },
-    {
-      "label": "Layout Mode (Grid only vs Grid + Tabs)",
-      "file_type": "concept",
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 36,
-      "norm_label": "layout mode (grid only vs grid + tabs)",
-      "_origin": "semantic",
-      "community_name": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "id": "specs_research_screenshots_05_paywall_feature_matrix_layoutmode"
-    },
-    {
-      "label": "MCP Configuration & Marketplace",
-      "file_type": "concept",
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 36,
-      "norm_label": "mcp configuration & marketplace",
-      "_origin": "semantic",
-      "community_name": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "id": "specs_research_screenshots_05_paywall_feature_matrix_mcpconfigurationfeature"
-    },
-    {
-      "label": "Manage MCP / Claude Code Permissions",
-      "file_type": "concept",
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 36,
-      "norm_label": "manage mcp / claude code permissions",
-      "_origin": "semantic",
-      "community_name": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "id": "specs_research_screenshots_05_paywall_feature_matrix_managepermissionsfeature"
-    },
-    {
-      "label": "Turbo Mode (3x Boost, Pro only)",
-      "file_type": "concept",
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 36,
-      "norm_label": "turbo mode (3x boost, pro only)",
-      "_origin": "semantic",
-      "community_name": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "id": "specs_research_screenshots_05_paywall_feature_matrix_turbomodefeature"
-    },
-    {
-      "label": "Conversation History (Pro only)",
-      "file_type": "concept",
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 36,
-      "norm_label": "conversation history (pro only)",
-      "_origin": "semantic",
-      "community_name": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "id": "specs_research_screenshots_05_paywall_feature_matrix_conversationhistoryfeature"
-    },
-    {
-      "label": "Git Integration & AI Commits (Pro only)",
-      "file_type": "concept",
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 36,
-      "norm_label": "git integration & ai commits (pro only)",
-      "_origin": "semantic",
-      "community_name": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "id": "specs_research_screenshots_05_paywall_feature_matrix_gitintegrationfeature"
-    },
-    {
-      "label": "Task Labels (Pro only)",
-      "file_type": "concept",
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 36,
-      "norm_label": "task labels (pro only)",
-      "_origin": "semantic",
-      "community_name": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "id": "specs_research_screenshots_05_paywall_feature_matrix_tasklabelsfeature"
-    },
-    {
-      "label": "Keyboard Shortcuts (Pro only)",
-      "file_type": "concept",
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 36,
-      "norm_label": "keyboard shortcuts (pro only)",
-      "_origin": "semantic",
-      "community_name": "Pro Plan (\u20ac6.99/month, Best Value)",
-      "id": "specs_research_screenshots_05_paywall_feature_matrix_keyboardshortcutsfeature"
     },
     {
       "label": "MCP Settings Screen (Screenshot)",
@@ -25625,7 +24639,7 @@
       "community": 39,
       "norm_label": "stat-02: catalogo de status \u2014 crud",
       "_origin": "semantic",
-      "community_name": "T1: CRUD do cat\u00e1logo de status",
+      "community_name": "StatusesPanel.tsx",
       "id": "specs_features_terminal_statuses_spec_stat02"
     },
     {
@@ -25640,7 +24654,7 @@
       "community": 39,
       "norm_label": "stat-03: catalogo de status \u2014 ordem e prioridade",
       "_origin": "semantic",
-      "community_name": "T1: CRUD do cat\u00e1logo de status",
+      "community_name": "StatusesPanel.tsx",
       "id": "specs_features_terminal_statuses_spec_stat03"
     },
     {
@@ -25655,7 +24669,7 @@
       "community": 39,
       "norm_label": "stat-04: propagacao do catalogo na proxima sessao",
       "_origin": "semantic",
-      "community_name": "T1: CRUD do cat\u00e1logo de status",
+      "community_name": "StatusesPanel.tsx",
       "id": "specs_features_terminal_statuses_spec_stat04"
     },
     {
@@ -25712,10 +24726,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 57,
       "norm_label": "stat-08: status como filtro",
       "_origin": "semantic",
-      "community_name": "T6: Real\u00e7ar terminais por filtro de status",
+      "community_name": "T4: Badge, hover de atividade e log",
       "id": "specs_features_terminal_statuses_spec_stat08"
     },
     {
@@ -25745,7 +24759,7 @@
       "community": 39,
       "norm_label": "user story: catalogo editavel de status (p1 mvp)",
       "_origin": "semantic",
-      "community_name": "T1: CRUD do cat\u00e1logo de status",
+      "community_name": "StatusesPanel.tsx",
       "id": "specs_features_terminal_statuses_spec_catalogo_editavel_story"
     },
     {
@@ -25772,10 +24786,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 57,
       "norm_label": "user story: status como filtro (p2)",
       "_origin": "semantic",
-      "community_name": "T6: Real\u00e7ar terminais por filtro de status",
+      "community_name": "T4: Badge, hover de atividade e log",
       "id": "specs_features_terminal_statuses_spec_status_filtro_story"
     },
     {
@@ -25790,7 +24804,7 @@
       "community": 39,
       "norm_label": "t1: crud do catalogo de status",
       "_origin": "semantic",
-      "community_name": "T1: CRUD do cat\u00e1logo de status",
+      "community_name": "StatusesPanel.tsx",
       "id": "specs_features_terminal_statuses_tasks_t1"
     },
     {
@@ -25805,7 +24819,7 @@
       "community": 39,
       "norm_label": "t2: snapshot de catalogo por sessao",
       "_origin": "semantic",
-      "community_name": "T1: CRUD do cat\u00e1logo de status",
+      "community_name": "StatusesPanel.tsx",
       "id": "specs_features_terminal_statuses_tasks_t2"
     },
     {
@@ -25820,7 +24834,7 @@
       "community": 39,
       "norm_label": "t3: ui do catalogo de status",
       "_origin": "semantic",
-      "community_name": "T1: CRUD do cat\u00e1logo de status",
+      "community_name": "StatusesPanel.tsx",
       "id": "specs_features_terminal_statuses_tasks_t3"
     },
     {
@@ -25862,10 +24876,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 57,
       "norm_label": "t6: realcar terminais por filtro de status",
       "_origin": "semantic",
-      "community_name": "T6: Real\u00e7ar terminais por filtro de status",
+      "community_name": "T4: Badge, hover de atividade e log",
       "id": "specs_features_terminal_statuses_tasks_t6"
     },
     {
@@ -25880,7 +24894,7 @@
       "community": 39,
       "norm_label": "status_catalog.rs \u2014 statuscatalog service",
       "_origin": "semantic",
-      "community_name": "T1: CRUD do cat\u00e1logo de status",
+      "community_name": "StatusesPanel.tsx",
       "id": "src_tauri_src_terminal_status_catalog_statuscatalog"
     },
     {
@@ -25895,7 +24909,7 @@
       "community": 39,
       "norm_label": "status_snapshot.rs \u2014 statussnapshot mechanism",
       "_origin": "semantic",
-      "community_name": "T1: CRUD do cat\u00e1logo de status",
+      "community_name": "StatusesPanel.tsx",
       "id": "src_tauri_src_terminal_status_snapshot_statussnapshot"
     },
     {
@@ -25907,10 +24921,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 39,
+      "community": 57,
       "norm_label": "statusfilter.tsx",
       "_origin": "semantic",
-      "community_name": "T1: CRUD do cat\u00e1logo de status",
+      "community_name": "T4: Badge, hover de atividade e log",
       "id": "src_components_terminal_statusfilter_statusfilter"
     },
     {
@@ -25922,10 +24936,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 57,
       "norm_label": "kan-06 (task-kanban requirement, mistakenly linked to stat-08)",
       "_origin": "semantic",
-      "community_name": "T6: Real\u00e7ar terminais por filtro de status",
+      "community_name": "T4: Badge, hover de atividade e log",
       "id": "specs_features_task_kanban_spec_kan06"
     },
     {
@@ -25937,10 +24951,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 79,
+      "community": 57,
       "norm_label": "task-kanban/boardfilters.tsx (mistaken destination for stat-08)",
       "_origin": "semantic",
-      "community_name": "T6: Real\u00e7ar terminais por filtro de status",
+      "community_name": "T4: Badge, hover de atividade e log",
       "id": "task_kanban_boardfilters_boardfilters"
     },
     {
@@ -25955,7 +24969,7 @@
       "community": 54,
       "norm_label": "feature: terminal-statuses",
       "_origin": "semantic",
-      "community_name": "Ordem de execu\u00e7\u00e3o \u2014 M1 + M2",
+      "community_name": "Feature: terminal-statuses",
       "id": "specs_features_terminal_statuses_feature"
     },
     {
@@ -25967,10 +24981,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 54,
+      "community": 81,
       "norm_label": "feature: multi-terminal",
       "_origin": "semantic",
-      "community_name": "Ordem de execu\u00e7\u00e3o \u2014 M1 + M2",
+      "community_name": "Feature: multi-terminal",
       "id": "specs_features_multi_terminal_feature"
     },
     {
@@ -25982,251 +24996,11 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 54,
+      "community": 39,
       "norm_label": "feature: mcp-task-server",
       "_origin": "semantic",
-      "community_name": "Ordem de execu\u00e7\u00e3o \u2014 M1 + M2",
+      "community_name": "StatusesPanel.tsx",
       "id": "specs_features_mcp_task_server_feature"
-    },
-    {
-      "label": "Feature: task-kanban",
-      "file_type": "concept",
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 54,
-      "norm_label": "feature: task-kanban",
-      "_origin": "semantic",
-      "community_name": "Ordem de execu\u00e7\u00e3o \u2014 M1 + M2",
-      "id": "specs_features_task_kanban_feature"
-    },
-    {
-      "label": "Feature: agent-selection",
-      "file_type": "concept",
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 54,
-      "norm_label": "feature: agent-selection",
-      "_origin": "semantic",
-      "community_name": "Ordem de execu\u00e7\u00e3o \u2014 M1 + M2",
-      "id": "specs_features_agent_selection_feature"
-    },
-    {
-      "label": "Feature: projects",
-      "file_type": "concept",
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 54,
-      "norm_label": "feature: projects",
-      "_origin": "semantic",
-      "community_name": "Ordem de execu\u00e7\u00e3o \u2014 M1 + M2",
-      "id": "specs_features_projects_feature"
-    },
-    {
-      "label": "Feature: settings-shell",
-      "file_type": "concept",
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 39,
-      "norm_label": "feature: settings-shell",
-      "_origin": "semantic",
-      "community_name": "T1: CRUD do cat\u00e1logo de status",
-      "id": "specs_features_settings_shell_feature"
-    },
-    {
-      "label": "Feature: release-distribution",
-      "file_type": "concept",
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 54,
-      "norm_label": "feature: release-distribution",
-      "_origin": "semantic",
-      "community_name": "Ordem de execu\u00e7\u00e3o \u2014 M1 + M2",
-      "id": "specs_features_release_distribution_feature"
-    },
-    {
-      "label": "Ordem de execu\u00e7\u00e3o \u2014 M1 + M2",
-      "file_type": "document",
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 54,
-      "norm_label": "ordem de execucao \u2014 m1 + m2",
-      "_origin": "semantic",
-      "community_name": "Ordem de execu\u00e7\u00e3o \u2014 M1 + M2",
-      "id": "specs_project_execution_ordem_global"
-    },
-    {
-      "label": "Onda 13: ts/T1 \u2192 T2 (cat\u00e1logo edit\u00e1vel + snapshot por sess\u00e3o)",
-      "file_type": "document",
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 39,
-      "norm_label": "onda 13: ts/t1 \u2192 t2 (catalogo editavel + snapshot por sessao)",
-      "_origin": "semantic",
-      "community_name": "T1: CRUD do cat\u00e1logo de status",
-      "id": "specs_project_execution_onda13"
-    },
-    {
-      "label": "Onda 14: ts/T3, ts/T4 (badge e log vis\u00edveis)",
-      "file_type": "document",
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 39,
-      "norm_label": "onda 14: ts/t3, ts/t4 (badge e log visiveis)",
-      "_origin": "semantic",
-      "community_name": "T1: CRUD do cat\u00e1logo de status",
-      "id": "specs_project_execution_onda14"
-    },
-    {
-      "label": "Regras de paralelismo (por codebase/TESTING.md)",
-      "file_type": "rationale",
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 39,
-      "norm_label": "regras de paralelismo (por codebase/testing.md)",
-      "_origin": "semantic",
-      "community_name": "T1: CRUD do cat\u00e1logo de status",
-      "id": "specs_project_execution_regras_paralelismo"
-    },
-    {
-      "label": "mcp-task-server T0: contrato de ferramentas (gate de bloqueio do M2)",
-      "file_type": "document",
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 54,
-      "norm_label": "mcp-task-server t0: contrato de ferramentas (gate de bloqueio do m2)",
-      "_origin": "semantic",
-      "community_name": "Ordem de execu\u00e7\u00e3o \u2014 M1 + M2",
-      "id": "specs_project_execution_mcp_t0_contrato"
-    },
-    {
-      "label": "AD 08/08/2026: corre\u00e7\u00e3o do dono de STAT-08 (n\u00e3o pertence ao Kanban)",
-      "file_type": "rationale",
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 79,
-      "norm_label": "ad 08/08/2026: correcao do dono de stat-08 (nao pertence ao kanban)",
-      "_origin": "semantic",
-      "community_name": "T6: Real\u00e7ar terminais por filtro de status",
-      "id": "specs_project_state_ad_stat08_correction"
-    },
-    {
-      "label": "AD 03/08/2026: TERM-06 absorve STAT-07 (revogado)",
-      "file_type": "rationale",
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 57,
-      "norm_label": "ad 03/08/2026: term-06 absorve stat-07 (revogado)",
-      "_origin": "semantic",
-      "community_name": "T4: Badge, hover de atividade e log",
-      "id": "specs_project_state_ad_stat07_revoked"
-    },
-    {
-      "label": "AD 03/08/2026: nasce a feature settings-shell",
-      "file_type": "rationale",
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 39,
-      "norm_label": "ad 03/08/2026: nasce a feature settings-shell",
-      "_origin": "semantic",
-      "community_name": "T1: CRUD do cat\u00e1logo de status",
-      "id": "specs_project_state_ad_settings_shell_born"
-    },
-    {
-      "label": "AD 03/08/2026: Settings inteiro inating\u00edvel (pain\u00e9is \u00f3rf\u00e3os, sem janela/rota)",
-      "file_type": "rationale",
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 39,
-      "norm_label": "ad 03/08/2026: settings inteiro inatingivel (paineis orfaos, sem janela/rota)",
-      "_origin": "semantic",
-      "community_name": "T1: CRUD do cat\u00e1logo de status",
-      "id": "specs_project_state_ad_settings_unreachable"
-    },
-    {
-      "label": "graphify (ferramenta de grafo de conhecimento usada para achar o erro de STAT-08)",
-      "file_type": "concept",
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 79,
-      "norm_label": "graphify (ferramenta de grafo de conhecimento usada para achar o erro de stat-08)",
-      "_origin": "semantic",
-      "community_name": "T6: Real\u00e7ar terminais por filtro de status",
-      "id": "specs_project_state_graphify"
-    },
-    {
-      "label": "AD 02/08/2026: terminal-statuses e task-kanban liberadas (Draft \u2192 In Progress)",
-      "file_type": "rationale",
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 54,
-      "norm_label": "ad 02/08/2026: terminal-statuses e task-kanban liberadas (draft \u2192 in progress)",
-      "_origin": "semantic",
-      "community_name": "Ordem de execu\u00e7\u00e3o \u2014 M1 + M2",
-      "id": "specs_project_state_terminal_statuses_release"
     },
     {
       "label": "Milestone M2",
@@ -26240,7 +25014,7 @@
       "community": 54,
       "norm_label": "milestone m2",
       "_origin": "semantic",
-      "community_name": "Ordem de execu\u00e7\u00e3o \u2014 M1 + M2",
+      "community_name": "Feature: terminal-statuses",
       "id": "specs_project_milestone_m2"
     }
   ],
@@ -45772,6 +44546,18 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "src-tauri/src/tasks/service.rs",
+      "source_location": "L38",
+      "weight": 1.0,
+      "context": "import",
+      "_origin": "ast",
+      "source": "src_tauri_src_tasks_service",
+      "target": "src_tauri_src_tasks_state",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "src-tauri/src/tasks/service.rs",
@@ -60826,28 +59612,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_triage",
-      "target": "src_components_terminal_newterminaldialog"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "src_components_terminal_newterminaldialog",
-      "target": "feature_agent_selection"
-    },
-    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/components/terminal/NewTerminalDialog.tsx",
@@ -63091,17 +61855,6 @@
       "target": "src_routes_settings_statusespanel_statusespanel"
     },
     {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_state_ad_settings_unreachable",
-      "target": "src_routes_settings_statusespanel_statusespanel"
-    },
-    {
       "relation": "shares_data_with",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
@@ -63639,171 +62392,6 @@
       "_origin": "ast",
       "source": "tsconfig_include",
       "target": "tsconfig_json_ref_src",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".specs/runs/008-2026-08-11/JOURNAL.md",
-      "source_location": "L1",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "specs_runs_008_2026_08_11_journal",
-      "target": "specs_runs_008_2026_08_11_journal_run_008_11_08_2026_spec_loop",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".specs/runs/008-2026-08-11/JOURNAL.md",
-      "source_location": "L70",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "specs_runs_008_2026_08_11_journal_run_008_11_08_2026_spec_loop",
-      "target": "specs_runs_008_2026_08_11_journal_devolvido_para_triagem",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".specs/runs/008-2026-08-11/JOURNAL.md",
-      "source_location": "L94",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "specs_runs_008_2026_08_11_journal_run_008_11_08_2026_spec_loop",
-      "target": "specs_runs_008_2026_08_11_journal_estado_da_\u00e1rvore_no_\u00faltimo_checkpoint",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".specs/runs/008-2026-08-11/JOURNAL.md",
-      "source_location": "L58",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "specs_runs_008_2026_08_11_journal_run_008_11_08_2026_spec_loop",
-      "target": "specs_runs_008_2026_08_11_journal_execu\u00e7\u00e3o",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".specs/runs/008-2026-08-11/JOURNAL.md",
-      "source_location": "L33",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "specs_runs_008_2026_08_11_journal_run_008_11_08_2026_spec_loop",
-      "target": "specs_runs_008_2026_08_11_journal_fila_de_execu\u00e7\u00e3o_da_triagem",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".specs/runs/008-2026-08-11/JOURNAL.md",
-      "source_location": "L79",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "specs_runs_008_2026_08_11_journal_run_008_11_08_2026_spec_loop",
-      "target": "specs_runs_008_2026_08_11_journal_gates_medidos_nesta_run",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".specs/runs/008-2026-08-11/JOURNAL.md",
-      "source_location": "L107",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "specs_runs_008_2026_08_11_journal_run_008_11_08_2026_spec_loop",
-      "target": "specs_runs_008_2026_08_11_journal_n\u00e3o_verificado",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".specs/runs/008-2026-08-11/TRIAGE.md",
-      "source_location": "L1",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "specs_runs_008_2026_08_11_triage",
-      "target": "specs_runs_008_2026_08_11_triage_triagem_008_11_08_2026",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".specs/runs/008-2026-08-11/TRIAGE.md",
-      "source_location": "L78",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "specs_runs_008_2026_08_11_triage_triagem_008_11_08_2026",
-      "target": "specs_runs_008_2026_08_11_triage_decis\u00f5es_do_usu\u00e1rio_fase_3",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".specs/runs/008-2026-08-11/TRIAGE.md",
-      "source_location": "L30",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "specs_runs_008_2026_08_11_triage_triagem_008_11_08_2026",
-      "target": "specs_runs_008_2026_08_11_triage_diverg\u00eancias_encontradas_fase_1",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".specs/runs/008-2026-08-11/TRIAGE.md",
-      "source_location": "L91",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "specs_runs_008_2026_08_11_triage_triagem_008_11_08_2026",
-      "target": "specs_runs_008_2026_08_11_triage_fora_da_execu\u00e7\u00e3o",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".specs/runs/008-2026-08-11/TRIAGE.md",
-      "source_location": "L54",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "specs_runs_008_2026_08_11_triage_triagem_008_11_08_2026",
-      "target": "specs_runs_008_2026_08_11_triage_invent\u00e1rio_fase_2",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".specs/runs/008-2026-08-11/TRIAGE.md",
-      "source_location": "L105",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "specs_runs_008_2026_08_11_triage_triagem_008_11_08_2026",
-      "target": "specs_runs_008_2026_08_11_triage_n\u00e3o_verificado",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".specs/runs/008-2026-08-11/TRIAGE.md",
-      "source_location": "L11",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "specs_runs_008_2026_08_11_triage_triagem_008_11_08_2026",
-      "target": "specs_runs_008_2026_08_11_triage_perfil_do_projeto_fase_0",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".specs/runs/008-2026-08-11/TRIAGE.md",
-      "source_location": "L115",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "specs_runs_008_2026_08_11_triage_triagem_008_11_08_2026",
-      "target": "specs_runs_008_2026_08_11_triage_relat\u00f3rio_final",
       "confidence_score": 1.0
     },
     {
@@ -65724,193 +64312,6 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": ".specs/README.md",
-      "source_location": "43",
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_readme",
-      "target": "specs_codebase_testing"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/README.md",
-      "source_location": "17",
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_readme",
-      "target": "specs_features_agent_selection_spec"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/README.md",
-      "source_location": "48",
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_readme",
-      "target": "specs_features_agent_selection_tasks"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/README.md",
-      "source_location": "25",
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_readme",
-      "target": "specs_features_conversation_cleanup_spec"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/README.md",
-      "source_location": "22",
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_readme",
-      "target": "specs_features_mcp_management_spec"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/README.md",
-      "source_location": "63",
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_readme",
-      "target": "specs_features_mcp_task_server_design"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/README.md",
-      "source_location": "19",
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_readme",
-      "target": "specs_features_mcp_task_server_spec"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/README.md",
-      "source_location": "50",
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_readme",
-      "target": "specs_features_mcp_task_server_tasks"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/README.md",
-      "source_location": "62",
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_readme",
-      "target": "specs_features_multi_terminal_design"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/README.md",
-      "source_location": "16",
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_readme",
-      "target": "specs_features_multi_terminal_spec"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/README.md",
-      "source_location": "26",
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_readme",
-      "target": "specs_features_notifications_spec"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/README.md",
-      "source_location": "27",
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_readme",
-      "target": "specs_features_onboarding_agent_spec"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/README.md",
-      "source_location": "18",
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_readme",
-      "target": "specs_features_projects_spec"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/README.md",
-      "source_location": "49",
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_readme",
-      "target": "specs_features_projects_tasks"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/README.md",
-      "source_location": "65",
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_readme",
-      "target": "specs_features_release_distribution_design"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/README.md",
-      "source_location": "28",
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_readme",
-      "target": "specs_features_release_distribution_spec"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/README.md",
-      "source_location": "53",
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_readme",
-      "target": "specs_features_release_distribution_tasks"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
       "source_file": "AGENTS.md",
       "source_location": null,
       "weight": 1.0,
@@ -66513,17 +64914,6 @@
       "target": "specs_features_multi_terminal_spec_term06"
     },
     {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_state_ad_stat07_revoked",
-      "target": "specs_features_multi_terminal_spec_term06"
-    },
-    {
       "relation": "conceptually_related_to",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
@@ -66568,28 +64958,6 @@
       "target": "specs_features_settings_shell_spec_feature"
     },
     {
-      "relation": "implements",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/ROADMAP.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_roadmap_m1",
-      "target": "specs_features_settings_shell_spec_feature"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/ROADMAP.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_roadmap_release_track",
-      "target": "specs_features_settings_shell_spec_feature"
-    },
-    {
       "relation": "conceptually_related_to",
       "confidence": "INFERRED",
       "confidence_score": 0.85,
@@ -66598,17 +64966,6 @@
       "weight": 0.85,
       "_origin": "semantic",
       "source": "specs_research_ui_inventory_settings_modal",
-      "target": "specs_features_settings_shell_spec_feature"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/006-2026-08-02/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_006_2026_08_02_triage_run",
       "target": "specs_features_settings_shell_spec_feature"
     },
     {
@@ -66786,28 +65143,6 @@
       "_origin": "semantic",
       "source": "specs_features_skills_manager_spec_feature",
       "target": "specs_features_skills_manager_spec_skl_04"
-    },
-    {
-      "relation": "implements",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/PROJECT.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_project_swarmdeck",
-      "target": "specs_features_skills_manager_spec_feature"
-    },
-    {
-      "relation": "implements",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/ROADMAP.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_roadmap_m3",
-      "target": "specs_features_skills_manager_spec_feature"
     },
     {
       "relation": "conceptually_related_to",
@@ -67041,28 +65376,6 @@
       "target": "specs_features_task_kanban_spec_kan_08"
     },
     {
-      "relation": "implements",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/PROJECT.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_project_swarmdeck",
-      "target": "specs_features_task_kanban_spec_feature"
-    },
-    {
-      "relation": "implements",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/ROADMAP.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_roadmap_m2",
-      "target": "specs_features_task_kanban_spec_feature"
-    },
-    {
       "relation": "conceptually_related_to",
       "confidence": "INFERRED",
       "confidence_score": 0.9,
@@ -67071,17 +65384,6 @@
       "weight": 0.9,
       "_origin": "semantic",
       "source": "specs_research_ui_inventory_kanban_window",
-      "target": "specs_features_task_kanban_spec_feature"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/005-2026-08-02/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_005_2026_08_02_triage_run",
       "target": "specs_features_task_kanban_spec_feature"
     },
     {
@@ -67316,17 +65618,6 @@
       "target": "specs_features_task_kanban_tasks_t7"
     },
     {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/005-2026-08-02/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_005_2026_08_02_journal_run",
-      "target": "specs_features_task_kanban_tasks_t6"
-    },
-    {
       "relation": "calls",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
@@ -67347,28 +65638,6 @@
       "_origin": "semantic",
       "source": "specs_features_terminal_statuses_tasks_t5",
       "target": "specs_features_task_kanban_tasks_t7"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/006-2026-08-02/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_006_2026_08_02_triage_run",
-      "target": "specs_features_task_kanban_tasks_t7"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/006-2026-08-02/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_006_2026_08_02_triage_run",
-      "target": "specs_features_task_kanban_tasks_t8"
     },
     {
       "relation": "implements",
@@ -67448,28 +65717,6 @@
       "target": "specs_features_worktrees_spec_wt_07"
     },
     {
-      "relation": "implements",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/PROJECT.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_project_swarmdeck",
-      "target": "specs_features_worktrees_spec_feature"
-    },
-    {
-      "relation": "implements",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/ROADMAP.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_roadmap_m4",
-      "target": "specs_features_worktrees_spec_feature"
-    },
-    {
       "relation": "conceptually_related_to",
       "confidence": "INFERRED",
       "confidence_score": 0.9,
@@ -67479,28 +65726,6 @@
       "_origin": "semantic",
       "source": "specs_research_ui_inventory_worktrees_ui",
       "target": "specs_features_worktrees_spec_feature"
-    },
-    {
-      "relation": "cites",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/ROADMAP.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_roadmap_m1",
-      "target": "specs_research_ui_inventory_doc"
-    },
-    {
-      "relation": "conceptually_related_to",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/005-2026-08-02/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_005_2026_08_02_journal_release_yml_bug",
-      "target": "specs_project_roadmap_release_track"
     },
     {
       "relation": "implements",
@@ -67578,380 +65803,6 @@
       "_origin": "semantic",
       "source": "specs_research_ui_inventory_doc",
       "target": "specs_research_ui_inventory_worktrees_ui"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/002-2026-07-28/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_002_2026_07_28_triage_run",
-      "target": "specs_runs_001_2026_07_28_triage_run"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/004-2026-08-01/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_004_2026_08_01_triage_run",
-      "target": "specs_runs_002_2026_07_28_triage_run"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/004-2026-08-01/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_004_2026_08_01_journal_run",
-      "target": "specs_runs_004_2026_08_01_triage_run"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/004-2026-08-01/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_004_2026_08_01_journal_run",
-      "target": "specs_runs_004_2026_08_01_journal_apptsx_gap"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/005-2026-08-02/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_005_2026_08_02_journal_run",
-      "target": "specs_runs_004_2026_08_01_journal_apptsx_gap"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/005-2026-08-02/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_005_2026_08_02_journal_run",
-      "target": "specs_runs_005_2026_08_02_triage_run"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/005-2026-08-02/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_005_2026_08_02_triage_run",
-      "target": "specs_runs_005_2026_08_02_triage_ci_linux_bug"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/005-2026-08-02/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_005_2026_08_02_journal_run",
-      "target": "specs_features_terminal_statuses_tasks_t1"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/005-2026-08-02/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_005_2026_08_02_journal_run",
-      "target": "specs_runs_005_2026_08_02_journal_ipcserver_gap"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/005-2026-08-02/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_005_2026_08_02_journal_run",
-      "target": "specs_runs_005_2026_08_02_journal_make_portable_bug"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/005-2026-08-02/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_005_2026_08_02_journal_run",
-      "target": "specs_runs_005_2026_08_02_journal_release_yml_bug"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/006-2026-08-02/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_006_2026_08_02_triage_run",
-      "target": "specs_features_terminal_statuses_tasks_t5"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_journal",
-      "target": "feature_agent_selection"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_journal",
-      "target": "feature_multi_terminal"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_journal",
-      "target": "feature_release_distribution"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_journal",
-      "target": "feature_settings_shell"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_journal",
-      "target": "feature_task_kanban"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_journal",
-      "target": "feature_terminal_statuses"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_journal",
-      "target": "git_cliff_tool"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_journal",
-      "target": "specs_project_execution"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_journal",
-      "target": "specs_project_state"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_journal",
-      "target": "specs_runs_006_2026_08_02_triage"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_journal",
-      "target": "specs_runs_007_2026_08_03_journal_aclgap"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_journal",
-      "target": "specs_runs_007_2026_08_03_journal_t8needsdecision"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_journal",
-      "target": "specs_runs_007_2026_08_03_journal_terminalidgap"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_journal",
-      "target": "specs_runs_007_2026_08_03_journal_wavesequencing"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_journal",
-      "target": "specs_runs_007_2026_08_03_triage"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_triage",
-      "target": "agents"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_triage",
-      "target": "agents_cargobuildredundancy"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_triage",
-      "target": "feature_settings_shell"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_triage",
-      "target": "specs_project_roadmap"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_triage",
-      "target": "specs_project_state"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_triage",
-      "target": "specs_runs_006_2026_08_02_triage"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_runs_007_2026_08_03_triage",
-      "target": "tauri_api_getcurrentwebviewwindow"
     },
     {
       "relation": "references",
@@ -68150,17 +66001,6 @@
       "_origin": "semantic",
       "source": "src_tauri_commands_agents",
       "target": "feature_agent_selection"
-    },
-    {
-      "relation": "semantically_similar_to",
-      "confidence": "INFERRED",
-      "confidence_score": 0.65,
-      "source_file": ".specs/runs/007-2026-08-03/TRIAGE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "agents_cargobuildredundancy",
-      "target": "specs_runs_007_2026_08_03_journal_aclgap"
     },
     {
       "relation": "depicts",
@@ -69514,336 +67354,6 @@
       "_origin": "semantic",
       "source": "specs_research_screenshots_04_settings_terminal_statuses_terminalstatusesfeature",
       "target": "specs_research_screenshots_04_settings_terminal_statuses_workingstatus"
-    },
-    {
-      "relation": "depicts",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_image",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_upgrademodal"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_upgrademodal",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_proplan"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_upgrademodal",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_starterplan"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_upgrademodal",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_toolpermissionsfeature"
-    },
-    {
-      "relation": "conceptually_related_to",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_toolpermissionsfeature",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_proplan"
-    },
-    {
-      "relation": "conceptually_related_to",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_toolpermissionsfeature",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_starterplan"
-    },
-    {
-      "relation": "conceptually_related_to",
-      "confidence": "AMBIGUOUS",
-      "confidence_score": 0.2,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_starterplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_conversationhistoryfeature"
-    },
-    {
-      "relation": "conceptually_related_to",
-      "confidence": "AMBIGUOUS",
-      "confidence_score": 0.2,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_starterplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_gitintegrationfeature"
-    },
-    {
-      "relation": "conceptually_related_to",
-      "confidence": "AMBIGUOUS",
-      "confidence_score": 0.2,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_starterplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_keyboardshortcutsfeature"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_starterplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_layoutmode"
-    },
-    {
-      "relation": "conceptually_related_to",
-      "confidence": "AMBIGUOUS",
-      "confidence_score": 0.2,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_starterplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_managepermissionsfeature"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_starterplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_mcpconfigurationfeature"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_starterplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_projectlimitfeature"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_starterplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_projectshortcutfeature"
-    },
-    {
-      "relation": "conceptually_related_to",
-      "confidence": "AMBIGUOUS",
-      "confidence_score": 0.2,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_starterplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_tasklabelsfeature"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_starterplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_terminallimitfeature"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_starterplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_terminalshortcutfeature"
-    },
-    {
-      "relation": "conceptually_related_to",
-      "confidence": "AMBIGUOUS",
-      "confidence_score": 0.2,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_starterplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_turbomodefeature"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_proplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_conversationhistoryfeature"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_proplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_gitintegrationfeature"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_proplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_keyboardshortcutsfeature"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_proplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_layoutmode"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_proplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_managepermissionsfeature"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_proplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_mcpconfigurationfeature"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_proplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_projectlimitfeature"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_proplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_projectshortcutfeature"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_proplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_tasklabelsfeature"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_proplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_terminallimitfeature"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_proplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_terminalshortcutfeature"
-    },
-    {
-      "relation": "shows",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/research/screenshots/05-paywall-feature-matrix.png",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_research_screenshots_05_paywall_feature_matrix_proplan",
-      "target": "specs_research_screenshots_05_paywall_feature_matrix_turbomodefeature"
     },
     {
       "relation": "depicts",
@@ -71763,17 +69273,6 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_state_ad_settings_unreachable",
-      "target": "specs_features_terminal_statuses_spec_stat02"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
       "source_file": ".specs/features/terminal-statuses/spec.md",
       "source_location": null,
       "weight": 1.0,
@@ -71801,17 +69300,6 @@
       "weight": 1.0,
       "_origin": "semantic",
       "source": "specs_features_terminal_statuses_tasks_t3",
-      "target": "specs_features_terminal_statuses_spec_stat03"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_state_ad_settings_unreachable",
       "target": "specs_features_terminal_statuses_spec_stat03"
     },
     {
@@ -71892,17 +69380,6 @@
       "target": "specs_features_terminal_statuses_spec_stat07"
     },
     {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_state_ad_stat07_revoked",
-      "target": "specs_features_terminal_statuses_spec_stat07"
-    },
-    {
       "relation": "references",
       "confidence": "AMBIGUOUS",
       "confidence_score": 0.2,
@@ -71933,17 +69410,6 @@
       "weight": 1.0,
       "_origin": "semantic",
       "source": "specs_features_terminal_statuses_tasks_t6",
-      "target": "specs_features_terminal_statuses_spec_stat08"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_state_ad_stat08_correction",
       "target": "specs_features_terminal_statuses_spec_stat08"
     },
     {
@@ -71991,17 +69457,6 @@
       "target": "specs_features_terminal_statuses_tasks_t1"
     },
     {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_execution_onda13",
-      "target": "specs_features_terminal_statuses_tasks_t1"
-    },
-    {
       "relation": "implements",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
@@ -72038,66 +69493,11 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_execution_onda13",
-      "target": "specs_features_terminal_statuses_tasks_t2"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_execution_onda14",
-      "target": "specs_features_terminal_statuses_tasks_t3"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_execution_regras_paralelismo",
-      "target": "specs_features_terminal_statuses_tasks_t3"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
       "source_file": ".specs/features/terminal-statuses/tasks.md",
       "source_location": null,
       "weight": 1.0,
       "_origin": "semantic",
       "source": "specs_features_terminal_statuses_tasks_t5",
-      "target": "specs_features_terminal_statuses_tasks_t4"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_execution_onda14",
-      "target": "specs_features_terminal_statuses_tasks_t4"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_execution_regras_paralelismo",
       "target": "specs_features_terminal_statuses_tasks_t4"
     },
     {
@@ -72121,17 +69521,6 @@
       "_origin": "semantic",
       "source": "specs_features_terminal_statuses_tasks_t6",
       "target": "src_components_terminal_statusfilter_statusfilter"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_state_ad_stat08_correction",
-      "target": "specs_features_terminal_statuses_tasks_t6"
     },
     {
       "relation": "shares_data_with",
@@ -72159,177 +69548,12 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_state_ad_stat08_correction",
-      "target": "specs_features_task_kanban_spec_kan06"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
       "source_file": ".specs/features/terminal-statuses/tasks.md",
       "source_location": null,
       "weight": 1.0,
       "_origin": "semantic",
       "source": "specs_features_terminal_statuses_feature",
       "target": "specs_project_milestone_m2"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_execution_ordem_global",
-      "target": "specs_features_terminal_statuses_feature"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_state_terminal_statuses_release",
-      "target": "specs_features_terminal_statuses_feature"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_execution_ordem_global",
-      "target": "specs_features_multi_terminal_feature"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_execution_mcp_t0_contrato",
-      "target": "specs_features_mcp_task_server_feature"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_execution_ordem_global",
-      "target": "specs_features_mcp_task_server_feature"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_state_terminal_statuses_release",
-      "target": "specs_features_mcp_task_server_feature"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_execution_ordem_global",
-      "target": "specs_features_task_kanban_feature"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_state_terminal_statuses_release",
-      "target": "specs_features_task_kanban_feature"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_execution_ordem_global",
-      "target": "specs_features_agent_selection_feature"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_execution_ordem_global",
-      "target": "specs_features_projects_feature"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_state_ad_settings_shell_born",
-      "target": "specs_features_settings_shell_feature"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/EXECUTION.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_execution_ordem_global",
-      "target": "specs_features_release_distribution_feature"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_state_ad_stat08_correction",
-      "target": "specs_project_state_graphify"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/project/STATE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_project_state_ad_settings_shell_born",
-      "target": "specs_project_state_ad_settings_unreachable"
     }
   ],
   "hyperedges": [
@@ -72441,47 +69665,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.85,
       "source_file": ".specs/features/task-kanban/tasks.md"
-    },
-    {
-      "id": "wave_shared_territory_serialization",
-      "label": "Waves serialize tasks over shared files (lib.rs/App.tsx/TerminalHeader.tsx)",
-      "nodes": [
-        "specs_runs_007_2026_08_03_journal_wavesequencing",
-        "feature_multi_terminal",
-        "feature_agent_selection",
-        "feature_settings_shell"
-      ],
-      "relation": "participate_in",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md"
-    },
-    {
-      "id": "task_kanban_t8_returned_to_triage",
-      "label": "task-kanban/T8 blocked and returned to triage for a decision",
-      "nodes": [
-        "specs_runs_007_2026_08_03_journal_t8needsdecision",
-        "feature_task_kanban",
-        "specs_runs_007_2026_08_03_triage"
-      ],
-      "relation": "participate_in",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md"
-    },
-    {
-      "id": "acl_gap_affects_two_windows",
-      "label": "ACL capabilities gap threatens both kanban and settings windows",
-      "nodes": [
-        "specs_runs_007_2026_08_03_journal_aclgap",
-        "feature_task_kanban",
-        "feature_settings_shell"
-      ],
-      "relation": "participate_in",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/runs/007-2026-08-03/JOURNAL.md"
     }
   ],
-  "built_at_commit": "e8b02a8bf317dbacc06bb5938dde8bd919a66431"
+  "built_at_commit": "2c80f047de3d22221d1e97ecb715b97cbffd0483"
 }

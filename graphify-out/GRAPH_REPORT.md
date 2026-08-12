@@ -1,16 +1,16 @@
 # Graph Report - ide  (2026-08-12)
 
 ## Corpus Check
-- 171 files · ~311,510 words
+- 169 files · ~309,860 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2026 nodes · 3843 edges · 286 communities (83 shown, 203 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 106 edges (avg confidence: 0.8)
+- 2011 nodes · 3835 edges · 276 communities (80 shown, 196 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 105 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `2c80f047`
+- Built from commit: `48fb05f8`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -36,7 +36,7 @@
 - AGENTS.md
 - send.rs
 - spec-driven-eval skill
-- Git Worktrees feature
+- task_service.rs
 - deny
 - portable.rs
 - lessons.py
@@ -59,10 +59,8 @@
 - AgentDescriptor
 - tlc-spec-driven skill
 - make-portable.mjs
-- UI-INVENTORY.md: reference-product UI inventory
-- Skills Manager feature (Gerenciador de Skills)
+- Validate & Verify doc
 - Agent Selection Spec
-- settings-shell T2: Navigation and mounting the 4 real panels
 - Settings - Terminal Statuses screenshot
 - SwarmDeck Screenshot: Terminal Initialization and Agent Selection
 - cargo build --workspace redundancy (corrected gate description)
@@ -77,7 +75,6 @@
 - project_list
 - default.json
 - MCP Task Server Design
-- KanbanBoard (React)
 - Git Projects Modal
 - Kanban Board Screenshot (CodeAgentSwarm)
 - Left Toolbar Screenshot
@@ -99,7 +96,6 @@
 - Feature: multi-terminal
 - UpdateBanner.tsx
 - Code Analysis Tools doc
-- Notifications Spec
 - Onboarding Agent Spec
 - Projects Spec
 - CLN-01: Disk usage per agent
@@ -198,12 +194,6 @@
 - T7: TerminalPane (React)
 - T8: GridLayout (React)
 - T9: TerminalHeader (React)
-- NOT-01: Notify when agent waits for user
-- NOT-02: Click focuses terminal
-- NOT-03: Notify task completion
-- NOT-04: Grouping simultaneous notifications
-- NOT-05: Per-event toggles
-- NOT-06: OS permission handling
 - ONB-01: In-app chat panel
 - ONB-02: Suggested questions
 - ONB-03: Honest refusal when unsure
@@ -331,7 +321,7 @@
 - **Secondary Tauri window pattern shared by Kanban and Settings** — specs_features_task_kanban_design_kanbanwindow, specs_features_task_kanban_tasks_t1, specs_features_settings_shell_tasks_t1 [INFERRED 0.85]
 - **task_changed empty-payload gap across design, task, and decision log** — specs_features_task_kanban_design_taskchangedevent, specs_features_task_kanban_tasks_t7 [INFERRED 0.85]
 
-## Communities (286 total, 203 thin omitted)
+## Communities (276 total, 196 thin omitted)
 
 ### Community 0 - "server.rs"
 Cohesion: 0.09
@@ -370,8 +360,8 @@ Cohesion: 0.17
 Nodes (29): S, auto_check_desligado_nao_sai_para_a_rede(), check(), check_with(), erro_na_consulta_remota_nao_propaga_e_vira_none(), exe_dir(), fetch_remote_manifest(), flavor_escolhe_a_entrada_certa_do_manifesto() (+21 more)
 
 ### Community 9 - "db.rs"
-Cohesion: 0.06
-Nodes (47): aplica_migracoes_em_banco_novo(), cria_o_schema_de_terminal_layout(), migracao_e_idempotente(), registra_a_versao_aplicada(), PathBuf, TempDir, temp_db_path(), title_source_so_aceita_agent_ou_user() (+39 more)
+Cohesion: 0.08
+Nodes (31): aplica_migracoes_em_banco_novo(), cria_o_schema_de_terminal_layout(), migracao_e_idempotente(), registra_a_versao_aplicada(), PathBuf, TempDir, temp_db_path(), title_source_so_aceita_agent_ou_user() (+23 more)
 
 ### Community 10 - "projects/service.rs"
 Cohesion: 0.11
@@ -417,9 +407,9 @@ Nodes (23): create_task_with_terminal(), criacao_manual_via_task_service_entra_e
 Cohesion: 0.12
 Nodes (24): spec-driven-eval quickstart guide, 4-chat-session evaluation flow, Example Wishlist PRD, Calibration anchors (MET/UNMET boundary), spec-driven-eval reference (template/anchors/example), Evaluation report template, Worked example: Start Free Trial Without a Card, spec-driven-eval skill (+16 more)
 
-### Community 21 - "Git Worktrees feature"
-Cohesion: 0.25
-Nodes (8): Git Worktrees feature, WT-01: Worktree per conversation, WT-02: Fallback on creation failure, WT-03: Always-worktree mode, WT-04: .worktreeinclude for git-ignored files, WT-05: Inventory and size measurement, WT-06: Safe/Review/Kept states, WT-07: Safe deletion
+### Community 21 - "task_service.rs"
+Cohesion: 0.24
+Nodes (16): complete_a_partir_de_in_progress_leva_a_in_testing_nunca_direto_a_completed(), complete_a_partir_de_in_testing_leva_a_completed(), complete_ou_start_com_task_id_inexistente_falha_sem_criar_linha(), count_tasks(), create_com_cwd_em_subpasta_do_projeto_resolve_o_mesmo_projeto(), create_com_cwd_igual_ao_path_do_projeto_infere_o_project_id(), create_sem_projeto_correspondente_deixa_project_id_nulo_sem_criar_projeto(), ctx() (+8 more)
 
 ### Community 22 - "deny"
 Cohesion: 0.09
@@ -442,7 +432,7 @@ Cohesion: 0.14
 Nodes (16): CheckActiveResult, main(), Box, Error, Json, Option, Result, Self (+8 more)
 
 ### Community 27 - "restore"
-Cohesion: 0.21
+Cohesion: 0.19
 Nodes (18): LayoutEntry, default_entry(), LayoutEntry, now_unix(), restore(), Option, Path, Result (+10 more)
 
 ### Community 28 - "App.tsx"
@@ -450,20 +440,20 @@ Cohesion: 0.19
 Nodes (13): App(), createTerminalId(), defaultTerminal(), evenWidths(), TerminalPane(), TerminalPaneProps, close(), LayoutEntry (+5 more)
 
 ### Community 29 - "spec-loop skill"
-Cohesion: 0.11
-Nodes (22): Evidence-or-zero core rule, Corretor brief, spec-loop subagent briefs doc, Implementador brief, UAT brief (exercitar produto real), Validador brief (missao e falsificar), spec-loop skill, Modo direto (implementation only) (+14 more)
+Cohesion: 0.13
+Nodes (19): Corretor brief, spec-loop subagent briefs doc, Implementador brief, UAT brief (exercitar produto real), Validador brief (missao e falsificar), spec-loop skill, Modo direto (implementation only), JOURNAL.md run journal (+11 more)
 
 ### Community 30 - "Execute (implement) doc"
-Cohesion: 0.12
-Nodes (22): Atomic git commit per task, Execute (implement) doc, Feature-level validation (post-last-task), Gate Check (VERIFY step), Lessons self-improving layer doc, .specs/lessons.json canonical state, .specs/LESSONS.md rendered playbook, scripts/lessons.py (+14 more)
+Cohesion: 0.18
+Nodes (14): Atomic git commit per task, Execute (implement) doc, Feature-level validation (post-last-task), Gate Check (VERIFY step), Sub-Agent Delegation mechanics doc, Phase-batch workers (~7 tasks/worker), Verifier sub-agent (always-on), Tasks phase doc (+6 more)
 
 ### Community 31 - "devDependencies"
 Cohesion: 0.04
 Nodes (46): jsdom, dependencies, react, react-dom, @tauri-apps/api, @tauri-apps/plugin-dialog, @xterm/addon-fit, @xterm/xterm (+38 more)
 
 ### Community 32 - "Task Kanban feature (Kanban de tarefas)"
-Cohesion: 0.22
-Nodes (17): Task Kanban feature (Kanban de tarefas), KAN-01: 4-column board, KAN-02: Real-time update (<1s), KAN-03: Task card, KAN-04: Send-to-terminal action, KAN-05: Mandatory test-phase flow, KAN-06: Project filter and search, KAN-07: Manual task creation (+9 more)
+Cohesion: 0.05
+Nodes (52): AgentPanel.tsx, Settings Shell feature (Janela de Configurações), ProjectsPanel.tsx, Decision: Settings is a second Tauri window, not a modal, SET-01: Open Settings in its own window, SET-02: Navigate between the 4 settings sections, StatusesPanel.tsx, UpdateSettings.tsx (+44 more)
 
 ### Community 33 - "Db"
 Cohesion: 0.25
@@ -509,21 +499,13 @@ Nodes (13): Context Limits doc, Context zones (healthy/moderate/critical), AD-NN
 Cohesion: 0.26
 Nodes (12): APP_NAME, defaultBinaryPath(), main(), parseArgs(), PORTABLE_MARKER, portableArchiveName(), portableReadme(), ROOT (+4 more)
 
-### Community 44 - "UI-INVENTORY.md: reference-product UI inventory"
-Cohesion: 0.25
-Nodes (8): UI-INVENTORY.md: reference-product UI inventory, Observed: Kanban board in its own window, Observed: Onboarding Agent floating panel, Observed: PRO paywall feature matrix, Observed: Settings modal with 12-section side rail, Observed: Skills settings section (Installed/Marketplace tabs), Observed: Terminal Statuses settings section (4 default statuses), Observed: Worktrees settings section (Safe/Review/Kept)
-
-### Community 45 - "Skills Manager feature (Gerenciador de Skills)"
-Cohesion: 0.40
-Nodes (5): Skills Manager feature (Gerenciador de Skills), SKL-01: List installed skills, SKL-02: Filter by agent and search, SKL-03: Open, remove, export skills, SKL-04: Skills marketplace
+### Community 44 - "Validate & Verify doc"
+Cohesion: 0.20
+Nodes (11): Evidence-or-zero core rule, "Número copiado para a prosa" anti-pattern, Lessons self-improving layer doc, .specs/lessons.json canonical state, .specs/LESSONS.md rendered playbook, scripts/lessons.py, Discrimination Sensor (mutation testing), Validate & Verify doc (+3 more)
 
 ### Community 46 - "Agent Selection Spec"
 Cohesion: 0.16
 Nodes (22): Agent Selection Spec, AGT-01: Default agent + catalog, AGT-02: Missing CLI detection, AGT-03: Per-session override, AGT-04: Visual agent identification, AGT-05: Per-agent scope in extensions, AGT-06: Resume or start new agent session, Antigravity CLI (agent, Google) (+14 more)
-
-### Community 47 - "settings-shell T2: Navigation and mounting the 4 real panels"
-Cohesion: 0.20
-Nodes (12): AgentPanel.tsx, Settings Shell feature (Janela de Configurações), ProjectsPanel.tsx, Decision: Settings is a second Tauri window, not a modal, SET-01: Open Settings in its own window, SET-02: Navigate between the 4 settings sections, StatusesPanel.tsx, UpdateSettings.tsx (+4 more)
 
 ### Community 48 - "Settings - Terminal Statuses screenshot"
 Cohesion: 0.29
@@ -560,10 +542,6 @@ Nodes (10): project_create(), project_delete(), project_list(), project_update()
 ### Community 60 - "default.json"
 Cohesion: 0.20
 Nodes (9): core:default, dialog:default, main, updater:default, description, identifier, permissions, $schema (+1 more)
-
-### Community 62 - "KanbanBoard (React)"
-Cohesion: 0.20
-Nodes (10): Column (React), Decision: event-delta sync, no polling, KanbanBoard (React), Decision: no drag-and-drop between columns in v1, Decision: normalized Map state, columns derived, Decision: independent per-column scroll, SendToTerminal (Rust), TaskCard (React) (+2 more)
 
 ### Community 63 - "Git Projects Modal"
 Cohesion: 0.24
@@ -656,9 +634,9 @@ Nodes (4): ast-grep (sg) structural search tool, Code Analysis Tools doc, grep s
   .specs/features/terminal-statuses/spec.md · relation: references
 
 ## Knowledge Gaps
-- **462 isolated node(s):** `$schema`, `src/**`, `tests/**`, `docs/**`, `Bash(git commit)` (+457 more)
+- **449 isolated node(s):** `$schema`, `src/**`, `tests/**`, `docs/**`, `Bash(git commit)` (+444 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **203 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **196 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_

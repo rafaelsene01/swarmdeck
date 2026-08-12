@@ -14,7 +14,7 @@ Histórico de agente cresce sem limite. Na instalação de referência, um únic
 
 | Feature | Razão |
 |---|---|
-| Buscar e restaurar conversas antigas | É a feature PRO **Conversation History** do original, não observável |
+| Buscar e restaurar conversas antigas | É a feature **Conversation History** do original, não observável |
 | Compactar/arquivar em vez de excluir | Adiado; v1 exclui ou preserva |
 
 ---
