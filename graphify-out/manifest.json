@@ -40,9 +40,9 @@
     "semantic_hash": "57350b99f62ff33bb39563820dbf455c"
   },
   "package.json": {
-    "mtime": 1785806883.743078,
-    "ast_hash": "077886e76220eb62e488aa807a0503b6",
-    "semantic_hash": "077886e76220eb62e488aa807a0503b6"
+    "mtime": 1786574148.8086753,
+    "ast_hash": "8b2e0678f231e9ca6561fe90571e9010",
+    "semantic_hash": ""
   },
   "scripts/bump-version.mjs": {
     "mtime": 1785551160.5723484,
@@ -699,11 +699,6 @@
     "ast_hash": "c40006b80074bd9c29dc3dfe300cb89a",
     "semantic_hash": "c40006b80074bd9c29dc3dfe300cb89a"
   },
-  ".specs/README.md": {
-    "mtime": 1785806557.7265155,
-    "ast_hash": "ffe855631fd1e4ecbdb6d848098b3c0d",
-    "semantic_hash": "ffe855631fd1e4ecbdb6d848098b3c0d"
-  },
   ".specs/codebase/TESTING.md": {
     "mtime": 1785597933.778723,
     "ast_hash": "9716d7f9ee34200f0b6103225504776f",
@@ -844,75 +839,10 @@
     "ast_hash": "4972d7c8d57015114abb5fdcd5c7954e",
     "semantic_hash": "4972d7c8d57015114abb5fdcd5c7954e"
   },
-  ".specs/project/EXECUTION.md": {
-    "mtime": 1786221273.210311,
-    "ast_hash": "676ee9f574ed18819cbe3ea88c23c457",
-    "semantic_hash": "676ee9f574ed18819cbe3ea88c23c457"
-  },
-  ".specs/project/PROJECT.md": {
-    "mtime": 1785806562.445122,
-    "ast_hash": "1b50b58bcf84d2636f99d75cecbff0a6",
-    "semantic_hash": "1b50b58bcf84d2636f99d75cecbff0a6"
-  },
-  ".specs/project/ROADMAP.md": {
-    "mtime": 1786485730.8241358,
-    "ast_hash": "674af201d10a2e97013821df4190111b",
-    "semantic_hash": ""
-  },
-  ".specs/project/STATE.md": {
-    "mtime": 1786558309.6806247,
-    "ast_hash": "dff3afe00f65af3240fbaf924da8b8d7",
-    "semantic_hash": ""
-  },
   ".specs/research/UI-INVENTORY.md": {
     "mtime": 1785806574.3706474,
     "ast_hash": "fb80b23638c14c33551e3ffa72e7cb48",
     "semantic_hash": "fb80b23638c14c33551e3ffa72e7cb48"
-  },
-  ".specs/runs/001-2026-07-28/TRIAGE.md": {
-    "mtime": 1785278264.437524,
-    "ast_hash": "dc2e68a8da6eaa08b03ce743912183bf",
-    "semantic_hash": "dc2e68a8da6eaa08b03ce743912183bf"
-  },
-  ".specs/runs/002-2026-07-28/TRIAGE.md": {
-    "mtime": 1785289375.5604894,
-    "ast_hash": "f16c94722fb1ab8ab4a9024b7f48c925",
-    "semantic_hash": "f16c94722fb1ab8ab4a9024b7f48c925"
-  },
-  ".specs/runs/004-2026-08-01/JOURNAL.md": {
-    "mtime": 1785637359.127206,
-    "ast_hash": "bc800025ec433b3fe333d637bec84809",
-    "semantic_hash": "bc800025ec433b3fe333d637bec84809"
-  },
-  ".specs/runs/004-2026-08-01/TRIAGE.md": {
-    "mtime": 1785598084.8409753,
-    "ast_hash": "4c3f5aa0e559d54cc809f3c5d0317b5d",
-    "semantic_hash": "4c3f5aa0e559d54cc809f3c5d0317b5d"
-  },
-  ".specs/runs/005-2026-08-02/JOURNAL.md": {
-    "mtime": 1785719702.7084482,
-    "ast_hash": "fa199c90f415cdd753abf0db9fc0b3dc",
-    "semantic_hash": "fa199c90f415cdd753abf0db9fc0b3dc"
-  },
-  ".specs/runs/005-2026-08-02/TRIAGE.md": {
-    "mtime": 1785688691.6126924,
-    "ast_hash": "2d9e28c7011c2a4b2ae69c71668fa629",
-    "semantic_hash": "2d9e28c7011c2a4b2ae69c71668fa629"
-  },
-  ".specs/runs/006-2026-08-02/TRIAGE.md": {
-    "mtime": 1785727201.990096,
-    "ast_hash": "bbb8c17dcbeafe77de2c160f4e129e28",
-    "semantic_hash": "bbb8c17dcbeafe77de2c160f4e129e28"
-  },
-  ".specs/runs/007-2026-08-03/JOURNAL.md": {
-    "mtime": 1785753800.9487383,
-    "ast_hash": "68faf47c900fe6e477712f9d8045d0bd",
-    "semantic_hash": "68faf47c900fe6e477712f9d8045d0bd"
-  },
-  ".specs/runs/007-2026-08-03/TRIAGE.md": {
-    "mtime": 1785727901.3770103,
-    "ast_hash": "56bf7c9451241fbb4c0548e2c4f0d74a",
-    "semantic_hash": "56bf7c9451241fbb4c0548e2c4f0d74a"
   },
   "AGENTS.md": {
     "mtime": 1785727852.6290019,
@@ -920,9 +850,9 @@
     "semantic_hash": "c91c817232c74adcfcf0dad7967bb999"
   },
   "CHANGELOG.md": {
-    "mtime": 1785806883.738986,
-    "ast_hash": "bb827d7e2ff1b2281e947c8c0d0f7954",
-    "semantic_hash": "bb827d7e2ff1b2281e947c8c0d0f7954"
+    "mtime": 1786574148.8055227,
+    "ast_hash": "3c5b3f05a7586e6050d3bd28bcdc2420",
+    "semantic_hash": ""
   },
   "CLAUDE.MD": {
     "mtime": 1785463310.7440946,
@@ -953,11 +883,6 @@
     "mtime": 1785254553.3507347,
     "ast_hash": "af24e337fafd6827df065249a258b2c6",
     "semantic_hash": "af24e337fafd6827df065249a258b2c6"
-  },
-  ".specs/research/screenshots/05-paywall-feature-matrix.png": {
-    "mtime": 1785254554.7677894,
-    "ast_hash": "9a42278aa3df0803628317097b7a19f8",
-    "semantic_hash": "9a42278aa3df0803628317097b7a19f8"
   },
   ".specs/research/screenshots/06-settings-mcp.png": {
     "mtime": 1785254646.410085,
@@ -1023,16 +948,6 @@
     "mtime": 1785728712.9714727,
     "ast_hash": "016f21263f94d2f1c8f3625a961165e8",
     "semantic_hash": "016f21263f94d2f1c8f3625a961165e8"
-  },
-  ".specs/runs/008-2026-08-11/JOURNAL.md": {
-    "mtime": 1786571231.0689108,
-    "ast_hash": "cfb7a58954f78f27ab8f3012d22fa941",
-    "semantic_hash": ""
-  },
-  ".specs/runs/008-2026-08-11/TRIAGE.md": {
-    "mtime": 1786486832.7126281,
-    "ast_hash": "06a3e6804ef23e48606322f6320fe6a8",
-    "semantic_hash": ""
   },
   "src-tauri/src/projects/sandbox.rs": {
     "mtime": 1786553818.0733857,
