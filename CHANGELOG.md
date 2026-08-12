@@ -1,11 +1,23 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.3] - 2026-08-12
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Update specifications and tasks across multiple features. Enhanced agent-selection and multi-terminal specs with new task details, including session management improvements and directory selection. Corrected task statuses and integrated components in terminal-statuses and task-kanban features. Verified updates in release-distribution tasks, ensuring accurate tracking of implementation progress and addressing integration gaps. Documented changes to reflect the current state of the project and improve clarity in specifications.
+
+- Update graph output files and enhance documentation. Added new entries to .graphify_labels.json and .graphify_labels.json.sig, reflecting recent changes in project structure and features. Updated GRAPH_REPORT.md to include the latest statistics and community hubs. Adjusted .graphify_root for improved path management. Introduced new files for the 2026-08-11 run, ensuring comprehensive tracking of project evolution and task specifications.
+
 ## [0.1.2] - 2026-08-03
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Update documentation and specifications for SwarmDeck. Refine README.md to clarify product methodology, enhance UI inventory descriptions, and adjust feature specifications based on observed product behavior. Add new entries to .gitignore for local daemon state and revise project state documentation to reflect changes in specification approach. Ensure consistency in terminology and improve clarity across multiple spec files.
 
 ## [0.1.1] - 2026-08-03
 
