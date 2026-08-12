@@ -132,32 +132,24 @@ mcp-task-server/T4 → T1 → T2 → ┬→ T3 [P]
 
 ---
 
-### T5: Integrar badge e log ao `TerminalHeader` real (nova, triagem 006)
+### T5: Integrar badge e log ao `TerminalHeader` real (nova, triagem 006)  🔀 FUNDIDA COM `mcp-task-server/T9`
 
-**O quê**: `StatusBadge` e `ActivityLog` (T4) existem e passam seus testes isolados. `TerminalHeader.tsx` nunca os importa — **corrigido na triagem 008 (11/08/2026)**: a citação do `grep` acima estava desatualizada, o import e a renderização JÁ EXISTEM (`TerminalHeader.tsx` linhas 5-6, 147, 151). O que continua faltando é mais fundo: nenhum comando Tauri nem evento expõe o status/atividade REAL de um terminal (definidos via MCP) ao frontend, e `App.tsx` nunca passa `status`/`statusColor`/`activities` a `TerminalHeader` — o componente renderiza, mas sempre sem dado real.
->
-> **🔓 Reaberta na triagem 008 (11/08/2026, decisão do usuário) com escopo novo**: mecanismo escolhido é **evento push** (mesmo padrão de `task_changed` no Kanban), não polling. Backend emite `terminal_status_changed` (payload: `terminalId`, `status`, `statusColor`, `activity`) sempre que `TerminalMetaService::set_status`/`log_activity` (já existem, `mcp-task-server`) rodar; `App.tsx` escuta com `listen()` e atualiza o estado do terminal correspondente, repassando a `TerminalHeader`. Itens novos no `Done when` abaixo.
-**Onde**: `src/components/terminal/TerminalHeader.tsx` (modifica — importa e renderiza `StatusBadge` e o hover/log de `ActivityLog`)
-**Depende de**: T4
+**Fundida na run 008 (12/08/2026), decisão do usuário.** O escopo restante desta task (evento push de status/atividade real) não é executável isolado — depende de `IpcServer` rodando contra um `AppHandle` real, que nunca é iniciado no app (`grep -rn "IpcServer::new\|\.serve(" src-tauri/src` só acha usos em teste), e ligar isso é o escopo represado de `mcp-task-server/T9` (parada desde a run 005 com decisão de arquitetura própria). Como nenhuma das duas funciona sem a outra, o usuário escolheu fundi-las numa task só — não reduzir escopo, não apenas adiar. **A definição completa (Done when, Onde, decisão de arquitetura Arc-wrapping já resolvida) mora agora em `.specs/features/mcp-task-server/tasks.md::T9`. Não duplicar aqui — edite lá.**
+
+**O que ESTA feature ainda documenta aqui** — a parte que já está pronta e não faz parte da fusão (integração do componente, sem dado real ainda):
+**Onde**: `src/components/terminal/TerminalHeader.tsx` (já modificado — importa e renderiza `StatusBadge` e o hover/log de `ActivityLog`)
 **Reusa**: `StatusBadge`, `ActivityLog` (T4, já existem e testados)
-**Requisito**: STAT-01, STAT-06
+**Requisito**: STAT-01, STAT-06 (cumprimento final depende da task fundida, ver acima)
 
-**Ferramentas**: MCP: NENHUM · Skill: NENHUMA
-
-**Done when** *(componente integrado ✅; itens novos abaixo por causa da reabertura da triagem 008)*:
+**Done when** *(componente integrado ✅ — os itens de dado real, antes listados aqui como "Novo", viraram parte do `Done when` de `mcp-task-server/tasks.md::T9`)*:
 - [x] `TerminalHeader` renderiza `StatusBadge` quando o terminal tem status definido, nada quando não tem (STAT-01 critério 2)
 - [x] Badge permanece visível na barra de terminal minimizado (reconfirma T4, agora no header real)
 - [x] Hover no terminal mostra a atividade mais recente (`ActivityLog`)
-- [ ] **Novo**: backend emite `terminal_status_changed` (evento Tauri) quando `TerminalMetaService::set_status`/`log_activity` roda
-- [ ] **Novo**: `App.tsx` escuta `terminal_status_changed` com `listen()` e atualiza o estado do terminal correspondente
-- [ ] **Novo**: `App.tsx` passa `status`/`statusColor`/`activities` reais a `TerminalHeader` (hoje sempre `undefined`/`[]`)
-- [ ] Gate passa: `cargo build && npm run build`
+- [ ] Dado real chegando do backend — **ver `mcp-task-server/tasks.md::T9`**, não marcar aqui até `T9` fechar
 
-**Tests**: none *(fiação — a lógica já é testada em `StatusBadge`/`ActivityLog`, mesmo padrão de `multi-terminal/T12`)* · **Gate**: build
+**Verify**: cumprido junto com o `Verify` de `mcp-task-server/tasks.md::T9` (parte 2, badge com dado real).
 
-**Verify**: `uat-agent` — abrir o app com um terminal cujo status foi definido via MCP, confirmar que o badge aparece no header real (não só no teste isolado); passar o mouse e ver a atividade mais recente.
-
-**Commit**: `feat(ui): wire status badge and activity log into terminal header`
+**Commit**: sem commit próprio — a implementação e o commit ficam inteiros em `mcp-task-server/tasks.md::T9`.
 
 ---
 

@@ -3,4 +3,5 @@
 //! Project domain: CRUD service for the `projects` table.
 
 pub mod resolve;
+pub mod sandbox;
 pub mod service;

@@ -1,16 +1,16 @@
-# Graph Report - ide  (2026-08-12)
+# Graph Report - ide  (2026-08-11)
 
 ## Corpus Check
-- 187 files · ~361,074 words
+- 186 files · ~357,542 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2109 nodes · 3984 edges · 281 communities (91 shown, 190 thin omitted)
+- 2097 nodes · 3960 edges · 279 communities (90 shown, 189 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 109 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e8b02a8b`
+- Built from commit: `99354f2c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -70,7 +70,7 @@
 - Validate & Verify doc
 - bump-version.mjs
 - Ordem de execução — M1 + M2
-- paths.rs
+- ProjectsPanel.tsx
 - Run 008 — 11/08/2026 (spec-loop)
 - T4: Badge, hover de atividade e log
 - Create New Project Modal
@@ -95,8 +95,6 @@
 - Todo ajuste passa pela spec (rule)
 - Coding Principles doc
 - T6: Realçar terminais por filtro de status
-- task_service.rs
-- main.tsx
 - UpdateBanner.tsx
 - Code Analysis Tools doc
 - CLN-01: Disk usage per agent
@@ -329,11 +327,11 @@
 - **task-kanban/T8 blocked and returned to triage for a decision** — specs_runs_007_2026_08_03_journal_t8needsdecision, feature_task_kanban, specs_runs_007_2026_08_03_triage [EXTRACTED 1.00]
 - **ACL capabilities gap threatens both kanban and settings windows** — specs_runs_007_2026_08_03_journal_aclgap, feature_task_kanban, feature_settings_shell [EXTRACTED 1.00]
 
-## Communities (281 total, 190 thin omitted)
+## Communities (279 total, 189 thin omitted)
 
 ### Community 0 - "server.rs"
 Cohesion: 0.09
-Nodes (57): Into, IpcConnection, CreateProjectArgs, CreateTaskArgs, emit_task_changed(), err_response(), err_response_with(), FindRelatedArgs (+49 more)
+Nodes (56): Into, IpcConnection, CreateProjectArgs, CreateTaskArgs, emit_task_changed(), err_response(), err_response_with(), FindRelatedArgs (+48 more)
 
 ### Community 1 - "catalog.rs"
 Cohesion: 0.05
@@ -341,7 +339,7 @@ Nodes (65): AgentDescriptor, AgentStatus, catalog(), catalogo_tem_os_5_agentes_c
 
 ### Community 2 - "TerminalManager"
 Cohesion: 0.07
-Nodes (61): HashSet, alive_terminal_ids(), get_with_project(), list_with_projects(), lista_tarefa_com_projeto_embutido(), ProjectRefDto, projeto_fica_nulo_apos_exclusao(), AppHandle (+53 more)
+Nodes (62): HashSet, alive_terminal_ids(), get_with_project(), list_with_projects(), lista_tarefa_com_projeto_embutido(), ProjectRefDto, projeto_fica_nulo_apos_exclusao(), AppHandle (+54 more)
 
 ### Community 3 - "PtySession"
 Cohesion: 0.06
@@ -356,20 +354,20 @@ Cohesion: 0.18
 Nodes (36): apply_transition(), complete(), create(), delete(), get(), list(), list_active(), list_by_project() (+28 more)
 
 ### Community 6 - "Task"
-Cohesion: 0.07
-Nodes (41): BoardFilterCounts, BoardFilters(), BoardFiltersProps, countByStatus(), distinctProjects(), EMPTY_COUNTS, matchesQuery(), STATUS_LABELS (+33 more)
+Cohesion: 0.06
+Nodes (42): root, BoardFilterCounts, BoardFilters(), BoardFiltersProps, countByStatus(), distinctProjects(), EMPTY_COUNTS, matchesQuery() (+34 more)
 
 ### Community 7 - "status_catalog.rs"
 Cohesion: 0.10
 Nodes (51): CatalogError, color_distance(), cores_visualmente_proximas_geram_aviso_na_criacao(), create(), create_com_rotulo_e_instrucao_grava_status_habilitado_com_cor_inedita(), create_sem_rotulo_ou_sem_instrucao_e_recusado(), CreateOutcome, delete() (+43 more)
 
 ### Community 8 - "check.rs"
-Cohesion: 0.17
-Nodes (29): S, auto_check_desligado_nao_sai_para_a_rede(), check(), check_with(), erro_na_consulta_remota_nao_propaga_e_vira_none(), exe_dir(), fetch_remote_manifest(), flavor_escolhe_a_entrada_certa_do_manifesto() (+21 more)
+Cohesion: 0.10
+Nodes (49): S, allow_write(), current_exe_dir(), data_dir(), db_path(), deny_write(), Flavor, is_writable() (+41 more)
 
 ### Community 9 - "db.rs"
-Cohesion: 0.08
-Nodes (31): aplica_migracoes_em_banco_novo(), cria_o_schema_de_terminal_layout(), migracao_e_idempotente(), registra_a_versao_aplicada(), PathBuf, TempDir, temp_db_path(), title_source_so_aceita_agent_ou_user() (+23 more)
+Cohesion: 0.06
+Nodes (47): aplica_migracoes_em_banco_novo(), cria_o_schema_de_terminal_layout(), migracao_e_idempotente(), registra_a_versao_aplicada(), PathBuf, TempDir, temp_db_path(), title_source_so_aceita_agent_ou_user() (+39 more)
 
 ### Community 10 - "projects/service.rs"
 Cohesion: 0.11
@@ -432,8 +430,8 @@ Cohesion: 0.26
 Nodes (20): _auto_prune(), cmd_add(), cmd_init(), cmd_list(), cmd_penalize(), cmd_prune(), cmd_status(), _find() (+12 more)
 
 ### Community 25 - "SettingsShell.tsx"
-Cohesion: 0.15
-Nodes (15): CheckState, MODE_LABEL, UpdateSettings(), UpdateSettingsProps, filterProjects(), ProjectRow, ProjectsPanel(), ProjectsPanelProps (+7 more)
+Cohesion: 0.21
+Nodes (9): CheckState, MODE_LABEL, UpdateSettings(), UpdateSettingsProps, ProjectRecord, SectionId, SECTIONS, SettingsShell() (+1 more)
 
 ### Community 26 - "swarmdeck-mcp/src/main.rs"
 Cohesion: 0.14
@@ -551,9 +549,9 @@ Nodes (9): BUMP_KINDS, bumpVersion(), main(), parseArgs(), parseVersion(), resol
 Cohesion: 0.22
 Nodes (11): Feature: agent-selection, Feature: mcp-task-server, Feature: multi-terminal, Feature: projects, Feature: release-distribution, Feature: task-kanban, Feature: terminal-statuses, mcp-task-server T0: contrato de ferramentas (gate de bloqueio do M2) (+3 more)
 
-### Community 55 - "paths.rs"
-Cohesion: 0.13
-Nodes (31): allow_write(), current_exe_dir(), data_dir(), db_path(), deny_write(), Flavor, is_writable(), is_writable_reprova_diretorio_somente_leitura() (+23 more)
+### Community 55 - "ProjectsPanel.tsx"
+Cohesion: 0.39
+Nodes (7): filterProjects(), ProjectRow, ProjectsPanel(), ProjectsPanelProps, sortByLastUsed(), PROJECTS, truncatePath()
 
 ### Community 56 - "Run 008 — 11/08/2026 (spec-loop)"
 Cohesion: 0.25
@@ -651,10 +649,6 @@ Nodes (5): Coding Principles doc, Goal-driven principle, Simplicity principle, S
 Cohesion: 0.38
 Nodes (7): KAN-06 (task-kanban requirement, mistakenly linked to STAT-08), STAT-08: Status como filtro, User story: Status como filtro (P2), T6: Realçar terminais por filtro de status, AD 08/08/2026: correção do dono de STAT-08 (não pertence ao Kanban), graphify (ferramenta de grafo de conhecimento usada para achar o erro de STAT-08), task-kanban/BoardFilters.tsx (mistaken destination for STAT-08)
 
-### Community 80 - "task_service.rs"
-Cohesion: 0.24
-Nodes (16): complete_a_partir_de_in_progress_leva_a_in_testing_nunca_direto_a_completed(), complete_a_partir_de_in_testing_leva_a_completed(), complete_ou_start_com_task_id_inexistente_falha_sem_criar_linha(), count_tasks(), create_com_cwd_em_subpasta_do_projeto_resolve_o_mesmo_projeto(), create_com_cwd_igual_ao_path_do_projeto_infere_o_project_id(), create_sem_projeto_correspondente_deixa_project_id_nulo_sem_criar_projeto(), ctx() (+8 more)
-
 ### Community 82 - "UpdateBanner.tsx"
 Cohesion: 0.50
 Nodes (3): UPDATE, UpdateBanner(), UpdateBannerProps
@@ -700,7 +694,7 @@ Nodes (4): ast-grep (sg) structural search tool, Code Analysis Tools doc, grep s
 ## Knowledge Gaps
 - **482 isolated node(s):** `$schema`, `src/**`, `tests/**`, `docs/**`, `Bash(git commit)` (+477 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **190 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **189 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_

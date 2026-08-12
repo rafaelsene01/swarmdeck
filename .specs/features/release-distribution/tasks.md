@@ -49,7 +49,7 @@ T12 ─────────────────────────�
 
 ## Desvios de execução
 
-- **T1 — `test:scripts` não podia ser `"node --test scripts/"`.** O `Done when` original exigia essa string literal, mas no Node 24 (fixado em `.github/workflows/ci.yml:27` e confirmado localmente com `node --version` → `v24.12.0`) o argumento posicional de `node --test` é tratado como **glob**, não como diretório: `node --test scripts/` casa a própria pasta `scripts` como se fosse um arquivo de teste e falha com `MODULE_NOT_FOUND: Cannot find module 'D:\ide\scripts'` (reproduzido nesta correção, `npm run test:scripts` → exit 1). A correção usa a forma glob explícita, `node --test "scripts/**/*.test.mjs"`, que restringe a busca aos arquivos `*.test.mjs` dentro de `scripts/` — 10/10 testes passam. Ficou decidido não usar `node --test` sem argumento posicional (que também funcionaria) porque essa forma varreria qualquer pasta de teste que o projeto ganhe fora de `scripts/` no futuro; o glob mantém o gate `scripts` restrito ao escopo da tarefa.
+- **T1 — `test:scripts` não podia ser `"node --test scripts/"`.** O `Done when` original exigia essa string literal, mas no Node 24 (fixado em `.github/workflows/ci.yml:27` e confirmado localmente com `node --version` → `v24.12.0`) o argumento posicional de `node --test` é tratado como **glob**, não como diretório: `node --test scripts/` casa a própria pasta `scripts` como se fosse um arquivo de teste e falha com `MODULE_NOT_FOUND: Cannot find module 'D:\ide\scripts'` (reproduzido nesta correção, `npm run test:scripts` → exit 1). A correção usa a forma glob explícita, `node --test "scripts/**/*.test.mjs"`, que restringe a busca aos arquivos `*.test.mjs` dentro de `scripts/` — 10/10 testes passam **nesta correção original** (fotografia de antes do 11º teste de `bump-version.test.mjs` ser adicionado — o caso que mata o mutante `inWorkspacePackage = true`, "correção pós-Verifier", já citado no Done-when de T1 acima, linha 74; contagem atual de `bump-version.test.mjs`: 11 testes; registro consolidado mais recente do gate completo está em T8, linha 247 — 27/27). Ficou decidido não usar `node --test` sem argumento posicional (que também funcionaria) porque essa forma varreria qualquer pasta de teste que o projeto ganhe fora de `scripts/` no futuro; o glob mantém o gate `scripts` restrito ao escopo da tarefa.
 
 ---
 
@@ -116,14 +116,14 @@ T12 ─────────────────────────�
 **Requisito**: REL-05
 
 **Done when**:
-- [ ] `git cliff --config cliff.toml --unreleased` gera saída sem erro no histórico atual — **sem evidência**: `git-cliff` não está instalado neste ambiente de execução, não foi rodado
+- [x] `git cliff --config cliff.toml --unreleased` gera saída sem erro no histórico atual — confirmado em 12/08/2026: `git-cliff` instalado via `cargo install git-cliff` (v2.13.1, binário em `~/.cargo/bin`, fora do repo) e rodado localmente. Saída (exit 0) traz a seção `## [Não lançado]` com 4 commits reais desde `v0.1.2`, ex.: `- Merge branch 'master' of github.com:rafaelsene01/swarmdeck`
 - [x] Tipos `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore` mapeados para grupos legíveis — confirmado por leitura de `cliff.toml:44-56`, os 9 tipos mais `style` e o catch-all `Outros`
-- [ ] Commits de merge e o commit inicial não convencional não quebram a geração — **sem evidência**: mesma limitação, não executado
-- [x] Gate passa: `cargo build && npm run build` (nada de código muda; o gate confirma que a árvore segue sã) — `cargo build` finished dev profile; `npm run build` (`tsc --noEmit && vite build`) ✓ built in 964ms, 31/07/2026
+- [x] Commits de merge e o commit inicial não convencional não quebram a geração — confirmado em 12/08/2026: `git cliff --config cliff.toml` rodado sobre o histórico completo (exit 0, sem `error` em stdout/stderr). Os 2 merge commits reais (`Merge branch 'master' of github.com:rafaelsene01/swarmdeck`) e o commit inicial não convencional (`Initialize SwarmDeck project with essential files and configurations...`) aparecem íntegros no grupo catch-all `### Outros`, dentro das seções `[0.1.1]`/`[0.1.2]`/`[Não lançado]` corretas
+- [x] Gate passa: `cargo build && npm run build` (nada de código muda; o gate confirma que a árvore segue sã) — reconfirmado em 12/08/2026: `cargo build` → `Finished \`dev\` profile [unoptimized + debuginfo] target(s) in 1.02s`; `npm run build` (`tsc --noEmit && vite build`) → `✓ built in 2.19s`
 
 **Tests**: none · **Gate**: build
 
-**Verify**: rodar o git-cliff local e ler a saída — a seção da versão não sai vazia depois de um commit `feat:` de teste.
+**Verify**: rodar o git-cliff local e ler a saída — a seção da versão não sai vazia depois de um commit `feat:` de teste. ✅ Validado por agente adversarial independente em 12/08/2026: reproduziu as 2 execuções do `git cliff`, confirmou `cliff.toml` intocado, confirmou os gates. **Ressalva não fechada**: nenhum commit `feat:`/`fix:` real existe no histórico deste repositório (28 de 30 commits são mensagens livres, os 2 únicos convencionais — `chore(release):` — são explicitamente `skip = true` em `cliff.toml:53`), então o mapeamento de tipo para grupo legível segue provado só por LEITURA ESTÁTICA de `cliff.toml`, não por um commit `feat:`/`fix:` real passando pelo comando — criar esse commit de teste exigiria `git commit`, proibido para o agente neste repositório (`deny` estrutural). Item 2 do `Done when` permanece com essa limitação, sem ação nova possível dentro das regras deste projeto.
 
 **Commit**: `chore(release): add git-cliff configuration`
 
@@ -217,7 +217,7 @@ T12 ─────────────────────────�
 - [x] Versão fora de `X.Y.Z` é rejeitada antes de qualquer I/O — `scripts/make-portable.test.mjs:23-31` (linha corrigida na triagem 005)
 - [x] A pasta montada contém executável, recursos e o marcador `.portable` — `scripts/make-portable.test.mjs:33-45` (executável + marcador), `:47-64` (recursos, quando presentes) — linhas corrigidas na triagem 005
 - [x] Um `LEIA-ME.txt` explica que apagar o marcador tira o app do modo portátil — `scripts/make-portable.test.mjs:66-70` (linha corrigida na triagem 005)
-- [x] Gate passa: `npm run test:scripts` — 25/25 (17 pré-existentes + 8 novos, ver T8) — reconfirmado na triagem 005
+- [x] Gate passa: `npm run test:scripts` — 25/25 (17 pré-existentes + 8 novos, ver T8) — reconfirmado na triagem 005 (fotografia histórica: este total ficou desatualizado quando `make-portable` subiu de 6 para 8 testes na própria triagem 006 — ver linha abaixo — sem que o total 25/25 fosse recalculado na época; registro atualizado do gate completo, 27/27, está em T8, linha 247)
 - [x] Contagem de testes: ~~6~~ **8** unit — corrigido na triagem 006 (`node --test scripts/make-portable.test.mjs` → 8 tests, 8 pass)
 - [x] **Achado do auditor, triagem 005 — CORRIGIDO, confirmado na triagem 006.** O caminho *default* do binário estava errado (`join(ROOT, "src-tauri", "target", ...)` quando `--binary` não é passado). Hoje `defaultBinaryPath()` resolve sob `<raiz>/target/release/`, com 2 testes novos que verificam exatamente isso ("the default binary path resolves under the workspace's own target/, not src-tauri/target/", "running without --binary reports the workspace target/ path, not src-tauri/target/ path") — é o que explica os 8 testes (eram 6). Corrigido no commit `bc7ab64` ("Fix release workflow to correctly add files for commit").
 
@@ -244,7 +244,7 @@ T12 ─────────────────────────�
 - [x] `withReleaseTag` troca a ref `untagged-<hash>` pela tag, preservando dono, repositório e nome de arquivo — `scripts/patch-latest-json.test.mjs:38-47` (troca), `:49-53` (tag inválida), `:55-60` (URL que não é do GitHub) — linhas corrigidas na triagem 005
 - [x] `patchManifest` acrescenta `windows-x86_64-portable` sem remexer nas chaves existentes — `scripts/patch-latest-json.test.mjs:62-82` (linha corrigida na triagem 005)
 - [x] Manifesto sem `platforms` falha com erro explícito — `scripts/patch-latest-json.test.mjs:84-89` (linha corrigida na triagem 005)
-- [x] Gate passa: `npm run test:scripts` — 25/25 (11 de `bump-version` + 6 de `make-portable`, T7 + 8 novos)
+- [x] Gate passa: `npm run test:scripts` — 27/27 (11 de `bump-version` + 8 de `make-portable` + 8 de `patch-latest-json`) — remedido em 12/08/2026: os 25/25 registrados aqui originalmente já estavam desatualizados porque `make-portable` subiu de 6 para 8 testes na triagem 006 (ver T7) sem que esta linha fosse atualizada; T1 (10/10) e T7 (25/25) acima são fotografias históricas de momentos anteriores e continuam corretas para o que descrevem
 - [x] Contagem de testes: 8 unit — confirmado
 
 **Tests**: unit · **Gate**: scripts

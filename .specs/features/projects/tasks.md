@@ -133,16 +133,15 @@ T5 é pré-requisito de T7 (o modal precisa dos parâmetros novos do serviço) e
 
 ---
 
-### T5: `ProjectService::create` revisado — diretório-base, cor com override, git init  ⛔ NEEDS-DECISION
+### T5: `ProjectService::create` revisado — diretório-base, cor com override, git init
 
-**Estacionada na run 008 (11/08/2026).** Não marcar `Done when` nem prosseguir para T6/T7 até haver decisão do usuário — o código abaixo já está no disco e testado, a pergunta é só se ele CUMPRE a task como está escrita.
+**Decisão do usuário (12/08/2026, run 008): opção (b)** — `create` original precisa ser migrada de verdade, não `create_with_options` como função paralela. Desestacionada; volta a valer o `Done when` original abaixo, tal como escrito.
 
-**Pergunta:** o implementador não alterou a assinatura de `create(conn, name, path)`; em vez disso criou uma função nova, `create_with_options(conn, name, base_dir, color, git_init)`, com toda a lógica desta task (subpasta-base, cor com override, `git init`), e deixou `create` intocada. O `Done when` original (linhas abaixo) fala literalmente em `create` três vezes ("`create` recebe `base_dir`...", "`create` aceita `color`...", "`create` aceita `git_init`..."). Duas leituras possíveis:
-  a) **Aceitar `create_with_options` como cumprimento do requisito** — a lógica de negócio pedida existe e está testada, só sob outro nome; ajustar o `Done when` para citar `create_with_options` e marcar os itens, deixando explícito que `commands::projects::project_create` (o comando Tauri, hoje ainda chama só `create`) precisa ser migrado para `create_with_options` em T7 — T7 hoje não lista isso em "Onde".
-  b) **Reprovar e pedir que `create` original seja migrada/substituída** — reescrever a assinatura de `create`, atualizando os 2 chamadores fora do escopo declarado desta task (`commands::projects::project_create`, os 8 testes de `tests/projects.rs`) para o formato novo.
-**Por que só o usuário responde:** é decisão de desenho de API (uma função com parâmetros opcionais versus duas funções, uma delas "legada") que a task não deixou explícita, e mudar de lado depois de T6/T7 já terem sido implementadas em cima de uma das duas custaria retrabalho.
-**Medições que sustentam a escolha:** validador rodou `cargo test --workspace` → **189 passando / 0 falhas** (184 baseline + 5 novos); `cargo test --lib projects::service::` → **5 passando**, nomes batendo 1:1 com os do `Done when`; `cargo test --test projects` (T1, fora do escopo) → **8 passando, intocado** (`commands/projects.rs` e `tests/projects.rs` ausentes de `git diff --stat`); mutation test manual (removida a checagem de unicidade de cor, revertida em seguida) confirmou que `cor_explicita_ja_usada_recusa` falha de verdade quando a lógica quebra — não é teste decorativo. `cargo clippy --all-targets -- -D warnings` e `cargo fmt --all -- --check` limpos.
-**Estado do código:** `create_with_options` existe em `src-tauri/src/projects/service.rs`, com os 5 testes descritos, funcionalmente correta e verificada por validação adversarial. `create` original intocada, com seus 8 testes originais ainda passando. Nada foi revertido — o trabalho tem valor nos dois cenários (a) e (b): em (a) fica como está; em (b) vira a base para uma reescrita de `create`.
+**Estado herdado (não descartar, é a base do trabalho que falta)**: `create_with_options(conn, name, base_dir, color, git_init)` já existe em `src-tauri/src/projects/service.rs`, com toda a lógica de negócio desta task correta e testada (5 testes, validados adversarialmente — mutation test confirmou que não são decorativos; `cargo test --lib projects::service::` → 5 passando). O trabalho que falta é **migrar `create` para essa mesma assinatura/lógica** (ou absorver `create_with_options` para dentro de `create`) e atualizar os 2 chamadores que hoje só conhecem a `create` antiga:
+- `commands::projects::project_create` (comando Tauri)
+- os 8 testes de `tests/projects.rs` (T1, hoje intocados)
+
+**Histórico da decisão (para contexto, não para reabrir):** estacionada nesta mesma run após validação encontrar a divergência entre `Done when` (fala em `create` 3x) e a entrega real (`create_with_options` nova, `create` intocada). Duas opções foram apresentadas — (a) aceitar `create_with_options` como função paralela, migrando só o chamador Tauri; (b) migrar `create` de verdade. Usuário escolheu (b): API final deve ter uma função só, não duas.
 
 **O quê**: Estender `ProjectService::create` (T1) para tratar o diretório informado como **base** (cria subpasta nomeada a partir do nome do projeto dentro dele — PROJ-01 AC6), aceitar uma cor explícita opcional que sobrescreve a sugestão automática (PROJ-01 AC7, PROJ-02), e rodar `git init` local quando pedido (PROJ-09 AC1/AC2).
 **Onde**: `src-tauri/src/projects/service.rs` (modifica)
@@ -259,16 +258,16 @@ T5 é pré-requisito de T7 (o modal precisa dos parâmetros novos do serviço) e
 
 **Ferramentas**: MCP: NENHUM · Skill: NENHUMA
 
-**Done when**:
-- [ ] `sandbox_dir()` devolve `<app_data_dir>/sandbox`, criando a pasta se não existir
-- [ ] O pseudo-projeto não aparece em `project_list`/`project_list_recent`, não conta na contagem de projetos
-- [ ] Duas chamadas concorrentes de `sandbox_dir()` não duplicam nem falham (idempotente)
-- [ ] Gate passa: `cargo test`
-- [ ] Contagem: 3 testes passam (cria se ausente, idempotente se já existe, ausente de `project_list`)
+**Done when** *(implementado e validado na run 008, retomada 12/08/2026)*:
+- [x] `sandbox_dir()` devolve `<data_dir>/sandbox` (reusa `paths::data_dir()`, autoridade única do projeto para esse caminho — não `app_data_dir()` cru), criando a pasta se não existir
+- [x] O pseudo-projeto não aparece em `project_list`/`project_list_recent`, não conta na contagem de projetos — provado por construção: `project_list` é invólucro 1:1 de `service::list_all` (`commands/projects.rs:18-21`), e o teste `never_registers_a_project_row` confirma que `sandbox.rs` nunca grava na tabela `projects`. `project_list_recent` ainda não existe no código (território do `T6`, independente deste `T9`)
+- [x] Duas chamadas concorrentes de `sandbox_dir()` não duplicam nem falham (idempotente) — validador confirmou via leitura da stdlib (`DirBuilder::create_dir_all` trata `AlreadyExists` + `path.is_dir()` como sucesso) que isso vale para concorrência real, não só chamadas sequenciais; o teste em si (`resolving_twice_is_idempotent`) exercita só o caso sequencial
+- [x] Gate passa: `cargo test` — `cargo test --workspace` → **192 passando / 0 falhas** (baseline 189 + 3 novos)
+- [x] Contagem: 3 testes passam (`creates_sandbox_dir_when_absent`, `resolving_twice_is_idempotent`, `never_registers_a_project_row`) — confirmados individualmente por um validador que também quebrou a implementação de propósito (removeu `fs::create_dir_all`) e viu os 2 primeiros falharem de verdade, revertendo em seguida
 
 **Tests**: integration · **Gate**: full
 
-**Verify**: `cargo test projects::sandbox` → 3 passam.
+**Verify**: `cargo test projects::sandbox` → 3 passam. ✅ Validado por agente adversarial independente (rodou os gates ele mesmo, leu o código linha a linha, testou mutação) — veredito APROVADO, sem defeitos.
 
 **Commit**: `feat(projects): fixed sandbox pseudo-project for "no project" terminals`
 

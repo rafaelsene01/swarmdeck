@@ -2,7 +2,7 @@
 
 **Design**: `.specs/features/mcp-task-server/design.md`
 **Testing**: `.specs/codebase/TESTING.md`
-**Status**: In Progress (T0–T8 `✅ Done` no gate, run `spec-loop` 004, 01/08/2026 — `.specs/runs/004-2026-08-01/JOURNAL.md`) — ⚠️ **T5 com `Verify` real pendente de `T9` (nova, triagem 005, 02/08/2026): `IpcServer` nunca é iniciado pelo app real**, ver T9 abaixo
+**Status**: In Progress (T0–T8 `✅ Done` no gate, run `spec-loop` 004, 01/08/2026 — `.specs/runs/004-2026-08-01/JOURNAL.md`) — ⚠️ **T5 com `Verify` real pendente de `T9` (fundida com `terminal-statuses/T5` na run 008, 12/08/2026, decisão de arquitetura resolvida — pronta para execução): `IpcServer` nunca é iniciado pelo app real**, ver T9 abaixo
 **Milestone**: M2
 
 > ⚠️ **T0 é gate de bloqueio.** Nenhuma tarefa deste arquivo começa antes dela.
@@ -18,7 +18,7 @@
 | T6 Sidecar `swarmdeck-mcp` — esqueleto e `check_active` | ✅ Done | ~11 (`client::tests::*` + o teste de handshake; ver nota abaixo) |
 | T7 Ferramentas MCP de tarefa e terminal | ✅ Done | ~5 (`tools::tests::*` + o teste de registro do catálogo; ver nota abaixo) |
 | T8 Similaridade de tarefas | ✅ Done | 6 unit (plano: 6) |
-| T9 Iniciar `IpcServer` no app real | ⛔ NEEDS-DECISION — estacionada na run 005 (02/08/2026, `spec-loop`): escopo de arquivos autorizado insuficiente, exige decisão de arquitetura (ver bloco da task) | — (fiação, gate build) |
+| T9 Iniciar `IpcServer` no app real + emitir `terminal_status_changed` (fundida com `terminal-statuses/T5`) | 🟢 Pronta para execução — fundida e decisão de arquitetura (Opção B) resolvida na run 008 (12/08/2026) | — (fiação + emissão de evento, gate build) |
 
 **Desvio de numeração:** T1 rodou como migração **`003`**, não `002` como o título da seção ainda cita abaixo — `release-distribution/T14`, executada antes na mesma run, reservou a `002` primeiro (regra "quem chega primeiro pega o número", `EXECUTION.md`). O código e os testes usam `003` corretamente; só o texto do título ficou desatualizado, preservado como está para não reescrever histórico — a nota aqui é a correção.
 
@@ -301,45 +301,58 @@ T3 → T8 [P]
 
 ---
 
-### T9: Iniciar o `IpcServer` no app real
+### T9: Iniciar o `IpcServer` no app real, e emitir `terminal_status_changed` (fundida com `terminal-statuses/T5`)
 
-> **Criada na triagem 005 (02/08/2026), decisão do usuário.** Resolve o `⛔ NEEDS-DECISION` aberto na mesma triagem em T5: `IpcServer::for_app(...).serve()` nunca é chamado em `src-tauri/src/lib.rs`, então o app real não abre o socket/pipe que o sidecar `swarmdeck-mcp` precisa para conectar — todo o round-trip de T5/T6/T7 só foi provado contra um `IpcServer` instanciado dentro do próprio teste. O usuário escolheu "criar task nova" entre as opções levantadas (a alternativa era reabrir T5). **O código já antecipa esta task**: o doc-comment de `IpcServer::for_app` em `src-tauri/src/ipc/server.rs:210-214` diz literalmente "wiring `IpcServer` into `run()`'s `setup` is out of this task's authorized file list — `lib.rs` isn't in it, but this is what that wiring will look like once a later task does it" — esta é essa task.
+> **Criada na triagem 005 (02/08/2026), decisão do usuário.** Resolve o `⛔ NEEDS-DECISION` aberto na mesma triagem em T5: `IpcServer::for_app(...).serve()` nunca é chamado em `src-tauri/src/lib.rs`, então o app real não abre o socket/pipe que o sidecar `swarmdeck-mcp` precisa para conectar — todo o round-trip de T5/T6/T7 só foi provado contra um `IpcServer` instanciado dentro do próprio teste. **O código já antecipa esta task**: o doc-comment de `IpcServer::for_app` em `src-tauri/src/ipc/server.rs:210-214` diz literalmente "wiring `IpcServer` into `run()`'s `setup` is out of this task's authorized file list — `lib.rs` isn't in it, but this is what that wiring will look like once a later task does it" — esta é essa task.
+>
+> **🔀 Fundida com `terminal-statuses/tasks.md::T5` na run 008 (12/08/2026), decisão do usuário.** As duas tasks não funcionavam isoladas uma da outra: `terminal-statuses/T5` (evento push de status/atividade real) não tem como emitir nada sem um `IpcServer` rodando contra um `AppHandle` real — que é exatamente o que esta task entrega. Fundidas para não haver uma "pronta" enquanto a outra trava tudo. `terminal-statuses/tasks.md::T5` foi atualizada para apontar para cá; não há mais definição duplicada lá.
+>
+> **✅ Decisão de arquitetura (Arc-wrapping) resolvida na mesma sessão — Opção B**, ver "Pergunta"/"Resposta" no fim desta task para o histórico completo. Resumo: `IpcServer`/`IpcServer::for_app` deixam de guardar `Arc<TerminalManager>`/`Arc<Mutex<Db>>` OWNED como campos — guardam um `AppHandle` e buscam `app.state::<TerminalManager>()`/`app.state::<Mutex<Db>>()` frescos a cada conexão nova, dentro da própria thread de `serve()`. Não toca `commands/terminal.rs` nem `update/check.rs`.
 
-**O quê**: Chamar `IpcServer::for_app(...)` dentro do `.setup()` de `run()` (`src-tauri/src/lib.rs`), montando o transporte real (`LocalSocketTransport::bind`, `ipc::transport::socket_path`), e rodar `serve()` numa thread dedicada (mesmo padrão de `terminal::session`, um thread por servidor de longa duração) — não bloquear o `.setup()`, que precisa retornar para o app terminar de subir.
-**Onde**: `src-tauri/src/lib.rs`
-**Depende de**: T5, T6 (precisa do `IpcServer` e de saber contra qual nome de pipe/socket o sidecar vai tentar conectar)
-**Reusa**: `IpcServer::for_app` (T5, já pronto para isso), `LocalSocketTransport::bind`, `ipc::transport::socket_path` (T5), `TerminalManager` e `Db` já geridos por `app.manage(...)` no mesmo `.setup()`
-**Requisito**: MCP-01 (fecha a lacuna de produção — nenhum requisito novo, o handshake já está especificado)
+**O quê**: Duas coisas que só funcionam juntas:
+1. Chamar `IpcServer::for_app(...)` (redesenhado conforme a Opção B) dentro do `.setup()` de `run()` (`src-tauri/src/lib.rs`), montando o transporte real (`LocalSocketTransport::bind`, `ipc::transport::socket_path`), e rodar `serve()` numa thread dedicada (mesmo padrão de `terminal::session`, um thread por servidor de longa duração) — não bloquear o `.setup()`, que precisa retornar para o app terminar de subir.
+2. Quando `TerminalMetaService::set_status`/`log_activity` roda com sucesso através desse `IpcServer` real, emitir o evento Tauri `terminal_status_changed` (payload: `terminalId`, `status`, `statusColor`, `activity`) para todas as janelas — mesmo padrão de `on_task_changed`/`emit_task_changed`, já implementado em `ipc/server.rs` para o Kanban (replicar o mecanismo de closure injetada para status/atividade). `App.tsx` escuta com `listen('terminal_status_changed', ...)`, atualiza o estado do terminal correspondente, e repassa `status`/`statusColor`/`activities` reais a `TerminalHeader` (hoje sempre `undefined`/`[]`).
+
+**Onde**: `src-tauri/src/lib.rs` (chama `IpcServer::for_app`, roda `serve()` em thread dedicada), `src-tauri/src/ipc/server.rs` (redesenha `for_app`/`IpcServer` conforme a Opção B; adiciona `on_terminal_status_changed`/`emit_terminal_status_changed`, mesmo padrão de `on_task_changed`/`emit_task_changed`), `src/App.tsx` (escuta o evento novo, repassa `status`/`statusColor`/`activities` a `TerminalHeader`)
+**Depende de**: T5 (`IpcServer` existe), T6 (nome de pipe/socket que o sidecar espera), `multi-terminal/T16` (já libera `App.tsx` para receber `id` real de terminal — pré-requisito para o evento saber qual terminal atualizar)
+**Reusa**: `IpcServer::for_app` (T5, base a redesenhar), `on_task_changed`/`emit_task_changed` (padrão de closure a replicar para status), `TerminalMetaService::set_status`/`log_activity` (T4, já existem), `StatusBadge`/`ActivityLog` (terminal-statuses/T4, já integrados a `TerminalHeader`)
+**Requisito**: MCP-01 (fecha a lacuna de produção do handshake), `terminal-statuses/STAT-01`, `terminal-statuses/STAT-06`
 
 **Ferramentas**: MCP: NENHUM · Skill: NENHUMA
 
 **Done when**:
-- [ ] `run()` chama `IpcServer::for_app(...)` com o transporte real e o `AppHandle`
+- [ ] `run()` chama `IpcServer::for_app(...)` com o transporte real e o `AppHandle`, no design da Opção B (sem `Arc` owned de `TerminalManager`/`Db` como campo da struct)
 - [ ] `serve()` roda numa thread separada, sem bloquear a inicialização do app
 - [ ] Falha ao abrir o socket/pipe (nome já em uso, permissão negada) é logada, não derruba o app
-- [ ] Com o app rodando de verdade, o sidecar `swarmdeck-mcp` consegue conectar e `check_active` retorna `true` — isto é o `Verify`, não um teste automatizado (mesma natureza do `Verify` que T5/T6/T7 já não conseguiam cobrir sozinhos)
-- [ ] Gate passa: `cargo build`
-- [ ] `TerminalMetaService` — se `IpcServer::for_app` também exige uma instância dela — é gerida por `app.manage(...)` do mesmo jeito que `Db`/`TerminalManager`, não recriada a cada conexão
+- [ ] `commands/terminal.rs` e `update/check.rs` permanecem intocados (confirma que a Opção B não vazou escopo para fora de `ipc/server.rs`/`lib.rs`)
+- [ ] Backend emite `terminal_status_changed` (evento Tauri) quando `TerminalMetaService::set_status`/`log_activity` roda através do `IpcServer` real
+- [ ] `App.tsx` escuta `terminal_status_changed` com `listen()` e atualiza o estado do terminal correspondente
+- [ ] `App.tsx` passa `status`/`statusColor`/`activities` reais a `TerminalHeader` (hoje sempre `undefined`/`[]`)
+- [ ] Com o app rodando de verdade, o sidecar `swarmdeck-mcp` consegue conectar e `check_active` retorna `true` — isto é o `Verify`, não um teste automatizado
+- [ ] Gate passa: `cargo build && npm run build`
+- [ ] `TerminalMetaService` é gerida por `app.manage(...)` do mesmo jeito que `Db`/`TerminalManager`, não recriada a cada conexão
 
-**Tests**: none *(fiação de inicialização — a lógica de roteamento já é testada em T5/T6/T7; ver `codebase/TESTING.md`)* · **Gate**: build
+**Tests**: none *(fiação de inicialização + emissão de evento — a lógica de roteamento e os componentes de UI já são testados em T4/T5/T6/T7 desta feature e em `terminal-statuses/T4`; ver `codebase/TESTING.md`)* · **Gate**: build
 
-**Verify**: `uat-agent` — subir o app (`npm run tauri dev` ou o binário), rodar o sidecar `swarmdeck-mcp` apontando para o mesmo nome de socket/pipe, chamar `check_active` pela interface MCP e confirmar `true` + `terminal_id` de um terminal real aberto no app. Isto é o primeiro teste ponta-a-ponta de dois processos reais (app + sidecar) deste projeto — até aqui, só `tokio::io::duplex`/sockets de teste tinham sido exercitados (ver `JOURNAL.md` da run 004, seção "Não verificado").
+**Verify**: `uat-agent` — duas partes: (1) subir o app (`npm run tauri dev` ou o binário), rodar o sidecar `swarmdeck-mcp` apontando para o mesmo nome de socket/pipe, chamar `check_active` pela interface MCP e confirmar `true` + `terminal_id` de um terminal real aberto no app — primeiro teste ponta-a-ponta de dois processos reais deste projeto (até aqui só `tokio::io::duplex`/sockets de teste tinham sido exercitados, ver `JOURNAL.md` da run 004); (2) com esse terminal aberto, definir o status dele via MCP e confirmar que o badge aparece no header real (não só no teste isolado de `terminal-statuses/T4`), e que passar o mouse mostra a atividade mais recente.
 
-**⛔ NEEDS-DECISION — estacionada na run 005 (02/08/2026).** Não executar até haver decisão do usuário. Nenhum código foi alterado (o implementador só leu, nada foi escrito no disco).
+**Commit**: `feat(ipc): start IpcServer in the running app and wire real status/activity events`
 
-**Pergunta:** `IpcServer::for_app` (`src-tauri/src/ipc/server.rs:215-229`) exige `Arc<TerminalManager>`, `Arc<Mutex<Db>>` e `Arc<TerminalMetaService>` — as MESMAS instâncias que `check_active` precisa enxergar. Hoje `lib.rs:32,37` geriza `TerminalManager`/`Mutex<Db>` como tipos "nus" (sem `Arc`), e `tauri::State<T>` resolve por `TypeId` exato — então religar exige trocar a chave de tipo em todo consumidor existente, não só em `lib.rs`. Consumidores fora da lista de arquivos autorizada a esta task: `src-tauri/src/commands/terminal.rs:33,50,60,70,82` (5 usos de `State<'_, TerminalManager>`, incluindo dentro da thread de `pump_output`) e `src-tauri/src/update/check.rs:83` (`State<'_, Mutex<Db>>`). Três caminhos reais:
-- **A**: ampliar o escopo de T9 para incluir `commands/terminal.rs` e `update/check.rs`, trocando os `app.state::<TerminalManager>()`/`app.state::<Mutex<Db>>()` por `app.state::<Arc<TerminalManager>>()`/`app.state::<Arc<Mutex<Db>>>()`.
-- **B**: redesenhar `IpcServer::for_app` para receber só `AppHandle` e buscar `app.state::<TerminalManager>()`/`app.state::<Mutex<Db>>()` frescos a cada conexão, dentro da thread de `serve()` — evita tocar `commands/`/`update/`, mas é mudança de assinatura maior que "expor algo que não está `pub`" (único motivo que autorizava tocar `ipc/` nesta task).
-- **C**: outra direção que o usuário/planejador prefira.
-  Criar uma segunda instância `Arc::new(TerminalManager::new())` isolada **não é opção válida**: `TerminalManager` (`src-tauri/src/terminal/manager.rs:87-90`) é só um `Mutex<HashMap<...>>` sem `Clone` interno — uma segunda instância nasceria vazia e `check_active` diria "unknown terminal" para todo terminal real, sempre. `TerminalMetaService` não tem este conflito (nada mais no código a referencia hoje).
+---
 
-**Por que só o usuário responde:** é escolha de arquitetura (onde a fronteira de `Arc`-wrapping do estado do app deve viver), não ambiguidade de requisito — e alarga o escopo de arquivos de uma task já triada, o que esta skill não decide sozinha.
+**Histórico da decisão de arquitetura (Arc-wrapping) — resolvida, não reabrir:**
 
-**Medições que sustentam a escolha:** leitura direta de `ipc/server.rs:215-229`, `lib.rs:32,37`, `commands/terminal.rs:33,50,60,70,82`, `update/check.rs:83`, `terminal/manager.rs:87-90`; confirmação de resolução por `TypeId` no crate `tauri` 2.11.5 vendorizado (`state.rs`).
+**Pergunta original (estacionada na run 005, 02/08/2026):** `IpcServer::for_app` (`src-tauri/src/ipc/server.rs:215-229`) exigia `Arc<TerminalManager>`, `Arc<Mutex<Db>>` e `Arc<TerminalMetaService>` — as MESMAS instâncias que `check_active` precisa enxergar. `lib.rs:32,37` geria `TerminalManager`/`Mutex<Db>` como tipos "nus" (sem `Arc`), e `tauri::State<T>` resolve por `TypeId` exato — religar exigiria trocar a chave de tipo em todo consumidor existente. Consumidores fora do escopo original desta task: `src-tauri/src/commands/terminal.rs:33,50,60,70,82` (5 usos de `State<'_, TerminalManager>`) e `src-tauri/src/update/check.rs:83` (`State<'_, Mutex<Db>>`). Três caminhos foram levantados:
+- **A**: ampliar o escopo desta task para incluir `commands/terminal.rs` e `update/check.rs`, trocando `app.state::<TerminalManager>()`/`app.state::<Mutex<Db>>()` por `app.state::<Arc<TerminalManager>>()`/`app.state::<Arc<Mutex<Db>>>()` em todos os 6 pontos de consumo.
+- **B**: redesenhar `IpcServer::for_app` para guardar só `AppHandle` e buscar `app.state::<TerminalManager>()`/`app.state::<Mutex<Db>>()` frescos a cada conexão, dentro da thread de `serve()` — evita tocar `commands/`/`update/`, mudança de assinatura fica contida em `ipc/`.
+- **C**: outra direção.
+  Criar uma segunda instância `Arc::new(TerminalManager::new())` isolada nunca foi opção válida: `TerminalManager` (`terminal/manager.rs:87-90`) é só um `Mutex<HashMap<...>>` sem `Clone` interno — uma segunda instância nasceria vazia e `check_active` diria "unknown terminal" para todo terminal real, sempre.
 
-**Estado do código:** nada alterado — nenhum arquivo escrito nesta run.
+**Resposta do usuário (run 008, 12/08/2026): Opção B.** Motivo: raio de mudança menor — fica contido em `ipc/server.rs`, sem tocar 6 pontos de consumo em 2 arquivos que hoje funcionam por outro motivo. Custo aceito: a assinatura interna de `IpcServer` muda mais (guarda `AppHandle` em vez de `Arc` clonado), e cada conexão nova paga o custo (pequeno) de buscar o estado de novo em vez de reusar um clone já feito.
 
-**Commit**: `feat(ipc): start IpcServer inside the running app`
+**Medições que sustentam a pergunta original:** leitura direta de `ipc/server.rs:215-229`, `lib.rs:32,37`, `commands/terminal.rs:33,50,60,70,82`, `update/check.rs:83`, `terminal/manager.rs:87-90`; confirmação de resolução por `TypeId` no crate `tauri` 2.11.5 vendorizado (`state.rs`).
+
+**Estado do código:** nada alterado — nenhum arquivo escrito ainda, nem na run 005 nem na 008. Esta task, fundida e desestacionada, está pronta para a próxima `spec-loop`.
 
 ---
 
