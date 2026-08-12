@@ -83,7 +83,7 @@ T12 ─────────────────────────�
 
 ### T2: Workflow de CI
 
-> 🚧 **BLOQUEADA para fechar.** Gate `pipeline` — a estrutura do arquivo bate com o `Done when` (confirmado por leitura, triagem 004). O push aconteceu fora desta skill entre a triagem 004 e a 005 (`origin/master` em `cf21c82`), e o CI rodou de verdade duas vezes (`gh run list`) — **as duas falharam**. Run `30752379391` (commit `2169884`) quebrou em 2 testes de `catalog.rs` (bug real de case-sensitivity em nome de arquivo no Linux); run `30754389304` (commit `cf21c82`, já com o fix de case-sensitivity) foi mais longe — `fmt`, `clippy` e `frontend` passam — mas quebrou em `agent_prefs.rs`. Causa raiz encontrada e corrigida **fora desta skill, na mesma sessão** (commit `5ac0ecd` — ver AD de 02/08/2026 no `STATE.md`), mas ainda não publicada nem provada em CI real. A task não fecha porque o `Done when` pede "run verde", e não existe run verde ainda — nem com a causa raiz resolvida, porque falta o próximo push (decisão desta triagem: não mexer agora).
+> ✅ **Resolvida — run verde real existe, corrigido na triagem 008 (11/08/2026).** O histórico de falhas (`30752379391`, `30754389304`) já estava documentado; desde então `CI` rodou verde múltiplas vezes, incluindo em `259b96e` (`30778057309`, 03/08) — base para as releases `v0.1.1`/`v0.1.2`. **Novo achado desta triagem**: o HEAD atual (`6f93e6b`) volta a ficar vermelho, mas por uma causa DIFERENTE e não relacionada a `agent_prefs.rs` — `cargo fmt --all -- --check` falha (2 hunks, `src-tauri/src/commands/terminal.rs` e `src-tauri/src/terminal/picker_prefs.rs`, código novo do seletor de pasta nunca formatado). Vira item `code` no inventário desta triagem — rodar `cargo fmt --all` resolve.
 
 **O quê**: `.github/workflows/ci.yml` com os três jobs (frontend, rust, commits), concorrência com cancelamento e nenhuma capacidade de publicar.
 **Onde**: `.github/workflows/ci.yml`
@@ -161,11 +161,11 @@ T12 ─────────────────────────�
 **Depende de**: nenhuma
 **Requisito**: REL-11, REL-15 (habilitador)
 
-**Done when**:
-- [ ] `npx tauri signer generate -w ~/.tauri/swarmdeck.key` executado pelo mantenedor
-- [ ] `TAURI_SIGNING_PRIVATE_KEY` e `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` cadastrados como secrets
-- [ ] Chave **pública** commitada em `plugins.updater.pubkey` — a privada **nunca** entra no repositório
-- [ ] Gate: não se aplica (nenhum código muda além da chave pública)
+**Done when** *(confirmado ✅ na triagem 008, 11/08/2026 — evidência indireta: as duas releases reais só teriam produzido `.sig` válidos com os secrets configurados e a chave certa commitada)*:
+- [x] `npx tauri signer generate -w ~/.tauri/swarmdeck.key` executado pelo mantenedor
+- [x] `TAURI_SIGNING_PRIVATE_KEY` e `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` cadastrados como secrets
+- [x] Chave **pública** commitada em `plugins.updater.pubkey` — a privada **nunca** entra no repositório (`tauri.conf.json:53`, chave minisign real, diferente da chave errada do `local-mind` registrada em AD de 31/07/2026)
+- [x] Gate: não se aplica (nenhum código muda além da chave pública)
 
 **Tests**: none · **Gate**: build
 
@@ -259,7 +259,7 @@ T12 ─────────────────────────�
 
 ### T9: Job `build` do release (matriz Windows + Linux)
 
-> 🚧 **BLOQUEADA para fechar — e nem chega a rodar antes de `T6` ser corrigida.** Gate `pipeline` — `needs: prepare`, então herda o bug de `T6` (achado na triagem 005: `git add` de pathspec inexistente derruba o job `prepare` antes de qualquer tag existir para este job dar checkout). Mesmo corrigido `T6`, ainda falta `T5` (chave de assinatura/secrets — sem ela, o `tauri-action` falha no passo de assinatura) e o disparo real (`T12`).
+> ✅ **Resolvida, corrigido na triagem 008 (11/08/2026).** `T6` corrigida, `T5` (chave/secrets) confirmada presente (assinaturas válidas nos releases reais) e `T12` (disparo real) aconteceu duas vezes com sucesso (`v0.1.1`, `v0.1.2`) — `gh release view v0.1.2 --json assets` mostra os 5 artefatos + `.sig` de cada.
 
 **O quê**: a matriz que compila e empacota nos dois sistemas, e que no Windows também monta, assina e anexa o zip portátil.
 **Onde**: `.github/workflows/release.yml`
@@ -284,7 +284,7 @@ T12 ─────────────────────────�
 
 ### T10: Job `finalize`
 
-> 🚧 **BLOQUEADA para fechar.** Gate `pipeline` — o job está escrito e todo o `Done when` verificável por leitura já está `[x]`. Depende de `T9` ter rodado de verdade para existir um `latest.json` de rascunho para baixar — bloqueada pela mesma cadeia (`T5`, `T12`).
+> ✅ **Resolvida, corrigido na triagem 008 (11/08/2026).** `T9` rodou de verdade nas duas releases reais; `latest.json` de `v0.1.2` existe e está correto no release publicado.
 
 **O quê**: injetar a entrada portátil no manifesto publicado e tirar a release do rascunho.
 **Onde**: `.github/workflows/release.yml`
@@ -308,7 +308,7 @@ T12 ─────────────────────────�
 
 ### T11: Job `cleanup`
 
-> 🚧 **BLOQUEADA para fechar.** Gate `pipeline` — o job está escrito e todo o `Done when` verificável por leitura já está `[x]`. Provar que ele reverte de verdade exige um disparo real que falhe de propósito (`T12`).
+> ⚠️ **Parcialmente resolvida, corrigido na triagem 008 (11/08/2026).** `T12` já aconteceu duas vezes com sucesso — mas nenhuma das duas exercitou o caminho de FALHA que este job (`cleanup`) trata. Continua sem prova real: falta um disparo cancelado de propósito para confirmar que a reversão funciona. Não é mais "bloqueada por falta de T12"; é "T12 aconteceu, mas nunca do jeito que provaria este job".
 
 **O quê**: desfazer tag, rascunho e commit de versão quando o run não chega a publicar.
 **Onde**: `.github/workflows/release.yml`
@@ -526,7 +526,7 @@ T12 ─────────────────────────�
 
 ### T21: Clippy no CI
 
-> 🚧 **BLOQUEADA para fechar.** Gate `pipeline` — o job `clippy` existe em `ci.yml` e passou nos dois runs reais que já aconteceram (`30752379391`, `30754389304` — ver detalhe em T2 e na AD de 02/08/2026 no `STATE.md`). `T21` em si está verde; o que bloqueia é `T2` — o `Done when` desta task também exige `T2` publicado, e `T2` segue vermelha por causa do `rust` job, não do `clippy`.
+> ✅ **Resolvida, corrigido na triagem 008 (11/08/2026).** `T2` (CI) já teve runs verdes reais (ver correção acima). `clippy` local também está limpo nesta triagem (`cargo clippy --all-targets -- -D warnings` → 0 warnings).
 
 **O quê**: zerar os warnings existentes e acrescentar o job de lint.
 **Onde**: código Rust conforme necessário, `.github/workflows/ci.yml`

@@ -2,9 +2,9 @@
 
 As tarefas vivem em `features/<feature>/tasks.md`. Este documento é o único lugar que mostra as **dependências entre features** — que os arquivos individuais só referenciam de passagem.
 
-**60 tarefas.** 17 podem rodar em paralelo; 43 são sequenciais.
+**61 tarefas.** 17 podem rodar em paralelo; 44 são sequenciais.
 
-*(Recontado na run `spec-loop` 007 — 03/08/2026, item de bookkeeping transversal da triagem 006. Contagem anterior (triagem 001, 28/07/2026): 38 tarefas, 13 `[P]`. Desde então, sete `tasks.md` de M1/M2 ganharam tarefas novas — `multi-terminal` T13-T20 (8), `agent-selection` T5-T6 (2), `task-kanban` T7-T8 (2), `terminal-statuses` T5 (1), e a feature nova `settings-shell` T1-T2 (2), que passa a contar neste documento por também ser M1. `grep -cE '^### T' features/*/tasks.md` nos sete arquivos (`multi-terminal`, `agent-selection`, `mcp-task-server`, `projects`, `terminal-statuses`, `task-kanban`, `settings-shell`) dá 20+6+10+9+5+8+2 = **60**. `grep -nE '^### T.*\[P\]'` nos mesmos sete dá **17**: `multi-terminal` T7-T9,T17-T20 (7), `agent-selection` T3-T4 (2), `mcp-task-server` T8 (1), `projects` T3-T4 (2), `terminal-statuses` T3-T4 (2), `task-kanban` T3-T5 (3), `settings-shell` nenhuma (0). 60-17=43 sequenciais.
+*(Recontado na run `spec-loop` 007 — 03/08/2026, item de bookkeeping transversal da triagem 006. Contagem anterior (triagem 001, 28/07/2026): 38 tarefas, 13 `[P]`. Desde então, sete `tasks.md` de M1/M2 ganharam tarefas novas — `multi-terminal` T13-T20 (8), `agent-selection` T5-T6 (2), `task-kanban` T7-T8 (2), `terminal-statuses` T5 (1), e a feature nova `settings-shell` T1-T2 (2), que passa a contar neste documento por também ser M1. `grep -cE '^### T' features/*/tasks.md` nos sete arquivos (`multi-terminal`, `agent-selection`, `mcp-task-server`, `projects`, `terminal-statuses`, `task-kanban`, `settings-shell`) dá 20+6+10+9+5+8+2 = **60**. `grep -nE '^### T.*\[P\]'` nos mesmos sete dá **17**: `multi-terminal` T7-T9,T17-T20 (7), `agent-selection` T3-T4 (2), `mcp-task-server` T8 (1), `projects` T3-T4 (2), `terminal-statuses` T3-T4 (2), `task-kanban` T3-T5 (3), `settings-shell` nenhuma (0). 60-17=43 sequenciais. **Remedido em 08/08/2026:** `terminal-statuses` ganhou `T6` (não `[P]`) ao corrigir o dono de `STAT-08` — `terminal-statuses` passa de 5 para 6 tarefas, total 20+6+10+9+6+8+2 = **61**, sequenciais 61-17=**44** (`[P]` continua 17, `T6` não é paralelizável).
 
 **O que esta recontagem NÃO fez** — para não inventar dependência não verificada: o diagrama `mermaid` e a tabela "Onda a onda" abaixo continuam descrevendo só o escopo original de M1/M2 (as 38 tarefas da triagem 001) — não foram re-derivados para incluir as 22 tarefas novas listadas acima. Re-desenhar o grafo de ondas inteiro exigiria mapear dependência real de cada tarefa nova contra as demais, o que é mais próximo de replanejamento do que de bookkeeping — fica como item futuro, não coberto por esta run.)*
 
@@ -122,8 +122,8 @@ Nenhuma tarefa com gate `pipeline` (`rd/T2`, `rd/T6`, `rd/T9–T12`, `rd/T19`, `
 
 ## Ferramentas por tarefa
 
-Todas as 60 tarefas do M1/M2 (incluindo as 22 novas desde a triagem 001, ver nota do topo) declaram **MCP: NENHUM · Skill: NENHUMA**.
+Todas as 61 tarefas do M1/M2 (incluindo as 22 novas desde a triagem 001, ver nota do topo) declaram **MCP: NENHUM · Skill: NENHUMA**.
 
-*(Corrigido na triagem 002 — 28/07/2026, quando eram 38. Reconferido na run `spec-loop` 007 — 03/08/2026: `grep -c "MCP: NENHUM"` bate exatamente com `grep -cE '^### T'` em cada um dos sete `tasks.md` de M1/M2 — 20+6+10+9+5+8+2 = 60/60, nenhuma tarefa nova destoou do padrão.)*
+*(Corrigido na triagem 002 — 28/07/2026, quando eram 38. Reconferido na run `spec-loop` 007 — 03/08/2026: `grep -c "MCP: NENHUM"` bate exatamente com `grep -cE '^### T'` em cada um dos sete `tasks.md` de M1/M2 — 20+6+10+9+5+8+2 = 60/60, nenhuma tarefa nova destoou do padrão. Remedido em 08/08/2026 após `terminal-statuses` ganhar `T6`: 20+6+10+9+6+8+2 = 61/61, `T6` também declara `MCP: NENHUM · Skill: NENHUMA`.)*
 
 Não é omissão. As tarefas são escrita de Rust e React com testes locais — nenhum MCP instalado neste ambiente (`superbullet-ai`, `godot-ai`) tem relação com o trabalho, e nenhuma skill instalada se aplica. Se algum servidor MCP útil for adicionado depois (por exemplo, um de documentação de crates), revisar esta seção antes de executar.

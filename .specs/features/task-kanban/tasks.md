@@ -5,7 +5,9 @@
 **Status**: In Progress (liberada na triagem 005, 02/08/2026 — ver `project/STATE.md`)
 **Milestone**: M2
 
-**Corrigido na triagem 006 (02/08/2026):** este arquivo tinha todos os checkboxes `[ ]` apesar de T1-T6 terem código real, testado e passando no gate — nenhuma task tinha sido marcada, mesmo tendo sido implementada (provavelmente na mesma leva de trabalho fora-da-skill que fechou `terminal-statuses/T1-T4`, ver `STATE.md` 02/08/2026). Marcadas `✅ Done no gate` abaixo, com a ressalva que se aplica a todas: **nenhuma é alcançável por um usuário real** — `KanbanBoard` nunca é montado (`src/main.tsx` sempre renderiza `<App/>`, sem `react-router`). `T7` e `T8` são novas desta triagem, para fechar essa e outras duas lacunas encontradas (payload vazio do evento `task_changed`; formulário de criação manual inexistente).
+**Corrigido na triagem 006 (02/08/2026):** este arquivo tinha todos os checkboxes `[ ]` apesar de T1-T6 terem código real, testado e passando no gate. Marcadas `✅ Done no gate` abaixo. `T7` e `T8` foram criadas naquela triagem para fechar duas lacunas (payload vazio do evento `task_changed`; roteamento real da janela Kanban; formulário de criação manual inexistente).
+
+**Corrigido na triagem 008 (11/08/2026): `T7` já foi implementada** (commit `676f291`, entre a triagem 007 e esta) — `KanbanBoard` é montado de verdade pela janela "Kanban" (`src/main.tsx` roteia por `label`) e `emit_task_changed` carrega payload real. Marcada `✅ Done` abaixo. `T8` (formulário manual) segue pendente, sem divergência.
 
 ---
 
@@ -206,12 +208,12 @@ Mesma razão de `multi-terminal/T12`: T1-T6 passam seus gates isolados, mas nada
 
 **Ferramentas**: MCP: NENHUM · Skill: NENHUMA
 
-**Done when**:
-- [ ] Abrir a janela "Kanban" mostra `KanbanBoard` real, não uma segunda cópia do grid de terminais
-- [ ] `emit_task_changed` envia `op`/`task`/`taskId`/`previousStatus` reais, não `()`
-- [ ] `useTaskStore.ts` aplica o delta corretamente a partir do payload real (sem lançar exceção)
-- [ ] `KanbanBoard` repassa as ações de abrir/excluir/enviar para `Column`/`TaskCard`, então clicar num card de verdade abre `TaskDetail`
-- [ ] Gate passa: `cargo build && npm run build`, mais os gates de T2/T3/T6 reexecutados
+**Done when** *(confirmado ✅ na triagem 008, 11/08/2026 — código real lido em `src/main.tsx`, `KanbanBoard.tsx`, `ipc/server.rs`)*:
+- [x] Abrir a janela "Kanban" mostra `KanbanBoard` real, não uma segunda cópia do grid de terminais
+- [x] `emit_task_changed` envia `op`/`task`/`taskId`/`previousStatus` reais, não `()`
+- [x] `useTaskStore.ts` aplica o delta corretamente a partir do payload real (sem lançar exceção)
+- [x] `KanbanBoard` repassa as ações de abrir/excluir/enviar para `Column`/`TaskCard`, então clicar num card de verdade abre `TaskDetail`
+- [x] Gate passa: `cargo build && npm run build`, mais os gates de T2/T3/T6 reexecutados
 
 **Tests**: none *(fiação — a lógica já é testada nas peças que compõe, mesmo padrão de `multi-terminal/T12`)* · **Gate**: build
 

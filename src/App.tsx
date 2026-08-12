@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-07, TERM-08), agent-selection (AGT-01, AGT-03, AGT-04)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08), agent-selection (AGT-01, AGT-03, AGT-04)
 
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -59,6 +59,14 @@ export default function App() {
   // Agente escolhido por sessão (AGT-03): sobrescreve o padrão só para o
   // terminal criado com aquela escolha, sem tocar a preferência global.
   const [agentByTerminalId, setAgentByTerminalId] = useState<Record<string, string | null>>({})
+  // SPEC: multi-terminal (TERM-06)
+  // Id REAL da sessão (o que `pty_spawn` devolve), reportado por
+  // `TerminalPane` via `onSessionId` quando a promise resolve — chaveado
+  // pelo `terminal.id` (UUID gerado no front, só identidade de painel/grid).
+  // É ESTE id, não `terminal.id`, que precisa ir para `TerminalHeader`: é a
+  // chave que `terminal_set_title` grava e que o agente usa via MCP — sem
+  // isto o rename manual nunca colide com a escrita do agente (TERM-06).
+  const [sessionIdByTerminalId, setSessionIdByTerminalId] = useState<Record<string, string>>({})
 
   useEffect(() => {
     let cancelled = false
@@ -113,6 +121,10 @@ export default function App() {
   const handleCloseTerminal = (id: string) => {
     setTerminals((prev) => evenWidths(close(prev, id)))
     setAgentByTerminalId((prev) => {
+      const { [id]: _removed, ...rest } = prev
+      return rest
+    })
+    setSessionIdByTerminalId((prev) => {
       const { [id]: _removed, ...rest } = prev
       return rest
     })
@@ -242,6 +254,7 @@ export default function App() {
               >
                 <TerminalHeader
                   index={index}
+                  id={sessionIdByTerminalId[terminal.id]}
                   title={null}
                   hasActiveProcess
                   onMaximize={() => handleMaximize(terminal.id, terminal.mode)}
@@ -249,7 +262,13 @@ export default function App() {
                   onClose={() => handleCloseTerminal(terminal.id)}
                 />
                 <div className="app-pane__body">
-                  <TerminalPane cwd={terminal.cwd} agent={agentByTerminalId[terminal.id] ?? undefined} />
+                  <TerminalPane
+                    cwd={terminal.cwd}
+                    agent={agentByTerminalId[terminal.id] ?? undefined}
+                    onSessionId={(sessionId) =>
+                      setSessionIdByTerminalId((prev) => ({ ...prev, [terminal.id]: sessionId }))
+                    }
+                  />
                 </div>
               </div>
             )

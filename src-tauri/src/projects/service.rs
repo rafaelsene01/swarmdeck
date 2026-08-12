@@ -1,4 +1,4 @@
-// SPEC: projects (PROJ-01, PROJ-02)
+// SPEC: projects (PROJ-01, PROJ-02, PROJ-09)
 
 //! `ProjectService`: create/update/delete for the `projects` table created
 //! by migration `003_tasks.sql` (mcp-task-server/T1).
@@ -14,7 +14,9 @@
 //! delete, since the count is gone once the FK clears `project_id`.
 
 use std::fmt;
+use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use rusqlite::{params, Connection, OptionalExtension, Row};
 
@@ -58,6 +60,17 @@ pub enum ProjectError {
     },
     /// No project with this id.
     NotFound(String),
+    /// Explicit color override (T5) is not one of `PALETTE`'s values.
+    ColorNotInPalette(String),
+    /// Explicit color override (T5) is already assigned to another project —
+    /// same uniqueness rule `pick_least_used_color` enforces for the
+    /// automatic pick, applied strictly to a caller-chosen color instead of
+    /// scanned across the whole palette.
+    ColorAlreadyUsed(String),
+    /// Subfolder creation or `git init` spawn failed at the OS level (T5).
+    Io(std::io::Error),
+    /// `git init` (T5, PROJ-09) ran but exited with a non-zero status.
+    GitInitFailed(String),
     Db(DbError),
 }
 
@@ -80,6 +93,14 @@ impl fmt::Display for ProjectError {
                 existing_id
             ),
             ProjectError::NotFound(id) => write!(f, "project not found: {id}"),
+            ProjectError::ColorNotInPalette(color) => {
+                write!(f, "color {color} is not in the palette")
+            }
+            ProjectError::ColorAlreadyUsed(color) => {
+                write!(f, "color {color} is already used by another project")
+            }
+            ProjectError::Io(err) => write!(f, "filesystem error: {err}"),
+            ProjectError::GitInitFailed(msg) => write!(f, "git init failed: {msg}"),
             ProjectError::Db(err) => write!(f, "database error: {err}"),
         }
     }
@@ -96,6 +117,12 @@ impl From<rusqlite::Error> for ProjectError {
 impl From<DbError> for ProjectError {
     fn from(err: DbError) -> Self {
         ProjectError::Db(err)
+    }
+}
+
+impl From<std::io::Error> for ProjectError {
+    fn from(err: std::io::Error) -> Self {
+        ProjectError::Io(err)
     }
 }
 
@@ -127,6 +154,72 @@ pub fn create(conn: &Connection, name: &str, path: &Path) -> Result<Project, Pro
         id,
         name: name.to_string(),
         path: path_str,
+        color,
+        last_used: None,
+    })
+}
+
+/// Creates a project the way `create` does, revised (T5) so the given
+/// directory is a **base**: a subfolder named after `name` is made inside
+/// it, and that subfolder — not `base_dir` itself — is registered as the
+/// project's `path` (PROJ-01 AC6). `color` overrides the automatic pick when
+/// given (PROJ-01 AC7, PROJ-02); `git_init` runs `git init` in the new
+/// subfolder before returning (PROJ-09 AC1/AC2).
+///
+/// DESVIO: kept as a separate function instead of changing `create` in
+/// place. `create`'s existing 3-arg signature has two callers this task's
+/// file scope excludes — `commands::projects::project_create` and the 8
+/// `tests/projects.rs` integration tests (projects/T1) — and the base_dir
+/// semantics genuinely change what a same-named `path` argument means (a
+/// directory that used to be *the* project path is now merely where a new
+/// one gets created), so reusing the name would silently break both
+/// callers' behavior even where it still compiled. `commands/projects.rs`
+/// wiring this in is `projects/T7`'s job per `tasks.md`'s T5→T7 edge.
+pub fn create_with_options(
+    conn: &Connection,
+    name: &str,
+    base_dir: &Path,
+    color: Option<String>,
+    git_init: bool,
+) -> Result<Project, ProjectError> {
+    let name = require_name(name)?;
+    let canonical_base = require_existing_dir(base_dir)?;
+    let target = canonical_base.join(name);
+    let target_str = path_to_string(&target);
+
+    // Reuses the exact "directory already associated" validation `create`
+    // uses: a subfolder that already resolves to another project's `path`
+    // is refused pointing at that project (Done when #2).
+    if let Some(existing) = find_by_path(conn, &target_str)? {
+        return Err(ProjectError::PathAlreadyUsed {
+            path: target,
+            existing_id: existing.id,
+            existing_name: existing.name,
+        });
+    }
+
+    let color = match color {
+        Some(chosen) => validate_explicit_color(conn, &chosen)?,
+        None => pick_least_used_color(conn)?,
+    };
+
+    fs::create_dir(&target)?;
+
+    if git_init {
+        run_git_init(&target)?;
+    }
+
+    let id = uuid::Uuid::now_v7().to_string();
+
+    conn.execute(
+        "INSERT INTO projects (id, name, path, color, last_used) VALUES (?1, ?2, ?3, ?4, NULL)",
+        params![id, name, target_str, color],
+    )?;
+
+    Ok(Project {
+        id,
+        name: name.to_string(),
+        path: target_str,
         color,
         last_used: None,
     })
@@ -317,6 +410,41 @@ fn pick_least_used_color(conn: &Connection) -> Result<String, ProjectError> {
     Ok(best_color.to_string())
 }
 
+/// Validates an explicit color override (T5): must be one of `PALETTE`'s
+/// values and not already assigned to another project — same `COUNT(*)
+/// FROM projects WHERE color = ?1` query `pick_least_used_color` runs per
+/// palette entry, applied here to the single caller-picked color instead of
+/// scanned across all eight to find the least-used one.
+fn validate_explicit_color(conn: &Connection, color: &str) -> Result<String, ProjectError> {
+    if !PALETTE.contains(&color) {
+        return Err(ProjectError::ColorNotInPalette(color.to_string()));
+    }
+
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM projects WHERE color = ?1",
+        params![color],
+        |row| row.get(0),
+    )?;
+    if count > 0 {
+        return Err(ProjectError::ColorAlreadyUsed(color.to_string()));
+    }
+
+    Ok(color.to_string())
+}
+
+/// Runs `git init` in `dir` (T5, PROJ-09 AC1/AC2). Spawn failure (e.g. `git`
+/// not on PATH) surfaces as `ProjectError::Io`; a non-zero exit surfaces as
+/// `ProjectError::GitInitFailed`.
+fn run_git_init(dir: &Path) -> Result<(), ProjectError> {
+    let status = Command::new("git").arg("init").current_dir(dir).status()?;
+    if !status.success() {
+        return Err(ProjectError::GitInitFailed(format!(
+            "git init exited with {status}"
+        )));
+    }
+    Ok(())
+}
+
 fn row_to_project(row: &Row) -> rusqlite::Result<Project> {
     Ok(Project {
         id: row.get(0)?,
@@ -325,4 +453,117 @@ fn row_to_project(row: &Row) -> rusqlite::Result<Project> {
         color: row.get(3)?,
         last_used: row.get(4)?,
     })
+}
+
+// SPEC: projects (PROJ-01, PROJ-02, PROJ-09)
+//
+// Tests for `create_with_options` (T5). Uses an in-memory `Db` — same
+// migrations as the real one (`db::Db::open_in_memory`), so no need for the
+// real-file setup `tests/projects.rs` uses for its own (untouched, T1)
+// coverage of `create`. Directories are real `tempfile::tempdir()`s since
+// `create_with_options` validates and creates on disk for real.
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::Db;
+
+    #[test]
+    fn cria_subpasta_dentro_da_base() {
+        let db = Db::open_in_memory().expect("abrir banco em memória");
+        let base = tempfile::tempdir().expect("criar diretório base");
+
+        let project = create_with_options(db.conn(), "MeuProjeto", base.path(), None, false)
+            .expect("create_with_options deve funcionar com base válida");
+
+        let expected_path = base.path().join("MeuProjeto");
+        assert!(expected_path.is_dir(), "subpasta deve ter sido criada");
+        assert_eq!(
+            PathBuf::from(&project.path),
+            strip_verbatim_prefix(&expected_path.canonicalize().unwrap())
+        );
+    }
+
+    #[test]
+    fn subpasta_colidente_recusa() {
+        let db = Db::open_in_memory().expect("abrir banco em memória");
+        let base = tempfile::tempdir().expect("criar diretório base");
+
+        let dono = create_with_options(db.conn(), "Duplicado", base.path(), None, false)
+            .expect("primeiro create_with_options deve funcionar");
+
+        let result = create_with_options(db.conn(), "Duplicado", base.path(), None, false);
+
+        match result {
+            Err(ProjectError::PathAlreadyUsed {
+                existing_id,
+                existing_name,
+                ..
+            }) => {
+                assert_eq!(existing_id, dono.id);
+                assert_eq!(existing_name, "Duplicado");
+            }
+            other => panic!("esperava PathAlreadyUsed, veio {other:?}"),
+        }
+    }
+
+    #[test]
+    fn cor_explicita_e_respeitada() {
+        let db = Db::open_in_memory().expect("abrir banco em memória");
+        let base = tempfile::tempdir().expect("criar diretório base");
+        let escolhida = PALETTE[5];
+
+        let project = create_with_options(
+            db.conn(),
+            "ComCor",
+            base.path(),
+            Some(escolhida.to_string()),
+            false,
+        )
+        .expect("create_with_options deve aceitar cor explícita válida");
+
+        assert_eq!(project.color, escolhida);
+    }
+
+    #[test]
+    fn cor_explicita_ja_usada_recusa() {
+        let db = Db::open_in_memory().expect("abrir banco em memória");
+        let base = tempfile::tempdir().expect("criar diretório base");
+        let cor = PALETTE[2];
+
+        create_with_options(
+            db.conn(),
+            "Primeiro",
+            base.path(),
+            Some(cor.to_string()),
+            false,
+        )
+        .expect("primeiro create_with_options deve funcionar");
+
+        let result = create_with_options(
+            db.conn(),
+            "Segundo",
+            base.path(),
+            Some(cor.to_string()),
+            false,
+        );
+
+        match result {
+            Err(ProjectError::ColorAlreadyUsed(color)) => assert_eq!(color, cor),
+            other => panic!("esperava ColorAlreadyUsed, veio {other:?}"),
+        }
+    }
+
+    #[test]
+    fn git_init_cria_ponto_git() {
+        let db = Db::open_in_memory().expect("abrir banco em memória");
+        let base = tempfile::tempdir().expect("criar diretório base");
+
+        let project = create_with_options(db.conn(), "ComGit", base.path(), None, true)
+            .expect("create_with_options com git_init deve funcionar");
+
+        assert!(
+            PathBuf::from(&project.path).join(".git").is_dir(),
+            ".git deve existir na subpasta criada"
+        );
+    }
 }

@@ -85,11 +85,9 @@ mod tests {
 
         let count: i64 = db
             .conn()
-            .query_row(
-                "SELECT COUNT(*) FROM terminal_picker_prefs",
-                [],
-                |row| row.get(0),
-            )
+            .query_row("SELECT COUNT(*) FROM terminal_picker_prefs", [], |row| {
+                row.get(0)
+            })
             .expect("count");
         assert_eq!(count, 1, "upsert nunca deve duplicar a linha única");
     }

@@ -19,16 +19,16 @@
 | T10 Max/min/fechar | ⚠️ Done (gate quick) — **Verify PARCIAL na run 005 (uat-agent, 02/08/2026): maximizar/fechar confirmados; minimizar→restaurar PERDE o scrollback do período minimizado — o próprio critério de Verify da task (`ping -t`, minimizar, restaurar) falhou.** | 4 unit (plano: 4) |
 | T11 Persistência | ⛔ Done (gate full) — **NEEDS-DECISION na run 005 (uat-agent, 02/08/2026): TERM-07 confirmado como não integrado ao frontend.** | 4 integration (plano: 4) |
 | T12 Montar `App.tsx` | 🆕 Criada na triagem 005 (02/08/2026) — pronta para execução | — (fiação, gate build) |
-| T13 Persistência do último diretório | 🆕 Criada nesta demanda (02/08/2026) — pronta para execução | integration (plano: 4) |
-| T14 Plugin de diálogo nativo + comandos | 🆕 Criada nesta demanda (02/08/2026) — depende de T13 | — (invólucro/config, gate build) |
-| T15 `NewTerminalDialog` — seletor de pasta | 🆕 Criada nesta demanda (02/08/2026) — depende de T14 | unit (plano: 5) |
-| T16 Rename manual do terminal | 🆕 Criada na triagem 006 (03/08/2026) — pronta para execução | — (fiação, gate build) |
+| T13 Persistência do último diretório | ✅ Done, confirmado na triagem 008 (11/08/2026) | 4 integration (plano: 4) |
+| T14 Plugin de diálogo nativo + comandos | ✅ Done, confirmado na triagem 008 (11/08/2026) | — (invólucro/config, gate build) |
+| T15 `NewTerminalDialog` — seletor de pasta | ✅ Done, confirmado na triagem 008 (11/08/2026) | 6 unit (plano: 5, +1) |
+| T16 Rename manual do terminal | ✅ **Fechada de verdade nesta run (11/08/2026)** — reaberta na triagem 008 porque `App.tsx` passava `id={terminal.id}` (o UUID gerado no front por `createTerminalId()`, só chave de grid/estado React), não o id real da sessão devolvido por `pty_spawn`; a correção anterior tinha marcado o checkbox sem trocar esse valor, então o rename manual nunca colidia com a chave que o agente usa via MCP. Corrigido: `TerminalPane` reporta o id real via a nova prop `onSessionId` quando `pty_spawn` resolve; `App.tsx` guarda esse id num estado `sessionIdByTerminalId` (chaveado por `terminal.id`) e passa `id={sessionIdByTerminalId[terminal.id]}` (`undefined` até a promise resolver, coberto pelo `id?: string` já opcional em `TerminalHeaderProps`). `terminal_set_title` (backend) e a edição por duplo-clique (`TerminalHeader.tsx`) já existiam. | — (fiação, gate build) |
 | T17 Montar picker Project→Agent dentro do painel vazio | 🆕 Criada nesta sessão (03/08/2026) — depende de `projects/T8`, `agent-selection/T4` | — (fiação, gate build) |
 | T18 `terminal::shutdown` — detectar fechamento inesperado | 🆕 Criada nesta sessão (03/08/2026) — depende de T2, T11 | integration (plano: 5) |
 | T19 `RestoreSessionModal` | 🆕 Criada nesta sessão (03/08/2026) — depende de T18, `agent-selection/T6` | unit (plano: 4) |
 | T20 Sinalização "sem remote" no header | 🆕 Criada nesta sessão (03/08/2026) — depende de T9, `projects/T5` | unit (plano: 2) |
 
-**Total na época (antes de T12, mcp-task-server e task-kanban existirem): 40 testes** — `cargo test` = 31 (5 throttle + 5 db + 4 layout + 6 manager + 5 session, + outros do crate na época; "11 lib" da versão original deste número não correspondia a nenhuma suíte específica desta feature — corrigido na triagem 006); `npm run test` = 9 (5 GridLayout + 4 terminals). **Estes números estão desatualizados e não devem ser usados como baseline** — o workspace inteiro hoje (triagem 006, 03/08/2026) mede `cargo test` = 180 passando / 0 falhas (16 suítes) e `npm run test` = 67 testes / 15 arquivos / 0 falhas, cobrindo todas as features implementadas até agora, não só `multi-terminal`. Ver relatório de execução original para a saída bruta de cada gate daquela época.
+**Total na época (antes de T12, mcp-task-server e task-kanban existirem): 40 testes** — histórico, não usar como baseline. **Baseline atual (triagem 008, 11/08/2026):** workspace inteiro `cargo test` = 184 passando / 0 falhas (era 180 na triagem 006 — +4 de `picker_prefs`); `npm run test -- --run` = 72 testes / 15 arquivos / 0 falhas (era 67 — +5 de `NewTerminalDialog`). Cobre todas as features implementadas até agora, não só `multi-terminal`.
 
 **Verify visual — atualização da run 004 (01/08/2026, spec-loop, modo direto, item `uat-agent`):** desta vez o ambiente TINHA display gráfico e o agente conseguiu subir o app, conectar por CDP (Chrome DevTools Protocol, via `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222`) e dirigir a janela real — a limitação registrada em 31/07/2026 (sem display) NÃO se repetiu. **T6 foi CONFIRMADO**: `pty_spawn` invocado pelo console do DevTools (a UI não tem botão de "novo terminal" ainda), bytes reais de `cmd.exe` chegaram pelo `Channel` (incluindo o handshake DSR `[6n` documentado no design.md).
 
@@ -563,11 +563,12 @@ Executado em 02/08/2026 pelo `uat-agent` da run 005, app real dirigido via CDP (
 **Ferramentas**: MCP: NENHUM · Skill: NENHUMA
 
 **Done when**:
-- [ ] Duplo-clique no título do header abre um campo editável com o valor atual
-- [ ] Confirmar (Enter/blur) chama o comando novo com `TitleSource::User`
-- [ ] `Esc` cancela sem persistir
-- [ ] Depois de um rename manual, o agente chamando `set_terminal_title` (MCP) não sobrescreve — já garantido pela lógica existente, este item só confirma que a UI usa o mesmo caminho
-- [ ] Gate passa: `cargo build && npm run build`
+- [x] Duplo-clique no título do header abre um campo editável com o valor atual
+- [x] Confirmar (Enter/blur) chama o comando novo com `TitleSource::User`
+- [x] `Esc` cancela sem persistir
+- [x] Depois de um rename manual, o agente chamando `set_terminal_title` (MCP) não sobrescreve — já garantido pela lógica existente, este item só confirma que a UI usa o mesmo caminho
+- [x] `App.tsx` passa o `id` REAL da sessão (o `TerminalId` devolvido por `pty_spawn`, não o UUID de `createTerminalId()` usado só como chave de grid) para `TerminalHeader` — item reaberto na triagem 008 porque a run anterior tinha passado `terminal.id` (o UUID do front, nunca visto pelo backend/agente), fechando o item sem exercitar a regra; corrigido nesta run: `TerminalPane` reporta o id real via `onSessionId` quando `pty_spawn` resolve, `App.tsx` guarda em `sessionIdByTerminalId` (chaveado por `terminal.id`) e repassa esse valor — `undefined` até a promise resolver
+- [x] Gate passa: `cargo build && npm run build`
 
 **Tests**: none *(fiação sobre lógica já testada em `meta.rs` — mesmo padrão de `multi-terminal/T12`)* · **Gate**: build
 

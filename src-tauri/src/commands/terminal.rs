@@ -91,10 +91,7 @@ pub fn terminal_picker_last_dir(db: State<'_, Mutex<Db>>) -> Result<Option<Strin
 /// Invólucro fino sobre `picker_prefs::set_last_dir` (T13) — chamado pelo
 /// frontend depois que o usuário confirma uma pasta no seletor nativo.
 #[tauri::command]
-pub fn terminal_picker_set_last_dir(
-    db: State<'_, Mutex<Db>>,
-    path: String,
-) -> Result<(), String> {
+pub fn terminal_picker_set_last_dir(db: State<'_, Mutex<Db>>, path: String) -> Result<(), String> {
     let db = db.lock().expect("db mutex poisoned");
     picker_prefs::set_last_dir(db.conn(), &path).map_err(|e| e.to_string())
 }

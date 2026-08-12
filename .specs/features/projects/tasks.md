@@ -133,7 +133,16 @@ T5 é pré-requisito de T7 (o modal precisa dos parâmetros novos do serviço) e
 
 ---
 
-### T5: `ProjectService::create` revisado — diretório-base, cor com override, git init
+### T5: `ProjectService::create` revisado — diretório-base, cor com override, git init  ⛔ NEEDS-DECISION
+
+**Estacionada na run 008 (11/08/2026).** Não marcar `Done when` nem prosseguir para T6/T7 até haver decisão do usuário — o código abaixo já está no disco e testado, a pergunta é só se ele CUMPRE a task como está escrita.
+
+**Pergunta:** o implementador não alterou a assinatura de `create(conn, name, path)`; em vez disso criou uma função nova, `create_with_options(conn, name, base_dir, color, git_init)`, com toda a lógica desta task (subpasta-base, cor com override, `git init`), e deixou `create` intocada. O `Done when` original (linhas abaixo) fala literalmente em `create` três vezes ("`create` recebe `base_dir`...", "`create` aceita `color`...", "`create` aceita `git_init`..."). Duas leituras possíveis:
+  a) **Aceitar `create_with_options` como cumprimento do requisito** — a lógica de negócio pedida existe e está testada, só sob outro nome; ajustar o `Done when` para citar `create_with_options` e marcar os itens, deixando explícito que `commands::projects::project_create` (o comando Tauri, hoje ainda chama só `create`) precisa ser migrado para `create_with_options` em T7 — T7 hoje não lista isso em "Onde".
+  b) **Reprovar e pedir que `create` original seja migrada/substituída** — reescrever a assinatura de `create`, atualizando os 2 chamadores fora do escopo declarado desta task (`commands::projects::project_create`, os 8 testes de `tests/projects.rs`) para o formato novo.
+**Por que só o usuário responde:** é decisão de desenho de API (uma função com parâmetros opcionais versus duas funções, uma delas "legada") que a task não deixou explícita, e mudar de lado depois de T6/T7 já terem sido implementadas em cima de uma das duas custaria retrabalho.
+**Medições que sustentam a escolha:** validador rodou `cargo test --workspace` → **189 passando / 0 falhas** (184 baseline + 5 novos); `cargo test --lib projects::service::` → **5 passando**, nomes batendo 1:1 com os do `Done when`; `cargo test --test projects` (T1, fora do escopo) → **8 passando, intocado** (`commands/projects.rs` e `tests/projects.rs` ausentes de `git diff --stat`); mutation test manual (removida a checagem de unicidade de cor, revertida em seguida) confirmou que `cor_explicita_ja_usada_recusa` falha de verdade quando a lógica quebra — não é teste decorativo. `cargo clippy --all-targets -- -D warnings` e `cargo fmt --all -- --check` limpos.
+**Estado do código:** `create_with_options` existe em `src-tauri/src/projects/service.rs`, com os 5 testes descritos, funcionalmente correta e verificada por validação adversarial. `create` original intocada, com seus 8 testes originais ainda passando. Nada foi revertido — o trabalho tem valor nos dois cenários (a) e (b): em (a) fica como está; em (b) vira a base para uma reescrita de `create`.
 
 **O quê**: Estender `ProjectService::create` (T1) para tratar o diretório informado como **base** (cria subpasta nomeada a partir do nome do projeto dentro dele — PROJ-01 AC6), aceitar uma cor explícita opcional que sobrescreve a sugestão automática (PROJ-01 AC7, PROJ-02), e rodar `git init` local quando pedido (PROJ-09 AC1/AC2).
 **Onde**: `src-tauri/src/projects/service.rs` (modifica)

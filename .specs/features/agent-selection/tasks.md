@@ -20,6 +20,8 @@ multi-terminal/T5 → T1 → T2 → ┬→ T3 [P]
 | T2 Lançamento do agente na sessão | ✅ Done | 6 integration (plano: 5, +1 ponta-a-ponta) |
 | T3 Preferência de agente padrão | ✅ Done | 4 integration (plano: 4) |
 | T4 UI de seleção de agente | ✅ Done | 4 unit (plano: 4) |
+| T5 Expor catálogo ao frontend + usar agente escolhido | ✅ Done, confirmado na triagem 008 (11/08/2026) — `commands/agents.rs` existe e registrado, `App.tsx` busca catálogo real e repassa `agentId` a `pty_spawn` | — (fiação, gate build) |
+| T6 Resume Session | Pending — sem código (`AGT-06`) | — |
 
 **Desvios registrados:** nomes de comando `antigravity`/`kimi` (T1) inferidos por convenção, sem confirmação de instalação real — catálogo estático, fácil de corrigir depois. Ver `JOURNAL.md` da run 004 para o detalhe de cada task.
 
@@ -139,11 +141,11 @@ multi-terminal/T5 → T1 → T2 → ┬→ T3 [P]
 
 **Ferramentas**: MCP: NENHUM · Skill: NENHUMA
 
-**Done when**:
-- [ ] `App.tsx` busca o catálogo real e o padrão efetivo no mount, e passa isso ao `NewTerminalDialog` em vez de `[]`/`null` fixos
-- [ ] `handleCreate` repassa o `agentId` escolhido para `pty_spawn`
-- [ ] Terminal criado com um agente específico realmente inicia esse agente (não só o shell puro)
-- [ ] Gate passa: `cargo build && npm run build`
+**Done when** *(confirmado ✅ na triagem 008, 11/08/2026 — código real lido, gate verde)*:
+- [x] `App.tsx` busca o catálogo real e o padrão efetivo no mount, e passa isso ao `NewTerminalDialog` em vez de `[]`/`null` fixos
+- [x] `handleCreate` repassa o `agentId` escolhido para `pty_spawn`
+- [x] Terminal criado com um agente específico realmente inicia esse agente (não só o shell puro)
+- [x] Gate passa: `cargo build && npm run build`
 
 **Tests**: none *(fiação — a lógica de catálogo/preferência já é testada em T1/T3; comandos são invólucro fino)* · **Gate**: build
 
@@ -153,7 +155,9 @@ multi-terminal/T5 → T1 → T2 → ┬→ T3 [P]
 
 ---
 
-> ✅ **Resolvida na triagem 006 (03/08/2026, decisão do usuário).** `AgentPanel.tsx` (T4) segue sem janela real, mas a decisão foi: cria-se uma feature nova, `settings-shell`, dona do container — não entra dentro desta feature. `AgentPanel` fica montado dentro dela quando `settings-shell/T2` fechar (`.specs/features/settings-shell/tasks.md`). `T5` (acima) resolve a sobrescrita por sessão via `NewTerminalDialog`, que já está na tela, independente disso.
+> ✅ **Resolvida na triagem 006 (03/08/2026, decisão do usuário).** `AgentPanel.tsx` (T4) segue sem janela real, mas a decisão foi: cria-se uma feature nova, `settings-shell`, dona do container — não entra dentro desta feature. `T5` (acima) resolve a sobrescrita por sessão via `NewTerminalDialog`, que já está na tela, independente disso.
+>
+> **Atualizado na triagem 008 (11/08/2026): `settings-shell/T2` já fechou** — `AgentPanel` está montado de verdade na janela `settings` (`SettingsShell.tsx`, roteada por `main.tsx`). O `Verify` de `AGT-04` (identificação visual do agente padrão) já é confirmável num app real. **Ressalva nova**: `AgentPanel` continua sem persistir a troca de agente padrão — nenhum comando Tauri expõe `agents::prefs::set_default_agent` ao frontend (`grep -rn "set_default_agent" src-tauri/src/commands/` → vazio); mudar o padrão na UI não sobrevive a um restart. Sem task própria ainda.
 
 ---
 

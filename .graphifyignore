@@ -1,0 +1,4 @@
+# App icon assets (logo re-exported at many sizes) - no semantic content,
+# would burn a vision subagent per file for redundant logo variations.
+src-tauri/icons/
+src-tauri/app-icon.png

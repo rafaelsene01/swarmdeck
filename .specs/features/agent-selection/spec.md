@@ -129,7 +129,7 @@ Observados na instalação de referência:
 |---|---|---|---|
 | AGT-01 | P1: Catálogo e padrão | Tasks | Done — `T1, T3, T4` |
 | AGT-02 | P1: Detecção de CLI ausente | Tasks | Done — `T1` |
-| AGT-03 | P1: Sobrescrita por sessão | Tasks | Done — `T2, T4` |
+| AGT-03 | P1: Sobrescrita por sessão | Tasks | Done — `T2, T4, T5` (corrigido na triagem 008, 11/08/2026: `T2/T4` sozinhas não bastavam — só chega ao `pty_spawn` de verdade com `T5`, que expõe o catálogo e repassa o `agentId` escolhido) |
 | AGT-04 | P2: Identificação visual | Tasks | Done — `T2, T4` |
 | AGT-05 | P2: Escopo por agente | Tasks | **Não coberto** — nenhuma task de `tasks.md` cita este ID. "Escopo por agente nas features de extensão" depende de features de M3 (MCP/Skills) que ainda não existem — plausivelmente adiado por dependência, mas isso nunca foi registrado em `ROADMAP.md` nem `STATE.md` |
 | AGT-06 | P1: Retomar ou nova sessão | Tasks | **Novo 03/08/2026** — Pending |

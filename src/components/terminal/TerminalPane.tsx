@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-06)
 
 import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
@@ -12,6 +12,16 @@ export interface TerminalPaneProps {
   /** Shell a rodar; `undefined` deixa o backend resolver o padrão do SO. */
   shell?: string
   agent?: string
+  /**
+   * Reporta o id REAL da sessão (o `TerminalId` devolvido por `pty_spawn`,
+   * o mesmo que o backend injeta no processo filho via `TERMINAL_ID_ENV` e
+   * que `TerminalMetaService::set_title` usa como chave) assim que a
+   * promise de `pty_spawn` resolve. Quem monta este painel (`App.tsx`)
+   * precisa desse id — não do UUID gerado no front para chaves de grid —
+   * para repassar a `TerminalHeader` como `id`, senão o rename manual
+   * (TERM-06) nunca colide com a chave que o agente usa via MCP.
+   */
+  onSessionId?: (id: string) => void
 }
 
 /** ConPTY tem custo real em resize; arrastar divisória dispararia dezenas
@@ -29,7 +39,7 @@ const RESIZE_DEBOUNCE_MS = 100
  * existir quando a consulta chegar. Ver design.md → "Handshake de DSR no
  * Windows".
  */
-export default function TerminalPane({ cwd, shell, agent }: TerminalPaneProps) {
+export default function TerminalPane({ cwd, shell, agent, onSessionId }: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -67,6 +77,7 @@ export default function TerminalPane({ cwd, shell, agent }: TerminalPaneProps) {
           return
         }
         terminalId = id
+        onSessionId?.(id)
       })
       .catch((error) => {
         terminal.write(`\r\nfalha ao iniciar o terminal: ${String(error)}\r\n`)

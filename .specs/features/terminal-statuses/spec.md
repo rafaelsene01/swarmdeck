@@ -99,16 +99,16 @@ Olhar para 4 terminais e descobrir qual precisa de você exige ler a saída de c
 
 | ID | História | Fase | Status |
 |---|---|---|---|
-| STAT-01 | P1: Badge de status | Tasks | Done no gate — `T4`, mas **não integrado ao header real** — ver "Cobertura" abaixo e `T5` (nova, triagem 006) |
+| STAT-01 | P1: Badge de status | Tasks | Done no gate — `T4`. **Corrigido na triagem 008 (11/08/2026)**: o componente já está integrado a `TerminalHeader.tsx` (import/render confirmados), mas continua invisível na prática — falta comando/evento real que leve o status do backend até `App.tsx`. Ver `T5` e `a reabertura de `T5` em `tasks.md` (decisão do usuário, triagem 008) |
 | STAT-02 | P1: Catálogo — CRUD | Tasks | Done — `T1, T3` |
 | STAT-03 | P1: Catálogo — ordem e prioridade | Tasks | Done — `T1, T3` |
 | STAT-04 | P1: Propagação na próxima sessão | Tasks | Done — `T2` |
 | STAT-05 | P1: Título geral estável | Tasks | Done no gate — `T4` |
-| STAT-06 | P1: Log de atividade | Tasks | Done no gate — `T4`, mesma ressalva de integração de STAT-01 |
+| STAT-06 | P1: Log de atividade | Tasks | Done no gate — `T4`, mesma ressalva de STAT-01 (componente integrado, dado real ainda ausente) |
 | STAT-07 | ~~P1: Rename manual vence~~ **REVOGADO** | — | **Revogado na triagem 006 (03/08/2026, decisão do usuário).** Duplicava `multi-terminal/TERM-06` (mesma regra: "rename manual do terminal vence o agente"). `TERM-06` fica como dono único do requisito — já é mais amplo (também cobre exibição de branch/git no header) e mora na feature que já possui `TerminalHeader`. A implementação (task nova) entra em `multi-terminal/tasks.md`, não aqui. |
-| STAT-08 | P2: Filtro por status | — | **Não coberto** — pertence à UI do Kanban (`task-kanban/BoardFilters.tsx` hoje só filtra por projeto e texto, não por status — `KAN-06` também não cita este requisito), sem task em nenhuma das duas features |
+| STAT-08 | P2: Status como filtro | Tasks | **Não coberto** — **corrigido em 08/08/2026** (ver AD em `project/STATE.md`): esta linha dizia antes que o requisito "pertence à UI do Kanban (`task-kanban/BoardFilters.tsx`)", mas a história associada (acima, "P2: Status como filtro") sempre foi sobre **realçar/atenuar terminais no próprio grid** pelo badge de status — vocabulário de status diferente do Kanban (Needs input/Needs testing/Working/Done vs. Pending/In Progress/In Testing/Completed, que são fases de tarefa, não de terminal). A menção ao Kanban era um engano de triagem anterior; `KAN-06` nunca teve relação com este requisito. Task nova: `T6` em `tasks.md` |
 
-**Cobertura (corrigida na triagem 006, 02/08/2026 — a tabela dizia "0 mapeados" com `tasks.md` já tendo T1-T4 implementadas e testadas):** 8 requisitos, **6 mapeados no gate** (`STAT-01..06`), **2 sem cobertura nenhuma** (`STAT-07`, `STAT-08`) ⚠️. Dos 6 mapeados, `STAT-01`/`STAT-06` (badge e log) existem como componentes isolados e testados, mas `TerminalHeader.tsx` não os importa (`grep -n "StatusBadge\|ActivityLog" src/components/terminal/TerminalHeader.tsx` → vazio) — não visíveis a um usuário real hoje. Ver `T5` (nova, triagem 006) em `tasks.md`.
+**Cobertura (corrigida na triagem 006, 02/08/2026 — a tabela dizia "0 mapeados" com `tasks.md` já tendo T1-T4 implementadas e testadas):** 8 requisitos, **6 mapeados no gate** (`STAT-01..06`), **2 sem cobertura nenhuma** (`STAT-07`, `STAT-08`) ⚠️. **Atualização 08/08/2026:** `STAT-07` segue revogado (sem task); `STAT-08` ganhou task (`T6`), ainda não implementado. **Atualização na triagem 008 (11/08/2026):** `STAT-01`/`STAT-06` (badge e log) JÁ estão importados em `TerminalHeader.tsx` (`grep -n "StatusBadge\|ActivityLog" src/components/terminal/TerminalHeader.tsx` → 4 ocorrências, não vazio como a versão anterior desta linha afirmava) — mas continuam invisíveis na prática porque nenhum comando/evento leva status/atividade real do backend até `App.tsx`. `⛔ NEEDS-DECISION` estacionada em `tasks.md::T5`.
 
 ---
 
