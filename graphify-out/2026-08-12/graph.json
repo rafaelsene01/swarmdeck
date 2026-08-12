@@ -8823,8 +8823,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_tauri_src_terminal_mod",
-      "community": 3,
-      "community_name": "PtySession",
+      "community": 27,
+      "community_name": "restore",
       "norm_label": "terminal/mod.rs"
     },
     {
@@ -12816,8 +12816,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service",
-      "community": 9,
-      "community_name": "db.rs",
+      "community": 21,
+      "community_name": "task_service.rs",
       "norm_label": "task_service.rs"
     },
     {
@@ -12827,8 +12827,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_temp_db_path",
-      "community": 9,
-      "community_name": "db.rs",
+      "community": 21,
+      "community_name": "task_service.rs",
       "norm_label": "temp_db_path()"
     },
     {
@@ -12838,8 +12838,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_rs_tempdir",
-      "community": 9,
-      "community_name": "db.rs",
+      "community": 21,
+      "community_name": "task_service.rs",
       "norm_label": "tempdir"
     },
     {
@@ -12849,8 +12849,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_rs_pathbuf",
-      "community": 9,
-      "community_name": "db.rs",
+      "community": 21,
+      "community_name": "task_service.rs",
       "norm_label": "pathbuf"
     },
     {
@@ -12860,8 +12860,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_ctx",
-      "community": 9,
-      "community_name": "db.rs",
+      "community": 21,
+      "community_name": "task_service.rs",
       "norm_label": "ctx()"
     },
     {
@@ -12871,8 +12871,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_rs_path",
-      "community": 9,
-      "community_name": "db.rs",
+      "community": 21,
+      "community_name": "task_service.rs",
       "norm_label": "path"
     },
     {
@@ -12882,8 +12882,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_count_tasks",
-      "community": 9,
-      "community_name": "db.rs",
+      "community": 21,
+      "community_name": "task_service.rs",
       "norm_label": "count_tasks()"
     },
     {
@@ -12893,8 +12893,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_rs_connection",
-      "community": 9,
-      "community_name": "db.rs",
+      "community": 21,
+      "community_name": "task_service.rs",
       "norm_label": "connection"
     },
     {
@@ -12904,8 +12904,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_create_com_cwd_igual_ao_path_do_projeto_infere_o_project_id",
-      "community": 9,
-      "community_name": "db.rs",
+      "community": 21,
+      "community_name": "task_service.rs",
       "norm_label": "create_com_cwd_igual_ao_path_do_projeto_infere_o_project_id()"
     },
     {
@@ -12915,8 +12915,8 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_create_com_cwd_em_subpasta_do_projeto_resolve_o_mesmo_projeto",
-      "community": 9,
-      "community_name": "db.rs",
+      "community": 21,
+      "community_name": "task_service.rs",
       "norm_label": "create_com_cwd_em_subpasta_do_projeto_resolve_o_mesmo_projeto()"
     },
     {
@@ -12926,8 +12926,8 @@
       "source_location": "L74",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_dois_projetos_candidatos_o_mais_especifico_vence_ponta_a_ponta",
-      "community": 9,
-      "community_name": "db.rs",
+      "community": 21,
+      "community_name": "task_service.rs",
       "norm_label": "dois_projetos_candidatos_o_mais_especifico_vence_ponta_a_ponta()"
     },
     {
@@ -12937,8 +12937,8 @@
       "source_location": "L98",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_create_sem_projeto_correspondente_deixa_project_id_nulo_sem_criar_projeto",
-      "community": 9,
-      "community_name": "db.rs",
+      "community": 21,
+      "community_name": "task_service.rs",
       "norm_label": "create_sem_projeto_correspondente_deixa_project_id_nulo_sem_criar_projeto()"
     },
     {
@@ -12948,8 +12948,8 @@
       "source_location": "L137",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_start_numa_task_recem_criada_vira_in_progress",
-      "community": 9,
-      "community_name": "db.rs",
+      "community": 21,
+      "community_name": "task_service.rs",
       "norm_label": "start_numa_task_recem_criada_vira_in_progress()"
     },
     {
@@ -12959,8 +12959,8 @@
       "source_location": "L151",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_complete_a_partir_de_in_progress_leva_a_in_testing_nunca_direto_a_completed",
-      "community": 9,
-      "community_name": "db.rs",
+      "community": 21,
+      "community_name": "task_service.rs",
       "norm_label": "complete_a_partir_de_in_progress_leva_a_in_testing_nunca_direto_a_completed()"
     },
     {
@@ -12970,8 +12970,8 @@
       "source_location": "L173",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_complete_a_partir_de_in_testing_leva_a_completed",
-      "community": 9,
-      "community_name": "db.rs",
+      "community": 21,
+      "community_name": "task_service.rs",
       "norm_label": "complete_a_partir_de_in_testing_leva_a_completed()"
     },
     {
@@ -12981,8 +12981,8 @@
       "source_location": "L189",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_complete_ou_start_com_task_id_inexistente_falha_sem_criar_linha",
-      "community": 9,
-      "community_name": "db.rs",
+      "community": 21,
+      "community_name": "task_service.rs",
       "norm_label": "complete_ou_start_com_task_id_inexistente_falha_sem_criar_linha()"
     },
     {
@@ -12992,8 +12992,8 @@
       "source_location": "L209",
       "_origin": "ast",
       "id": "src_tauri_tests_task_service_update_plan_acima_do_teto_trunca_e_sinaliza_abaixo_do_teto_nao_trunca",
-      "community": 9,
-      "community_name": "db.rs",
+      "community": 21,
+      "community_name": "task_service.rs",
       "norm_label": "update_plan_acima_do_teto_trunca_e_sinaliza_abaixo_do_teto_nao_trunca()"
     },
     {
@@ -15448,10 +15448,10 @@
       "captured_at": null,
       "author": "Waldemar Neto - github.com/waldemarnt",
       "contributor": null,
-      "community": 29,
+      "community": 44,
       "norm_label": "evidence-or-zero core rule",
       "_origin": "semantic",
-      "community_name": "spec-loop skill",
+      "community_name": "Validate & Verify doc",
       "id": "claude_skills_spec_driven_eval_skill_evidence_or_zero"
     },
     {
@@ -16108,10 +16108,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 29,
+      "community": 44,
       "norm_label": "\"numero copiado para a prosa\" anti-pattern",
       "_origin": "semantic",
-      "community_name": "spec-loop skill",
+      "community_name": "Validate & Verify doc",
       "id": "claude_skills_spec_triage_references_auditor_brief_number_copied_to_prose"
     },
     {
@@ -16213,10 +16213,10 @@
       "captured_at": null,
       "author": "Felipe Rodrigues - github.com/felipfr",
       "contributor": null,
-      "community": 30,
+      "community": 44,
       "norm_label": "self-improving lessons layer",
       "_origin": "semantic",
-      "community_name": "Execute (implement) doc",
+      "community_name": "Validate & Verify doc",
       "id": "claude_skills_tlc_spec_driven_skill_lessons_layer"
     },
     {
@@ -16588,10 +16588,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 30,
+      "community": 44,
       "norm_label": "lessons self-improving layer doc",
       "_origin": "semantic",
-      "community_name": "Execute (implement) doc",
+      "community_name": "Validate & Verify doc",
       "id": "claude_skills_tlc_spec_driven_references_lessons_doc"
     },
     {
@@ -16603,10 +16603,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 30,
+      "community": 44,
       "norm_label": "scripts/lessons.py",
       "_origin": "semantic",
-      "community_name": "Execute (implement) doc",
+      "community_name": "Validate & Verify doc",
       "id": "claude_skills_tlc_spec_driven_references_lessons_script"
     },
     {
@@ -16618,10 +16618,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 30,
+      "community": 44,
       "norm_label": ".specs/lessons.json canonical state",
       "_origin": "semantic",
-      "community_name": "Execute (implement) doc",
+      "community_name": "Validate & Verify doc",
       "id": "claude_skills_tlc_spec_driven_references_lessons_json"
     },
     {
@@ -16633,10 +16633,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 30,
+      "community": 44,
       "norm_label": ".specs/lessons.md rendered playbook",
       "_origin": "semantic",
-      "community_name": "Execute (implement) doc",
+      "community_name": "Validate & Verify doc",
       "id": "claude_skills_tlc_spec_driven_references_lessons_md_file"
     },
     {
@@ -16858,10 +16858,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 30,
+      "community": 44,
       "norm_label": "validate & verify doc",
       "_origin": "semantic",
-      "community_name": "Execute (implement) doc",
+      "community_name": "Validate & Verify doc",
       "id": "claude_skills_tlc_spec_driven_references_validate_doc"
     },
     {
@@ -16873,10 +16873,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 29,
+      "community": 44,
       "norm_label": "spec-anchored acceptance criteria check",
       "_origin": "semantic",
-      "community_name": "spec-loop skill",
+      "community_name": "Validate & Verify doc",
       "id": "claude_skills_tlc_spec_driven_references_validate_spec_anchored_check"
     },
     {
@@ -16888,10 +16888,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 30,
+      "community": 44,
       "norm_label": "discrimination sensor (mutation testing)",
       "_origin": "semantic",
-      "community_name": "Execute (implement) doc",
+      "community_name": "Validate & Verify doc",
       "id": "claude_skills_tlc_spec_driven_references_validate_discrimination_sensor"
     },
     {
@@ -16903,10 +16903,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 30,
+      "community": 44,
       "norm_label": ".specs/features/[feature]/validation.md report",
       "_origin": "semantic",
-      "community_name": "Execute (implement) doc",
+      "community_name": "Validate & Verify doc",
       "id": "claude_skills_tlc_spec_driven_references_validate_validation_report"
     },
     {
@@ -17118,21 +17118,6 @@
       "_origin": "semantic",
       "community_name": "AGENTS.md",
       "id": "specs_features_multi_terminal_tasks"
-    },
-    {
-      "label": "Notifications Spec",
-      "file_type": "document",
-      "source_file": ".specs/features/notifications/spec.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 84,
-      "norm_label": "notifications spec",
-      "_origin": "semantic",
-      "community_name": "Notifications Spec",
-      "id": "specs_features_notifications_spec"
     },
     {
       "label": "Onboarding Agent Spec",
@@ -19220,96 +19205,6 @@
       "id": "specs_features_multi_terminal_tasks_t20"
     },
     {
-      "label": "NOT-01: Notify when agent waits for user",
-      "file_type": "concept",
-      "source_file": ".specs/features/notifications/spec.md",
-      "source_location": "23-35",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 185,
-      "norm_label": "not-01: notify when agent waits for user",
-      "_origin": "semantic",
-      "community_name": "NOT-01: Notify when agent waits for user",
-      "id": "specs_features_notifications_spec_not01"
-    },
-    {
-      "label": "NOT-02: Click focuses terminal",
-      "file_type": "concept",
-      "source_file": ".specs/features/notifications/spec.md",
-      "source_location": "32",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 186,
-      "norm_label": "not-02: click focuses terminal",
-      "_origin": "semantic",
-      "community_name": "NOT-02: Click focuses terminal",
-      "id": "specs_features_notifications_spec_not02"
-    },
-    {
-      "label": "NOT-03: Notify task completion",
-      "file_type": "concept",
-      "source_file": ".specs/features/notifications/spec.md",
-      "source_location": "39-46",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 187,
-      "norm_label": "not-03: notify task completion",
-      "_origin": "semantic",
-      "community_name": "NOT-03: Notify task completion",
-      "id": "specs_features_notifications_spec_not03"
-    },
-    {
-      "label": "NOT-04: Grouping simultaneous notifications",
-      "file_type": "concept",
-      "source_file": ".specs/features/notifications/spec.md",
-      "source_location": "46",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 188,
-      "norm_label": "not-04: grouping simultaneous notifications",
-      "_origin": "semantic",
-      "community_name": "NOT-04: Grouping simultaneous notifications",
-      "id": "specs_features_notifications_spec_not04"
-    },
-    {
-      "label": "NOT-05: Per-event toggles",
-      "file_type": "concept",
-      "source_file": ".specs/features/notifications/spec.md",
-      "source_location": "50-57",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 189,
-      "norm_label": "not-05: per-event toggles",
-      "_origin": "semantic",
-      "community_name": "NOT-05: Per-event toggles",
-      "id": "specs_features_notifications_spec_not05"
-    },
-    {
-      "label": "NOT-06: OS permission handling",
-      "file_type": "concept",
-      "source_file": ".specs/features/notifications/spec.md",
-      "source_location": "58",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 190,
-      "norm_label": "not-06: os permission handling",
-      "_origin": "semantic",
-      "community_name": "NOT-06: OS permission handling",
-      "id": "specs_features_notifications_spec_not06"
-    },
-    {
       "label": "ONB-01: In-app chat panel",
       "file_type": "concept",
       "source_file": ".specs/features/onboarding-agent/spec.md",
@@ -20638,10 +20533,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 47,
+      "community": 32,
       "norm_label": "settings shell feature (janela de configuracoes)",
       "_origin": "semantic",
-      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_settings_shell_spec_feature"
     },
     {
@@ -20653,10 +20548,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 47,
+      "community": 32,
       "norm_label": "set-01: open settings in its own window",
       "_origin": "semantic",
-      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_settings_shell_spec_set_01"
     },
     {
@@ -20668,10 +20563,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 47,
+      "community": 32,
       "norm_label": "set-02: navigate between the 4 settings sections",
       "_origin": "semantic",
-      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_settings_shell_spec_set_02"
     },
     {
@@ -20683,10 +20578,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 47,
+      "community": 32,
       "norm_label": "agentpanel.tsx",
       "_origin": "semantic",
-      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_settings_shell_spec_agentpanel"
     },
     {
@@ -20698,10 +20593,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 47,
+      "community": 32,
       "norm_label": "projectspanel.tsx",
       "_origin": "semantic",
-      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_settings_shell_spec_projectspanel"
     },
     {
@@ -20713,10 +20608,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 47,
+      "community": 32,
       "norm_label": "statusespanel.tsx",
       "_origin": "semantic",
-      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_settings_shell_spec_statusespanel"
     },
     {
@@ -20728,10 +20623,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 47,
+      "community": 32,
       "norm_label": "updatesettings.tsx",
       "_origin": "semantic",
-      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_settings_shell_spec_updatesettings"
     },
     {
@@ -20744,10 +20639,10 @@
       "author": null,
       "contributor": null,
       "rationale": "Reuses the task-kanban windows/kanban.rs + WebviewWindowBuilder pattern because the 4 panels were already built as full screens, not modal content, and the Kanban precedent already solved the routing mechanism (branch by window label in main.tsx, no react-router since the number of windows is small and known).",
-      "community": 47,
+      "community": 32,
       "norm_label": "decision: settings is a second tauri window, not a modal",
       "_origin": "semantic",
-      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_settings_shell_spec_second_window_decision"
     },
     {
@@ -20759,10 +20654,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 47,
+      "community": 32,
       "norm_label": "settings-shell t1: secondary settings window",
       "_origin": "semantic",
-      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_settings_shell_tasks_t1"
     },
     {
@@ -20774,10 +20669,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 47,
+      "community": 32,
       "norm_label": "settings-shell t2: navigation and mounting the 4 real panels",
       "_origin": "semantic",
-      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_settings_shell_tasks_t2"
     },
     {
@@ -20789,10 +20684,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 45,
+      "community": 32,
       "norm_label": "skills manager feature (gerenciador de skills)",
       "_origin": "semantic",
-      "community_name": "Skills Manager feature (Gerenciador de Skills)",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_skills_manager_spec_feature"
     },
     {
@@ -20804,10 +20699,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 45,
+      "community": 32,
       "norm_label": "skl-01: list installed skills",
       "_origin": "semantic",
-      "community_name": "Skills Manager feature (Gerenciador de Skills)",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_skills_manager_spec_skl_01"
     },
     {
@@ -20819,10 +20714,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 45,
+      "community": 32,
       "norm_label": "skl-02: filter by agent and search",
       "_origin": "semantic",
-      "community_name": "Skills Manager feature (Gerenciador de Skills)",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_skills_manager_spec_skl_02"
     },
     {
@@ -20834,10 +20729,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 45,
+      "community": 32,
       "norm_label": "skl-03: open, remove, export skills",
       "_origin": "semantic",
-      "community_name": "Skills Manager feature (Gerenciador de Skills)",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_skills_manager_spec_skl_03"
     },
     {
@@ -20849,10 +20744,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 45,
+      "community": 32,
       "norm_label": "skl-04: skills marketplace",
       "_origin": "semantic",
-      "community_name": "Skills Manager feature (Gerenciador de Skills)",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_skills_manager_spec_skl_04"
     },
     {
@@ -20864,10 +20759,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 47,
+      "community": 32,
       "norm_label": "kanbanwindow (rust)",
       "_origin": "semantic",
-      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_task_kanban_design_kanbanwindow"
     },
     {
@@ -20879,10 +20774,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 62,
+      "community": 32,
       "norm_label": "kanbanboard (react)",
       "_origin": "semantic",
-      "community_name": "KanbanBoard (React)",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_task_kanban_design_kanbanboard"
     },
     {
@@ -20894,10 +20789,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 62,
+      "community": 32,
       "norm_label": "column (react)",
       "_origin": "semantic",
-      "community_name": "KanbanBoard (React)",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_task_kanban_design_column"
     },
     {
@@ -20909,10 +20804,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 62,
+      "community": 32,
       "norm_label": "taskcard (react)",
       "_origin": "semantic",
-      "community_name": "KanbanBoard (React)",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_task_kanban_design_taskcard"
     },
     {
@@ -20924,10 +20819,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 62,
+      "community": 32,
       "norm_label": "sendtoterminal (rust)",
       "_origin": "semantic",
-      "community_name": "KanbanBoard (React)",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_task_kanban_design_sendtoterminal"
     },
     {
@@ -20939,10 +20834,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 62,
+      "community": 32,
       "norm_label": "taskservice (reused from mcp-task-server)",
       "_origin": "semantic",
-      "community_name": "KanbanBoard (React)",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_task_kanban_design_taskservice"
     },
     {
@@ -20954,10 +20849,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 62,
+      "community": 32,
       "norm_label": "taskchangedevent contract",
       "_origin": "semantic",
-      "community_name": "KanbanBoard (React)",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_task_kanban_design_taskchangedevent"
     },
     {
@@ -20970,10 +20865,10 @@
       "author": null,
       "contributor": null,
       "rationale": "Matches original observed behavior and solves the real two-monitor case; same process shares AppState and events for free.",
-      "community": 47,
+      "community": 32,
       "norm_label": "decision: kanban as a second tauri window",
       "_origin": "semantic",
-      "community_name": "settings-shell T2: Navigation and mounting the 4 real panels",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_task_kanban_design_second_window_decision"
     },
     {
@@ -20986,10 +20881,10 @@
       "author": null,
       "contributor": null,
       "rationale": "Polling wastes resources and cannot deliver the perceived <1s update; the event carries the affected task so the board never reloads everything.",
-      "community": 62,
+      "community": 32,
       "norm_label": "decision: event-delta sync, no polling",
       "_origin": "semantic",
-      "community_name": "KanbanBoard (React)",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_task_kanban_design_delta_sync_decision"
     },
     {
@@ -21002,10 +20897,10 @@
       "author": null,
       "contributor": null,
       "rationale": "A card changes column by mutating one field, avoiding moving between arrays and duplicate risk under concurrent transitions.",
-      "community": 62,
+      "community": 32,
       "norm_label": "decision: normalized map state, columns derived",
       "_origin": "semantic",
-      "community_name": "KanbanBoard (React)",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_task_kanban_design_normalized_map_decision"
     },
     {
@@ -21018,10 +20913,10 @@
       "author": null,
       "contributor": null,
       "rationale": "Not observed in the reference product and conflicts with the state machine: dragging to Completed would skip the mandatory testing phase.",
-      "community": 62,
+      "community": 32,
       "norm_label": "decision: no drag-and-drop between columns in v1",
       "_origin": "semantic",
-      "community_name": "KanbanBoard (React)",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_task_kanban_design_no_drag_drop_decision"
     },
     {
@@ -21034,10 +20929,10 @@
       "author": null,
       "contributor": null,
       "rationale": "A board with one full column and others empty becomes unusable if the whole container scrolls together.",
-      "community": 62,
+      "community": 32,
       "norm_label": "decision: independent per-column scroll",
       "_origin": "semantic",
-      "community_name": "KanbanBoard (React)",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_features_task_kanban_design_per_column_scroll_decision"
     },
     {
@@ -21296,126 +21191,6 @@
       "id": "specs_features_task_kanban_tasks_t8"
     },
     {
-      "label": "Git Worktrees feature",
-      "file_type": "document",
-      "source_file": ".specs/features/worktrees/spec.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 21,
-      "norm_label": "git worktrees feature",
-      "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
-      "id": "specs_features_worktrees_spec_feature"
-    },
-    {
-      "label": "WT-01: Worktree per conversation",
-      "file_type": "concept",
-      "source_file": ".specs/features/worktrees/spec.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 21,
-      "norm_label": "wt-01: worktree per conversation",
-      "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
-      "id": "specs_features_worktrees_spec_wt_01"
-    },
-    {
-      "label": "WT-02: Fallback on creation failure",
-      "file_type": "concept",
-      "source_file": ".specs/features/worktrees/spec.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 21,
-      "norm_label": "wt-02: fallback on creation failure",
-      "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
-      "id": "specs_features_worktrees_spec_wt_02"
-    },
-    {
-      "label": "WT-03: Always-worktree mode",
-      "file_type": "concept",
-      "source_file": ".specs/features/worktrees/spec.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 21,
-      "norm_label": "wt-03: always-worktree mode",
-      "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
-      "id": "specs_features_worktrees_spec_wt_03"
-    },
-    {
-      "label": "WT-04: .worktreeinclude for git-ignored files",
-      "file_type": "concept",
-      "source_file": ".specs/features/worktrees/spec.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 21,
-      "norm_label": "wt-04: .worktreeinclude for git-ignored files",
-      "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
-      "id": "specs_features_worktrees_spec_wt_04"
-    },
-    {
-      "label": "WT-05: Inventory and size measurement",
-      "file_type": "concept",
-      "source_file": ".specs/features/worktrees/spec.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 21,
-      "norm_label": "wt-05: inventory and size measurement",
-      "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
-      "id": "specs_features_worktrees_spec_wt_05"
-    },
-    {
-      "label": "WT-06: Safe/Review/Kept states",
-      "file_type": "concept",
-      "source_file": ".specs/features/worktrees/spec.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 21,
-      "norm_label": "wt-06: safe/review/kept states",
-      "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
-      "id": "specs_features_worktrees_spec_wt_06"
-    },
-    {
-      "label": "WT-07: Safe deletion",
-      "file_type": "concept",
-      "source_file": ".specs/features/worktrees/spec.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "community": 21,
-      "norm_label": "wt-07: safe deletion",
-      "_origin": "semantic",
-      "community_name": "Git Worktrees feature",
-      "id": "specs_features_worktrees_spec_wt_07"
-    },
-    {
       "label": "UI-INVENTORY.md: reference-product UI inventory",
       "file_type": "document",
       "source_file": ".specs/research/UI-INVENTORY.md",
@@ -21424,10 +21199,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 44,
+      "community": 32,
       "norm_label": "ui-inventory.md: reference-product ui inventory",
       "_origin": "semantic",
-      "community_name": "UI-INVENTORY.md: reference-product UI inventory",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_research_ui_inventory_doc"
     },
     {
@@ -21439,10 +21214,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 44,
+      "community": 32,
       "norm_label": "observed: settings modal with 12-section side rail",
       "_origin": "semantic",
-      "community_name": "UI-INVENTORY.md: reference-product UI inventory",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_research_ui_inventory_settings_modal"
     },
     {
@@ -21454,10 +21229,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 44,
+      "community": 32,
       "norm_label": "observed: terminal statuses settings section (4 default statuses)",
       "_origin": "semantic",
-      "community_name": "UI-INVENTORY.md: reference-product UI inventory",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_research_ui_inventory_terminal_statuses_ui"
     },
     {
@@ -21469,10 +21244,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 44,
+      "community": 32,
       "norm_label": "observed: skills settings section (installed/marketplace tabs)",
       "_origin": "semantic",
-      "community_name": "UI-INVENTORY.md: reference-product UI inventory",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_research_ui_inventory_skills_ui"
     },
     {
@@ -21484,10 +21259,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 44,
+      "community": 32,
       "norm_label": "observed: worktrees settings section (safe/review/kept)",
       "_origin": "semantic",
-      "community_name": "UI-INVENTORY.md: reference-product UI inventory",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_research_ui_inventory_worktrees_ui"
     },
     {
@@ -21499,10 +21274,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 44,
+      "community": 32,
       "norm_label": "observed: kanban board in its own window",
       "_origin": "semantic",
-      "community_name": "UI-INVENTORY.md: reference-product UI inventory",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_research_ui_inventory_kanban_window"
     },
     {
@@ -21514,10 +21289,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 44,
+      "community": 32,
       "norm_label": "observed: onboarding agent floating panel",
       "_origin": "semantic",
-      "community_name": "UI-INVENTORY.md: reference-product UI inventory",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_research_ui_inventory_onboarding_agent"
     },
     {
@@ -21529,10 +21304,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 44,
+      "community": 32,
       "norm_label": "observed: pro paywall feature matrix",
       "_origin": "semantic",
-      "community_name": "UI-INVENTORY.md: reference-product UI inventory",
+      "community_name": "Task Kanban feature (Kanban de tarefas)",
       "id": "specs_research_ui_inventory_paywall_matrix"
     },
     {
@@ -65643,94 +65418,6 @@
       "relation": "implements",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": ".specs/features/worktrees/spec.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_features_worktrees_spec_feature",
-      "target": "specs_features_worktrees_spec_wt_01"
-    },
-    {
-      "relation": "implements",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/features/worktrees/spec.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_features_worktrees_spec_feature",
-      "target": "specs_features_worktrees_spec_wt_02"
-    },
-    {
-      "relation": "implements",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/features/worktrees/spec.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_features_worktrees_spec_feature",
-      "target": "specs_features_worktrees_spec_wt_03"
-    },
-    {
-      "relation": "implements",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/features/worktrees/spec.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_features_worktrees_spec_feature",
-      "target": "specs_features_worktrees_spec_wt_04"
-    },
-    {
-      "relation": "implements",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/features/worktrees/spec.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_features_worktrees_spec_feature",
-      "target": "specs_features_worktrees_spec_wt_05"
-    },
-    {
-      "relation": "implements",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/features/worktrees/spec.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_features_worktrees_spec_feature",
-      "target": "specs_features_worktrees_spec_wt_06"
-    },
-    {
-      "relation": "implements",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".specs/features/worktrees/spec.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_origin": "semantic",
-      "source": "specs_features_worktrees_spec_feature",
-      "target": "specs_features_worktrees_spec_wt_07"
-    },
-    {
-      "relation": "conceptually_related_to",
-      "confidence": "INFERRED",
-      "confidence_score": 0.9,
-      "source_file": ".specs/research/UI-INVENTORY.md",
-      "source_location": null,
-      "weight": 0.9,
-      "_origin": "semantic",
-      "source": "specs_research_ui_inventory_worktrees_ui",
-      "target": "specs_features_worktrees_spec_feature"
-    },
-    {
-      "relation": "implements",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
       "source_file": ".specs/research/UI-INVENTORY.md",
       "source_location": null,
       "weight": 1.0,
@@ -69667,5 +69354,5 @@
       "source_file": ".specs/features/task-kanban/tasks.md"
     }
   ],
-  "built_at_commit": "2c80f047de3d22221d1e97ecb715b97cbffd0483"
+  "built_at_commit": "48fb05f877beca3d658b56f0e8fb17367a86526e"
 }

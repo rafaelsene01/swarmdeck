@@ -1,16 +1,16 @@
 # Graph Report - ide  (2026-08-12)
 
 ## Corpus Check
-- 169 files · ~309,860 words
+- 142 files · ~118,895 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2011 nodes · 3835 edges · 276 communities (80 shown, 196 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 105 edges (avg confidence: 0.8)
+- 1514 nodes · 3370 edges · 75 communities (74 shown, 1 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 48 edges (avg confidence: 0.77)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `48fb05f8`
+- Built from commit: `772e3bc8`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -27,10 +27,10 @@
 - db.rs
 - projects/service.rs
 - ipc_server.rs
-- Settings Sidebar Navigation
+- tests/session.rs
 - client.rs
 - tauri.conf.json
-- Skills Settings Page
+- prefs.rs
 - terminal.rs
 - meta.rs
 - AGENTS.md
@@ -45,12 +45,12 @@
 - restore
 - App.tsx
 - spec-loop skill
-- Execute (implement) doc
+- Validate & Verify doc
 - devDependencies
-- Task Kanban feature (Kanban de tarefas)
+- agent_prefs.rs
 - Db
 - compilerOptions
-- SwarmDeck Main Grid Screenshot
+- resolve.rs
 - ProjectsPanel.tsx
 - TerminalHeader.tsx
 - similarity.rs
@@ -59,230 +59,29 @@
 - AgentDescriptor
 - tlc-spec-driven skill
 - make-portable.mjs
-- Validate & Verify doc
-- Agent Selection Spec
-- Settings - Terminal Statuses screenshot
-- SwarmDeck Screenshot: Terminal Initialization and Agent Selection
+- Evidence-or-zero core rule
+- launch.rs
+- agent_default
+- StatusBadge.tsx
+- CI Workflow (ci.yml)
+- Release Workflow (release.yml)
 - cargo build --workspace redundancy (corrected gate description)
 - picker_prefs.rs
-- Conversation Cleanup Spec
 - bump-version.mjs
-- Feature: terminal-statuses
 - paths.rs
-- MCP Management Spec
-- T4: Badge, hover de atividade e log
-- Create New Project Modal
 - project_list
 - default.json
-- MCP Task Server Design
-- Git Projects Modal
-- Kanban Board Screenshot (CodeAgentSwarm)
-- Left Toolbar Screenshot
 - update_skip_version
 - patch-latest-json.mjs
-- Onboarding Agent chat widget
 - GridLayout.tsx
 - kanban.rs
 - windows/settings.rs
 - Discuss Gray Areas doc
 - spec-driven-execution skill
-- SwarmDeck Screenshot - Agent Initialization & Project Selection
-- Session Restoration Dialog
-- MCP Task Server Spec
 - Todo ajuste passa pela spec (rule)
-- Coding Principles doc
-- MCP Task Server Tasks
-- Multi-terminal Design
-- Feature: multi-terminal
+- Execute (implement) doc
 - UpdateBanner.tsx
 - Code Analysis Tools doc
-- Onboarding Agent Spec
-- Projects Spec
-- CLN-01: Disk usage per agent
-- CLN-02: Non-blocking measurement
-- CLN-03: Mandatory deletion preview
-- CLN-04: Protection of in-use conversations
-- CLN-05: Cleanup rules by age/agent
-- MCPM-01: CRUD of MCP server
-- MCPM-02: Name conflict validation
-- MCPM-03: Server state indicator
-- MCPM-04: Mask secrets in config
-- MCPM-05: MCP server marketplace
-- check_active as connection-attempt outcome, not dedicated logic
-- IpcServer (Rust)
-- rmcp (official Rust MCP SDK)
-- Task state machine omits in_progress→completed edge by construction
-- swarmdeck-mcp sidecar binary
-- TaskService (Rust)
-- TerminalMetaService (Rust)
-- MCP-01: Activation handshake
-- MCP-02: Task lifecycle
-- MCP-03: Mandatory testing flow
-- MCP-04: Terminal title and activity
-- MCP-05: Terminal status
-- MCP-06: Manual rename wins over agent
-- MCP-07: Similarity and dedup
-- MCP-08: Project resolution
-- IpcServer::for_app never called in lib.rs (production wiring gap)
-- T0: Freeze MCP tool contract (gate)
-- T1: Migration 003 — tasks/projects/status/activity
-- T2: Task state machine
-- T3: TaskService
-- T4: TerminalMetaService
-- T5: IpcServer
-- T6: swarmdeck-mcp sidecar skeleton + check_active
-- T7: Task/terminal MCP tools
-- T8: Task similarity scoring
-- T9: Start IpcServer in the real app (NEEDS-DECISION)
-- MCP Task Server Tool Contract
-- Tool: check_active
-- Tool: complete_task
-- Tool: create_project
-- Tool: create_task
-- Tool: find_related_active_tasks
-- Tool: get_projects
-- Tool: list_tasks
-- Tool: search_tasks
-- Tool: set_terminal_status
-- Tool: set_terminal_title
-- Tool: start_task
-- Tool: update_task_implementation
-- Tool: update_task_plan
-- Tool: update_task_project
-- Tool: update_terminal_activity
-- PTY output via tauri::ipc::Channel with 16ms throttle (not emit)
-- ConPTY DSR handshake — frontend must answer before first byte
-- GridLayout (React)
-- NewTerminalDialog (React)
-- OutputThrottle (Rust)
-- terminal::picker_prefs (Rust)
-- PtySession (Rust)
-- RestoreSessionModal (React)
-- terminal::shutdown (Rust)
-- Single-row preference table pattern (agent_prefs / picker_prefs / shutdown_state)
-- TerminalHeader (React)
-- TerminalManager (Rust)
-- TerminalPane (React)
-- TERM-01: Real terminal
-- TERM-02: Resize/ANSI rendering
-- TERM-03: Terminal grid
-- TERM-04: Grid dividers/maximize
-- TERM-05: Terminal header
-- TERM-07: Session persistence
-- TERM-08: Minimize terminal
-- TERM-09: Per-terminal activity log
-- TERM-10: Native folder picker on terminal create
-- TERM-11: Remember last picker directory
-- TERM-12: Restore session after unclean shutdown
-- App.tsx placeholder never wired real components (integration gap)
-- T1: Scaffolding
-- T10: Maximize/minimize/close
-- T11: Layout persistence
-- T13: Last picker-directory persistence
-- T14: Native dialog plugin + commands
-- T15: NewTerminalDialog folder picker
-- T16: Manual terminal rename
-- T17: Mount inline Project→Agent picker
-- T18: terminal::shutdown — detect unclean shutdown
-- T19: RestoreSessionModal
-- T2: DB layer + migration runner
-- T20: “No remote” flag in terminal header
-- T3: OutputThrottle
-- T4: PtySession
-- T5: TerminalManager
-- T6: Tauri commands + output Channel
-- T7: TerminalPane (React)
-- T8: GridLayout (React)
-- T9: TerminalHeader (React)
-- ONB-01: In-app chat panel
-- ONB-02: Suggested questions
-- ONB-03: Honest refusal when unsure
-- ONB-04: Inspect mode — selection
-- ONB-05: Inspect mode — context on question
-- ONB-06: Scale and positioning
-- PROJ-01: Project CRUD (base-dir subfolder, color override)
-- PROJ-02: Unique colors with manual override
-- PROJ-03: Directory-based resolution
-- PROJ-04: Folder-name fallback
-- PROJ-05: Listing and ordering
-- PROJ-06: Select project when starting terminal
-- PROJ-07: Sandbox pseudo-project (No Project)
-- PROJ-08: Optional project icon
-- PROJ-09: Initialize as local git repo
-- T2: Directory-based project resolution
-- T3: Tauri project commands
-- T4: Project management UI
-- T5: create() revised — base-dir, color override, git init
-- T6: Track last-opened timestamp per project
-- T7: “Create New Project” UI
-- T8: ProjectPicker — PROJECT step
-- T9: Sandbox pseudo-project (No Project)
-- scripts/bump-version.mjs
-- cliff.toml (git-cliff config)
-- scripts/make-portable.mjs
-- scripts/patch-latest-json.mjs
-- src-tauri/src/paths.rs
-- src/components/UpdateBanner.tsx
-- src-tauri/src/update/ (check.rs, portable.rs)
-- REL-01: Release only via workflow_dispatch + bump select
-- REL-02: Push/tag/schedule never publish
-- REL-03: Version from last tag + bump, written to 4 files
-- REL-04: No prior tag → base is package.json
-- REL-05: CHANGELOG from Conventional Commits since last tag
-- REL-06: chore(release) commit, tag, GitHub Release same run
-- REL-07: Branch/tag guards before any write
-- REL-08: Interrupted run undoes tag/draft/version commit
-- REL-09: msi + setup.exe + deb + AppImage per release
-- REL-10: NSIS currentUser mode, no admin prompt
-- REL-11: Signed update artifacts + latest.json
-- REL-12: fail-fast:false and draft-until-complete
-- REL-13: Linux build on ubuntu-22.04
-- REL-14: Windows portable zip with marker
-- REL-15: Portable signed with same key
-- REL-16: Portable mode writes data beside executable
-- REL-17: Installed mode uses app_data_dir, single resolver module
-- REL-18: Run from zip in writable folder, no elevation
-- REL-19: Silent boot-time update check
-- REL-20: Non-blocking banner with 3 actions
-- REL-21: Nothing shown when no newer version
-- REL-22: Download+progress, verify signature, apply, restart
-- REL-23: “Skip this version” applies only to that version
-- REL-24: Installed uses official plugin; portable swaps files
-- REL-25: Invalid signature aborts, preserves current version
-- REL-26: Warn about PTY shutdown before restart
-- REL-27: CI runs build/test/cargo test on push and PR
-- REL-28: Rust job installs Tauri system deps, no protoc
-- REL-29: Conventional Commits validated on PR commits
-- REL-30: fmt --check + scripts unit tests in CI
-- REL-31: Concurrency cancels superseded runs; CI publishes nothing
-- REL-32: “Updates” settings section with version and mode
-- REL-33: “Check now” reports result in both cases
-- REL-34: Auto-check toggle persisted, on by default
-- REL-35: strip + LTO release profile, measured size
-- REL-36: clippy -D warnings in CI after cleanup
-- T10: release.yml finalize job
-- T11: release.yml cleanup job
-- T12: First real release (v0.1.1) verification
-- T13: Path resolution and portable mode
-- T14: Update preference persistence
-- T15: Update check
-- T16: Portable-mode update apply
-- T17: New-version banner
-- T18: “Updates” settings section
-- T19: End-to-end update verification (human)
-- T2: CI workflow
-- T20: Lean release profile (strip+LTO)
-- T21: Clippy in CI
-- T3: git-cliff configuration
-- T4: Tauri bundle configuration
-- T5: Signing key and secrets (human step)
-- T6: release.yml prepare job
-- T7: Portable bundle builder script
-- T8: Update manifest patcher script
-- T9: release.yml build job (matrix)
-- Projects Tasks
-- Release Distribution Design
-- Release Distribution Tasks
 
 ## God Nodes (most connected - your core abstractions)
 1. `Db` - 46 edges
@@ -297,47 +96,42 @@
 10. `ProjectError` - 21 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Test coverage matrix` --semantically_similar_to--> `T-outcome (persistence/async outcome checks)`  [INFERRED] [semantically similar]
-  .specs/codebase/TESTING.md → .claude/skills/spec-driven-eval/SKILL.md
-- `T6: Realçar terminais por filtro de status` --implements--> `App()`  [EXTRACTED]
-  .specs/features/terminal-statuses/tasks.md → src/App.tsx
-- `T6: Realçar terminais por filtro de status` --implements--> `GridLayout()`  [EXTRACTED]
-  .specs/features/terminal-statuses/tasks.md → src/components/grid/GridLayout.tsx
-- `T4: Badge, hover de atividade e log` --implements--> `ActivityLog()`  [EXTRACTED]
-  .specs/features/terminal-statuses/tasks.md → src/components/terminal/ActivityLog.tsx
-- `T4: Badge, hover de atividade e log` --implements--> `StatusBadge()`  [EXTRACTED]
-  .specs/features/terminal-statuses/tasks.md → src/components/terminal/StatusBadge.tsx
+- `Implementador brief` --semantically_similar_to--> `Implementer sub-agent role`  [INFERRED] [semantically similar]
+  .claude/skills/spec-loop/references/agent-briefs.md → .claude/skills/spec-driven-execution/SKILL.md
+- `spawn_fake_app()` --calls--> `socket_path()`  [INFERRED]
+  crates/swarmdeck-mcp/src/tools.rs → crates/swarmdeck-mcp/src/client.rs
+- `resolve_launch_command()` --calls--> `catalog()`  [INFERRED]
+  src-tauri/src/agents/launch.rs → src-tauri/src/agents/catalog.rs
+- `resolve_launch_command()` --calls--> `detect_installed()`  [INFERRED]
+  src-tauri/src/agents/launch.rs → src-tauri/src/agents/catalog.rs
+- `resolve_effective_default()` --calls--> `detect_installed()`  [INFERRED]
+  src-tauri/src/agents/prefs.rs → src-tauri/src/agents/catalog.rs
 
 ## Import Cycles
 - None detected.
 
 ## Hyperedges (group relationships)
-- **Terminal-status feature build pipeline (T1 through T6)** — specs_features_terminal_statuses_tasks_t1, specs_features_terminal_statuses_tasks_t2, specs_features_terminal_statuses_tasks_t3, specs_features_terminal_statuses_tasks_t4, specs_features_terminal_statuses_tasks_t5, specs_features_terminal_statuses_tasks_t6 [EXTRACTED 1.00]
-- **StatusBadge and ActivityLog wired into TerminalHeader (T5)** — src_components_terminal_terminalheader_terminalheader, src_components_terminal_statusbadge_statusbadge, src_components_terminal_activitylog_activitylog [EXTRACTED 1.00]
-- **Recurring 'gate green, orphan component' wiring-gap pattern across features** — specs_features_terminal_statuses_tasks_t5, specs_features_multi_terminal_tasks_t12, specs_features_task_kanban_tasks_t7 [EXTRACTED 1.00]
 - **Spec-driven triage-loop-plan-implement-evaluate pipeline** — claude_skills_spec_triage_skill, claude_skills_spec_loop_skill, claude_skills_tlc_spec_driven_skill, claude_skills_spec_driven_execution_skill, claude_skills_spec_driven_eval_skill [INFERRED 0.85]
 - **Author-not-verifier independent verification principle** — claude_skills_tlc_spec_driven_skill_verifier, claude_skills_spec_driven_execution_skill_verifier, claude_skills_spec_loop_references_agent_briefs_validador, claude_skills_spec_driven_eval_skill_judge_author_rule [INFERRED 0.85]
 - **Discover-once project profile pattern** — claude_skills_spec_triage_skill_project_profile, claude_skills_spec_driven_execution_skill_project_profile, claude_skills_spec_loop_skill [INFERRED 0.75]
-- **Secondary Tauri window pattern shared by Kanban and Settings** — specs_features_task_kanban_design_kanbanwindow, specs_features_task_kanban_tasks_t1, specs_features_settings_shell_tasks_t1 [INFERRED 0.85]
-- **task_changed empty-payload gap across design, task, and decision log** — specs_features_task_kanban_design_taskchangedevent, specs_features_task_kanban_tasks_t7 [INFERRED 0.85]
 
-## Communities (276 total, 196 thin omitted)
+## Communities (75 total, 1 thin omitted)
 
 ### Community 0 - "server.rs"
 Cohesion: 0.09
-Nodes (56): Into, IpcConnection, CreateProjectArgs, CreateTaskArgs, emit_task_changed(), err_response(), err_response_with(), FindRelatedArgs (+48 more)
+Nodes (57): Into, IpcConnection, CreateProjectArgs, CreateTaskArgs, emit_task_changed(), err_response(), err_response_with(), FindRelatedArgs (+49 more)
 
 ### Community 1 - "catalog.rs"
-Cohesion: 0.05
-Nodes (65): AgentDescriptor, AgentStatus, catalog(), catalogo_tem_os_5_agentes_com_ids_esperados(), command_exists_in_dir(), command_exists_in_path(), detect_installed(), detect_installed_with() (+57 more)
+Cohesion: 0.20
+Nodes (14): AgentDescriptor, AgentStatus, catalog(), catalogo_tem_os_5_agentes_com_ids_esperados(), command_exists_in_dir(), command_exists_in_path(), detect_installed(), detect_installed_with() (+6 more)
 
 ### Community 2 - "TerminalManager"
 Cohesion: 0.07
-Nodes (62): HashSet, alive_terminal_ids(), get_with_project(), list_with_projects(), lista_tarefa_com_projeto_embutido(), ProjectRefDto, projeto_fica_nulo_apos_exclusao(), AppHandle (+54 more)
+Nodes (61): HashSet, alive_terminal_ids(), get_with_project(), list_with_projects(), lista_tarefa_com_projeto_embutido(), ProjectRefDto, projeto_fica_nulo_apos_exclusao(), AppHandle (+53 more)
 
 ### Community 3 - "PtySession"
-Cohesion: 0.06
-Nodes (49): Child, Default, MasterPty, PtySession, Arc, Box, CommandBuilder, Duration (+41 more)
+Cohesion: 0.08
+Nodes (32): Child, Default, MasterPty, PtySession, Arc, Box, CommandBuilder, Duration (+24 more)
 
 ### Community 4 - "String"
 Cohesion: 0.11
@@ -364,16 +158,16 @@ Cohesion: 0.08
 Nodes (31): aplica_migracoes_em_banco_novo(), cria_o_schema_de_terminal_layout(), migracao_e_idempotente(), registra_a_versao_aplicada(), PathBuf, TempDir, temp_db_path(), title_source_so_aceita_agent_ou_user() (+23 more)
 
 ### Community 10 - "projects/service.rs"
-Cohesion: 0.11
-Nodes (50): exact_path_matches_project(), folder_name(), is_prefix(), mixed_separators_still_resolve(), most_specific_project_wins_among_two_matches(), no_match_falls_back_to_folder_name(), normalized_components(), project() (+42 more)
+Cohesion: 0.17
+Nodes (35): cor_explicita_e_respeitada(), cor_explicita_ja_usada_recusa(), create(), create_with_options(), cria_subpasta_dentro_da_base(), delete(), find_by_path(), get() (+27 more)
 
 ### Community 11 - "ipc_server.rs"
 Cohesion: 0.13
 Nodes (40): Listener, IpcConnection, LocalSocketTransport, Box, PathBuf, Read, Result, Self (+32 more)
 
-### Community 12 - "Settings Sidebar Navigation"
-Cohesion: 0.09
-Nodes (42): Antigravity CLI Agent Option (Google), Claude Code Agent Option (Anthropic, currently selected), Codex CLI Agent Option (OpenAI), Default AI Agent Section, Feedback Settings Nav Item, General Settings Page, Settings > General Page Screenshot, Kimi Code Agent Option (Moonshot AI, BETA) (+34 more)
+### Community 12 - "tests/session.rs"
+Cohesion: 0.22
+Nodes (17): comando_inexistente_falha_no_spawn(), processo_encerrado_reporta_exit_code(), pump_until(), pump_until_exit(), resize_e_aceito_pelo_kernel(), CommandBuilder, Duration, Fn (+9 more)
 
 ### Community 13 - "client.rs"
 Cohesion: 0.13
@@ -383,9 +177,9 @@ Nodes (37): ativo_retorna_true_e_terminal_id(), call_tool(), call_tool_com_conex
 Cohesion: 0.05
 Nodes (38): appimage, deb, https://github.com/rafaelsene01/swarmdeck/releases/latest/download/latest.json, icons/128x128@2x.png, icons/128x128.png, icons/32x32.png, icons/icon.icns, icons/icon.ico (+30 more)
 
-### Community 15 - "Skills Settings Page"
-Cohesion: 0.09
-Nodes (36): caveman Skill Entry, Export to Agent Action, gepeto Skill Entry, Settings > Skills Screenshot, karpathy-guidelines Skill Entry, MANUAL Skill Trigger Badge, Multi-Agent Skill Filtering (Claude, Codex, Antigravity, opencode, Kimi Code), Settings Dialog (+28 more)
+### Community 15 - "prefs.rs"
+Cohesion: 0.27
+Nodes (16): default_agent(), EffectiveDefault, fake_catalog(), nenhum_agente_instalado_devolve_none(), preferencia_instalada_e_honrada_sem_fallback(), preferencia_nao_instalada_cai_para_o_primeiro_disponivel_e_avisa(), resolve_effective_default(), resolve_effective_default_with() (+8 more)
 
 ### Community 16 - "terminal.rs"
 Cohesion: 0.13
@@ -396,8 +190,8 @@ Cohesion: 0.16
 Nodes (24): clear_status_nao_falha_num_terminal_sem_registro(), clear_status_zera_o_badge_sem_passar_pelo_catalogo(), dois_terminais_diferentes_nao_interferem_um_no_outro(), extract_valid_ids(), MetaError, open_db(), push_activity_nao_altera_titulo_nem_status_em_memoria(), rename_manual_do_usuario_vence_chamada_seguinte_do_agente() (+16 more)
 
 ### Community 18 - "AGENTS.md"
-Cohesion: 0.06
-Nodes (36): Traceability Marker (SPEC: comment convention), .claude/rules/spec-driven-changes.md (traceability marker rule), agent-selection (feature), mcp-task-server (feature), multi-terminal (feature), projects (feature), release-distribution (feature), task-kanban (feature) (+28 more)
+Cohesion: 0.15
+Nodes (13): Traceability Marker (SPEC: comment convention), .claude/rules/spec-driven-changes.md (traceability marker rule), agent-selection (feature), mcp-task-server (feature), multi-terminal (feature), projects (feature), release-distribution (feature), task-kanban (feature) (+5 more)
 
 ### Community 19 - "send.rs"
 Cohesion: 0.16
@@ -432,7 +226,7 @@ Cohesion: 0.14
 Nodes (16): CheckActiveResult, main(), Box, Error, Json, Option, Result, Self (+8 more)
 
 ### Community 27 - "restore"
-Cohesion: 0.19
+Cohesion: 0.21
 Nodes (18): LayoutEntry, default_entry(), LayoutEntry, now_unix(), restore(), Option, Path, Result (+10 more)
 
 ### Community 28 - "App.tsx"
@@ -443,17 +237,17 @@ Nodes (13): App(), createTerminalId(), defaultTerminal(), evenWidths(), Terminal
 Cohesion: 0.13
 Nodes (19): Corretor brief, spec-loop subagent briefs doc, Implementador brief, UAT brief (exercitar produto real), Validador brief (missao e falsificar), spec-loop skill, Modo direto (implementation only), JOURNAL.md run journal (+11 more)
 
-### Community 30 - "Execute (implement) doc"
-Cohesion: 0.18
-Nodes (14): Atomic git commit per task, Execute (implement) doc, Feature-level validation (post-last-task), Gate Check (VERIFY step), Sub-Agent Delegation mechanics doc, Phase-batch workers (~7 tasks/worker), Verifier sub-agent (always-on), Tasks phase doc (+6 more)
+### Community 30 - "Validate & Verify doc"
+Cohesion: 0.16
+Nodes (16): Feature-level validation (post-last-task), Lessons self-improving layer doc, .specs/lessons.json canonical state, .specs/LESSONS.md rendered playbook, scripts/lessons.py, Sub-Agent Delegation mechanics doc, Phase-batch workers (~7 tasks/worker), Verifier sub-agent (always-on) (+8 more)
 
 ### Community 31 - "devDependencies"
 Cohesion: 0.04
 Nodes (46): jsdom, dependencies, react, react-dom, @tauri-apps/api, @tauri-apps/plugin-dialog, @xterm/addon-fit, @xterm/xterm (+38 more)
 
-### Community 32 - "Task Kanban feature (Kanban de tarefas)"
-Cohesion: 0.05
-Nodes (52): AgentPanel.tsx, Settings Shell feature (Janela de Configurações), ProjectsPanel.tsx, Decision: Settings is a second Tauri window, not a modal, SET-01: Open Settings in its own window, SET-02: Navigate between the 4 settings sections, StatusesPanel.tsx, UpdateSettings.tsx (+44 more)
+### Community 32 - "agent_prefs.rs"
+Cohesion: 0.18
+Nodes (14): agente_padrao_removido_do_sistema_cai_para_o_primeiro_disponivel_e_avisa(), grava_e_le_de_volta_na_mesma_sessao(), padrao_persiste_entre_reinicios(), path_lock(), PathIsoladoGuard, Drop, MutexGuard, Option (+6 more)
 
 ### Community 33 - "Db"
 Cohesion: 0.25
@@ -463,25 +257,25 @@ Nodes (8): AsRef, DbError, Error, Db, Connection, Path, Result, Self
 Cohesion: 0.07
 Nodes (27): DOM, DOM.Iterable, ES2022, @testing-library/jest-dom, vitest/globals, compilerOptions, allowImportingTsExtensions, baseUrl (+19 more)
 
-### Community 35 - "SwarmDeck Main Grid Screenshot"
-Cohesion: 0.21
-Nodes (17): SwarmDeck Main Grid Screenshot, Spec File Diff Output in Terminal, Global App Toolbar, Agent Rate-Limit Prompt Dialog, RUN Button, Screenshot/Capture Button (toolbar), Terminal Status Indicator Dot, Terminal Grid Layout (+9 more)
+### Community 35 - "resolve.rs"
+Cohesion: 0.31
+Nodes (15): exact_path_matches_project(), folder_name(), is_prefix(), mixed_separators_still_resolve(), most_specific_project_wins_among_two_matches(), no_match_falls_back_to_folder_name(), normalized_components(), project() (+7 more)
 
 ### Community 36 - "ProjectsPanel.tsx"
 Cohesion: 0.39
 Nodes (7): filterProjects(), ProjectRow, ProjectsPanel(), ProjectsPanelProps, sortByLastUsed(), PROJECTS, truncatePath()
 
 ### Community 37 - "TerminalHeader.tsx"
-Cohesion: 0.22
-Nodes (12): ActivityEntry, ActivityLog(), ActivityLogProps, formatActivityTime(), sortByMostRecent(), ENTRIES, STATUS_BADGE_MAX_LABEL_LENGTH, StatusBadge() (+4 more)
+Cohesion: 0.35
+Nodes (8): ActivityEntry, ActivityLog(), ActivityLogProps, formatActivityTime(), sortByMostRecent(), ENTRIES, TerminalHeader(), TerminalHeaderProps
 
 ### Community 38 - "similarity.rs"
 Cohesion: 0.24
 Nodes (16): completed_tasks_are_ignored_even_when_near_identical(), find_similar(), identical_candidate_scores_near_one_and_recommends_reuse(), make_task(), moderately_similar_pair_falls_in_mid_range_and_recommends_ask_user(), paraphrased_pagination_request_falls_in_high_range_and_recommends_reuse(), Option, String (+8 more)
 
 ### Community 39 - "StatusesPanel.tsx"
-Cohesion: 0.16
-Nodes (15): Feature: mcp-task-server, User story: Catálogo editável de status (P1 MVP), STAT-02: Catálogo de status — CRUD, STAT-03: Catálogo de status — ordem e prioridade, STAT-04: Propagação do catálogo na próxima sessão, T1: CRUD do catálogo de status, T2: Snapshot de catálogo por sessão, T3: UI do catálogo de status (+7 more)
+Cohesion: 0.36
+Nodes (5): StatusesPanel(), StatusesPanelProps, StatusRow, STATUSES, truncateInstruction()
 
 ### Community 40 - "skip_version"
 Cohesion: 0.22
@@ -492,28 +286,36 @@ Cohesion: 0.20
 Nodes (10): AgentCatalogEntry, NewTerminalDialog(), NewTerminalDialogProps, CATALOG, { invokeMock, openMock }, AgentDescriptor, AgentPanel(), AgentPanelProps (+2 more)
 
 ### Community 42 - "tlc-spec-driven skill"
-Cohesion: 0.21
-Nodes (13): Context Limits doc, Context zones (healthy/moderate/critical), AD-NNN project decision entry, Design phase doc, Knowledge Verification Chain, Risks & Concerns section, ## Decisions append-only log (AD-NNN), Memory Layer doc (+5 more)
+Cohesion: 0.19
+Nodes (14): Context Limits doc, Context zones (healthy/moderate/critical), AD-NNN project decision entry, Design phase doc, Knowledge Verification Chain, Risks & Concerns section, ## Decisions append-only log (AD-NNN), Memory Layer doc (+6 more)
 
 ### Community 43 - "make-portable.mjs"
 Cohesion: 0.26
 Nodes (12): APP_NAME, defaultBinaryPath(), main(), parseArgs(), PORTABLE_MARKER, portableArchiveName(), portableReadme(), ROOT (+4 more)
 
-### Community 44 - "Validate & Verify doc"
-Cohesion: 0.20
-Nodes (11): Evidence-or-zero core rule, "Número copiado para a prosa" anti-pattern, Lessons self-improving layer doc, .specs/lessons.json canonical state, .specs/LESSONS.md rendered playbook, scripts/lessons.py, Discrimination Sensor (mutation testing), Validate & Verify doc (+3 more)
+### Community 44 - "Evidence-or-zero core rule"
+Cohesion: 0.67
+Nodes (3): Evidence-or-zero core rule, "Número copiado para a prosa" anti-pattern, Spec-anchored acceptance criteria check
 
-### Community 46 - "Agent Selection Spec"
-Cohesion: 0.16
-Nodes (22): Agent Selection Spec, AGT-01: Default agent + catalog, AGT-02: Missing CLI detection, AGT-03: Per-session override, AGT-04: Visual agent identification, AGT-05: Per-agent scope in extensions, AGT-06: Resume or start new agent session, Antigravity CLI (agent, Google) (+14 more)
+### Community 45 - "launch.rs"
+Cohesion: 0.33
+Nodes (12): agente_conhecido_e_instalado_lanca_seu_comando(), agente_pedido_mas_nao_instalado_cai_para_shell(), aviso_descreve_o_agente_que_faltou(), fake_catalog(), LaunchResolution, resolve_launch_command(), resolve_with(), AgentDescriptor (+4 more)
 
-### Community 48 - "Settings - Terminal Statuses screenshot"
+### Community 46 - "agent_default"
 Cohesion: 0.29
-Nodes (13): "Add status" action button (create a custom status), Delete (trash icon) action per status row, Done status (default, green marker) - set when work is completely finished, validated and committed/pushed, Drag-to-reorder handles on each status row (sets sort priority for terminal tabs), Edit (pencil icon) action per status row - edit label, color and instruction text, Settings - Terminal Statuses screenshot, Needs input status (default, orange marker) - set when agent stops for a user decision, Needs testing status (default, blue marker) - set when implementation is done and pending manual user testing (+5 more)
+Nodes (9): agent_catalog(), agent_default(), AgentCatalogEntry, Mutex, Option, Result, State, String (+1 more)
 
-### Community 49 - "SwarmDeck Screenshot: Terminal Initialization and Agent Selection"
-Cohesion: 0.29
-Nodes (13): Agent Provider Icon Row (Claude Code, ChatGPT, others, Beta), Choose Your Agent Step, Claude Code Agent (Selected, Anthropic / Turbo / Resume), Git Worktree Option Toggle, SwarmDeck Screenshot: Terminal Initialization and Agent Selection, Initialize Agent Empty State, Multi-Terminal Panel Layout, New Session Action (Start Fresh) (+5 more)
+### Community 47 - "StatusBadge.tsx"
+Cohesion: 0.47
+Nodes (4): STATUS_BADGE_MAX_LABEL_LENGTH, StatusBadge(), StatusBadgeProps, truncateLabel()
+
+### Community 48 - "CI Workflow (ci.yml)"
+Cohesion: 0.40
+Nodes (5): CI Workflow (ci.yml), ci.yml: clippy job, ci.yml: commits job (Conventional Commits gate), ci.yml: frontend job, ci.yml: rust job
+
+### Community 49 - "Release Workflow (release.yml)"
+Cohesion: 0.90
+Nodes (5): Release Workflow (release.yml), release.yml: build job (Windows/Linux matrix), release.yml: cleanup job, release.yml: finalize job, release.yml: prepare job
 
 ### Community 51 - "picker_prefs.rs"
 Cohesion: 0.29
@@ -527,14 +329,6 @@ Nodes (9): BUMP_KINDS, bumpVersion(), main(), parseArgs(), parseVersion(), resol
 Cohesion: 0.13
 Nodes (31): allow_write(), current_exe_dir(), data_dir(), db_path(), deny_write(), Flavor, is_writable(), is_writable_reprova_diretorio_somente_leitura() (+23 more)
 
-### Community 57 - "T4: Badge, hover de atividade e log"
-Cohesion: 0.15
-Nodes (16): TERM-06: Header git branch + manual rename, T12: Mount App.tsx (real grid integration), KAN-06 (task-kanban requirement, mistakenly linked to STAT-08), User story: Badge de status no terminal (P1 MVP), STAT-01: Badge de status no terminal, STAT-05: Título geral estável, STAT-06: Log de atividade, STAT-07: Rename manual vence (REVOGADO) (+8 more)
-
-### Community 58 - "Create New Project Modal"
-Cohesion: 0.20
-Nodes (11): Create New Project Dialog Screenshot, Base Directory Selector (Project Folder Created Inside), Browse... Button (Native Folder Picker), Cancel Button, Create New Project Modal, Create Project Confirm Button, Initialize As Git Repository Checkbox, Project Color Swatch Picker (+3 more)
-
 ### Community 59 - "project_list"
 Cohesion: 0.44
 Nodes (10): project_create(), project_delete(), project_list(), project_update(), Mutex, Option, Result, State (+2 more)
@@ -543,18 +337,6 @@ Nodes (10): project_create(), project_delete(), project_list(), project_update()
 Cohesion: 0.20
 Nodes (9): core:default, dialog:default, main, updater:default, description, identifier, permissions, $schema (+1 more)
 
-### Community 63 - "Git Projects Modal"
-Cohesion: 0.24
-Nodes (9): Projects From Active Terminals List, Branch Indicator (master), Uncommitted Changes Count (63 changes), Close (X) Button, Git Projects Modal, Open Button, Project Card (chat-ia-local), Refresh Button (+1 more)
-
-### Community 64 - "Kanban Board Screenshot (CodeAgentSwarm)"
-Cohesion: 0.36
-Nodes (10): Column task-count badge, Completed column, In Progress column, In Testing column, Kanban Board Screenshot (CodeAgentSwarm), Pending column, Project filter dropdown (All Projects), Task card (+2 more)
-
-### Community 65 - "Left Toolbar Screenshot"
-Cohesion: 0.24
-Nodes (10): Active/Selected Toolbar Button Visual Pattern (amber highlight background), Add/New Item Icon (plus in square), SwarmDeck App Logo (hexagon/honeycomb icon with notification dot), Git Branch/Fork Icon, History/Undo Icon (clock with counter-clockwise arrow), Left Toolbar Screenshot, Layout/Panel Toggle Icon, Notification/Status Dot on App Logo (+2 more)
-
 ### Community 66 - "update_skip_version"
 Cohesion: 0.29
 Nodes (9): AppHandle, Mutex, Option, Result, State, String, terminals_active_count(), update_check() (+1 more)
@@ -562,10 +344,6 @@ Nodes (9): AppHandle, Mutex, Option, Result, State, String, terminals_active_cou
 ### Community 67 - "patch-latest-json.mjs"
 Cohesion: 0.42
 Nodes (7): main(), parseArgs(), patchManifest(), pickAssetUrlByName(), DRAFT_ASSETS, scriptPath, withReleaseTag()
-
-### Community 68 - "Onboarding Agent chat widget"
-Cohesion: 0.42
-Nodes (9): Chat input field ("Pregúntame algo...") with send button, Dimmed main app background (board/task columns behind modal overlay), CodeAgentSwarm hexagon/honeycomb branding icon, 11-onboarding-agent.png (Onboarding Agent chat screenshot), Inspect button (click any element to ask about it), Localization inconsistency: English UI text with Spanish input placeholder, Onboarding Agent chat widget, Suggested prompt chips ("How to get the maximum benefit...", "Does CodeAgentSwarm have a Skills marketplace?") (+1 more)
 
 ### Community 69 - "GridLayout.tsx"
 Cohesion: 0.39
@@ -587,21 +365,13 @@ Nodes (8): Elicitation E (recall/precision/justified), context.md artifact, Disc
 Cohesion: 0.29
 Nodes (8): Judge ≠ author rule, spec-driven-execution skill, Implementer sub-agent role, Per-role model assignment, Planner sub-agent role, Project Profile (Phase 0 discovery), Verifier sub-agent role (execution orchestrator), Perfil do projeto (Fase 0 discovery)
 
-### Community 74 - "SwarmDeck Screenshot - Agent Initialization & Project Selection"
-Cohesion: 0.39
-Nodes (8): Initialize Agent Empty State (Terminal 1), SwarmDeck Screenshot - Agent Initialization & Project Selection, Multi-Terminal Side-by-Side Layout, New/Import/No Project Action Buttons, Project > Agent Selection Stepper, Project Search and Recent Project List, Recent Project Entry: chat-ia-local (D:\chat-ia-local, 5 days), Top Application Toolbar (layout, add, history, screenshot, run, settings)
-
-### Community 75 - "Session Restoration Dialog"
-Cohesion: 0.32
-Nodes (8): Conversation Selection Checkbox (Terminal + Agent + Title), Screenshot: Restore Previous Session Dialog, Multi-Terminal Orchestration Feature (TERM-), Restore Selected Action, Session Restoration Dialog, Start Fresh Action, Terminal Slot Capacity Indicator, Unexpected App Close Recovery Flow
-
 ### Community 77 - "Todo ajuste passa pela spec (rule)"
 Cohesion: 0.29
 Nodes (7): Cargo.toml workspace manifest, Ask before writing code principle, Todo ajuste passa pela spec (rule), Shared-file marker placement exception, SPEC: traceability marker, Old spec revocation procedure, src-tauri/src/lib.rs entry point
 
-### Community 78 - "Coding Principles doc"
-Cohesion: 0.40
-Nodes (5): Coding Principles doc, Goal-driven principle, Simplicity principle, Surgical changes principle, Test integrity principle
+### Community 78 - "Execute (implement) doc"
+Cohesion: 0.22
+Nodes (9): Coding Principles doc, Goal-driven principle, Simplicity principle, Surgical changes principle, Test integrity principle, Atomic git commit per task, Execute (implement) doc, Gate Check (VERIFY step) (+1 more)
 
 ### Community 82 - "UpdateBanner.tsx"
 Cohesion: 0.50
@@ -611,47 +381,25 @@ Nodes (3): UPDATE, UpdateBanner(), UpdateBannerProps
 Cohesion: 0.83
 Nodes (4): ast-grep (sg) structural search tool, Code Analysis Tools doc, grep standard text search, ripgrep (rg) text search tool
 
-## Ambiguous Edges - Review These
-- `ProjectsPanel.tsx` → `task-kanban T8: manual task creation form (NEEDS-DECISION)`  [AMBIGUOUS]
-  .specs/features/task-kanban/tasks.md · relation: references
-- `RUN Button` → `Chain/Link Icon Button`  [AMBIGUOUS]
-  .specs/research/screenshots/14-toolbar-right.png · relation: conceptually_related_to
-- `RUN Button` → `Glowing Sparkle/Burst Icon`  [AMBIGUOUS]
-  .specs/research/screenshots/14-toolbar-right.png · relation: conceptually_related_to
-- `Agent Rate-Limit Prompt Dialog` → `Spec File Diff Output in Terminal`  [AMBIGUOUS]
-  .specs/research/screenshots/01-main-grid.png · relation: conceptually_related_to
-- `Terminal Statuses Settings Nav Item` → `Per-Project Task Count Indicator ("1 tasks")`  [AMBIGUOUS]
-  .specs/research/screenshots/07-settings-projects.png · relation: conceptually_related_to
-- `Onboarding Agent chat widget` → `Localization inconsistency: English UI text with Spanish input placeholder`  [AMBIGUOUS]
-  .specs/research/screenshots/11-onboarding-agent.png · relation: conceptually_related_to
-- `Chat input field ("Pregúntame algo...") with send button` → `Localization inconsistency: English UI text with Spanish input placeholder`  [AMBIGUOUS]
-  .specs/research/screenshots/11-onboarding-agent.png · relation: conceptually_related_to
-- `Layout/Panel Toggle Icon` → `Add/New Item Icon (plus in square)`  [AMBIGUOUS]
-  .specs/research/screenshots/13-toolbar-left.png · relation: conceptually_related_to
-- `STAT-08: Status como filtro` → `KAN-06 (task-kanban requirement, mistakenly linked to STAT-08)`  [AMBIGUOUS]
-  .specs/features/terminal-statuses/spec.md · relation: references
-- `STAT-08: Status como filtro` → `task-kanban/BoardFilters.tsx (mistaken destination for STAT-08)`  [AMBIGUOUS]
-  .specs/features/terminal-statuses/spec.md · relation: references
-
 ## Knowledge Gaps
-- **449 isolated node(s):** `$schema`, `src/**`, `tests/**`, `docs/**`, `Bash(git commit)` (+444 more)
+- **189 isolated node(s):** `$schema`, `src/**`, `tests/**`, `docs/**`, `Bash(git commit)` (+184 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **196 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **1 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **What is the exact relationship between `ProjectsPanel.tsx` and `task-kanban T8: manual task creation form (NEEDS-DECISION)`?**
-  _Edge tagged AMBIGUOUS (relation: references) - confidence is low._
-- **What is the exact relationship between `RUN Button` and `Chain/Link Icon Button`?**
-  _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **What is the exact relationship between `RUN Button` and `Glowing Sparkle/Burst Icon`?**
-  _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **What is the exact relationship between `Agent Rate-Limit Prompt Dialog` and `Spec File Diff Output in Terminal`?**
-  _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **What is the exact relationship between `Terminal Statuses Settings Nav Item` and `Per-Project Task Count Indicator ("1 tasks")`?**
-  _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **What is the exact relationship between `Onboarding Agent chat widget` and `Localization inconsistency: English UI text with Spanish input placeholder`?**
-  _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **What is the exact relationship between `Chat input field ("Pregúntame algo...") with send button` and `Localization inconsistency: English UI text with Spanish input placeholder`?**
-  _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
+- **Why does `Db` connect `Db` to `server.rs`, `TerminalManager`, `update_skip_version`, `status_catalog.rs`, `restore`, `ipc_server.rs`, `agent_default`, `terminal.rs`, `meta.rs`, `picker_prefs.rs`, `project_list`?**
+  _High betweenness centrality (0.113) - this node is a cross-community bridge._
+- **Why does `TestEnvGuard` connect `String` to `PtySession`?**
+  _High betweenness centrality (0.086) - this node is a cross-community bridge._
+- **Why does `TerminalManager` connect `TerminalManager` to `server.rs`, `update_skip_version`, `ipc_server.rs`, `terminal.rs`, `send.rs`?**
+  _High betweenness centrality (0.080) - this node is a cross-community bridge._
+- **What connects `$schema`, `src/**`, `tests/**` to the rest of the system?**
+  _189 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `server.rs` be split into smaller, more focused modules?**
+  _Cohesion score 0.08673050615595075 - nodes in this community are weakly interconnected._
+- **Should `TerminalManager` be split into smaller, more focused modules?**
+  _Cohesion score 0.06773211567732115 - nodes in this community are weakly interconnected._
+- **Should `PtySession` be split into smaller, more focused modules?**
+  _Cohesion score 0.07673469387755102 - nodes in this community are weakly interconnected._

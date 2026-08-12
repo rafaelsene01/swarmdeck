@@ -715,9 +715,9 @@
     "semantic_hash": ""
   },
   ".specs/features/conversation-cleanup/spec.md": {
-    "mtime": 1785258405.1703515,
-    "ast_hash": "2f855ffd83f403b5ad50734d73ec4a0b",
-    "semantic_hash": "2f855ffd83f403b5ad50734d73ec4a0b"
+    "mtime": 1786575251.0750947,
+    "ast_hash": "84e6bb5c824effbfb07f4ea7bb4cefd6",
+    "semantic_hash": ""
   },
   ".specs/features/mcp-management/spec.md": {
     "mtime": 1785258345.9173963,
@@ -758,11 +758,6 @@
     "mtime": 1786488443.1431358,
     "ast_hash": "60508b8af2e04243825d07ece89cacaf",
     "semantic_hash": ""
-  },
-  ".specs/features/notifications/spec.md": {
-    "mtime": 1785258433.0408595,
-    "ast_hash": "d5067cb450993430ddb1dfdfaeba2c7a",
-    "semantic_hash": "d5067cb450993430ddb1dfdfaeba2c7a"
   },
   ".specs/features/onboarding-agent/spec.md": {
     "mtime": 1785258465.1014528,
@@ -833,11 +828,6 @@
     "mtime": 1786558211.4606276,
     "ast_hash": "311eec60a7d1ae970b0730e76ce7cbaa",
     "semantic_hash": ""
-  },
-  ".specs/features/worktrees/spec.md": {
-    "mtime": 1785258319.7208457,
-    "ast_hash": "4972d7c8d57015114abb5fdcd5c7954e",
-    "semantic_hash": "4972d7c8d57015114abb5fdcd5c7954e"
   },
   ".specs/research/UI-INVENTORY.md": {
     "mtime": 1785806574.3706474,
