@@ -22,15 +22,7 @@ The agent never runs `git commit` or `git push` in this repository — both are 
 
 ## Build & test
 
-| Gate | Command |
-|---|---|
-| Rust build | `cargo build` (workspace has no `default-members` restriction, so this already builds both `src-tauri` and `crates/swarmdeck-mcp` — `--workspace` is valid but redundant) |
-| Rust format check | `cargo fmt --all -- --check` |
-| Rust lint | `cargo clippy --all-targets -- -D warnings` |
-| Rust tests | `cargo test` |
-| Frontend build | `npm run build` (`tsc --noEmit && vite build`) |
-| Frontend tests | `npm run test` (Vitest) |
-| Release scripts tests | `npm run test:scripts` (`node --test "scripts/**/*.test.mjs"`) |
+Standard cargo/npm build, lint, format, and test commands apply — see `package.json` scripts and `Cargo.toml`. Note: `cargo build` already builds the whole workspace (including `crates/swarmdeck-mcp`); `--workspace` is valid but redundant.
 
 Full gate-to-task mapping and parallelism rules: `.specs/codebase/TESTING.md`.
 

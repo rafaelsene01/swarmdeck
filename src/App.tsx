@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import GridLayout, { type Pane } from './components/grid/GridLayout'
+import Header from './components/shell/Header'
+import EmptyState from './components/shell/EmptyState'
 import TerminalPane from './components/terminal/TerminalPane'
 import TerminalHeader from './components/terminal/TerminalHeader'
 import NewTerminalDialog from './components/terminal/NewTerminalDialog'
@@ -45,7 +47,9 @@ function evenWidths(terminals: TerminalState[]): TerminalState[] {
 }
 
 export default function App() {
-  const [terminals, setTerminals] = useState<TerminalState[]>(() => [defaultTerminal()])
+  // SPEC: shell-chrome (EMPTY-03) — boots with zero terminals so EmptyState
+  // is reachable on fresh launch, not just after closing the last terminal.
+  const [terminals, setTerminals] = useState<TerminalState[]>(() => [])
   const [dialogOpen, setDialogOpen] = useState(false)
 
   // SPEC: agent-selection (AGT-01, AGT-03, AGT-04)
@@ -85,6 +89,24 @@ export default function App() {
       cancelled = true
     }
   }, [])
+
+  // SPEC: shell-chrome (EMPTY-07, EMPTY-08, EMPTY-09) — Ctrl+T only while
+  // EmptyState is showing (no panel is mounted to steal the keystroke from);
+  // re-bound whenever terminals.length or dialogOpen changes so the closure
+  // never reads a stale value.
+  useEffect(() => {
+    if (terminals.length !== 0) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!event.ctrlKey || event.key.toLowerCase() !== 't') return
+      event.preventDefault()
+      if (dialogOpen) return
+      setDialogOpen(true)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [terminals.length, dialogOpen])
 
   const panes: Pane[] = terminals.map((t) => ({
     id: t.id,
@@ -148,15 +170,6 @@ export default function App() {
           própria — só a definem aqui, no ponto que os monta, em vez de em
           `styles.css` (fora dos arquivos permitidos a esta task). */}
       <style>{`
-        .app-toolbar {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0.5rem 1rem;
-          border-bottom: 1px solid #222;
-          flex: 0 0 auto;
-        }
-        .app-toolbar__title { color: var(--accent); font-weight: 600; }
         .app-grid-area { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; }
         /* grid-layout__cell (T8) só define position relative|fixed via
            inline style — nenhum CSS em styles.css posiciona seus filhos.
@@ -205,30 +218,18 @@ export default function App() {
         }
       `}</style>
 
-      <div className="app-toolbar">
-        <span className="app-toolbar__title">SwarmDeck</span>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button
-            type="button"
-            onClick={() => setDialogOpen(true)}
-            disabled={terminals.length >= MAX_TERMINALS}
-            title={
-              terminals.length >= MAX_TERMINALS
-                ? `Limite de ${MAX_TERMINALS} terminais atingido`
-                : undefined
-            }
-          >
-            + novo terminal
-          </button>
-          {/* SPEC: settings-shell (SET-01) — abre/foca a janela dedicada de
-              Configurações; ver `src-tauri/src/windows/settings.rs`. */}
-          <button type="button" onClick={() => void invoke('settings_open')}>
-            Configurações
-          </button>
-        </div>
-      </div>
+      {/* SPEC: shell-chrome (HDR-01, HDR-08) — SET-01's settings_open wiring
+          (src-tauri/src/windows/settings.rs) moved into onOpenSettings below. */}
+      <Header
+        onCreateTerminal={() => setDialogOpen(true)}
+        onOpenSettings={() => void invoke('settings_open')}
+        atMaxTerminals={terminals.length >= MAX_TERMINALS}
+      />
 
       <div className="app-grid-area">
+        {terminals.length === 0 ? (
+          <EmptyState onCreateTerminal={() => setDialogOpen(true)} />
+        ) : (
         <GridLayout
           panes={panes}
           onResize={handleResize}
@@ -274,6 +275,7 @@ export default function App() {
             )
           }}
         />
+        )}
       </div>
 
       {dialogOpen && (

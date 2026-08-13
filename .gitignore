@@ -17,3 +17,4 @@ src-tauri/gen/schemas/
 
 # Estado local do daemon ruflo
 .claude-flow/
+.specs
