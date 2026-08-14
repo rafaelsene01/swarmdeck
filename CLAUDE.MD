@@ -49,3 +49,13 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 2. Use `detect_changes_tool` for code review.
 3. Use `get_affected_flows_tool` to understand impact.
 4. Use `query_graph_tool` pattern="tests_for" to check coverage.
+
+## Knowledge Graph
+
+**Read `docs/agent/knowledge-graph.md` whenever you:**
+- Answer any architecture, cross-module, or "how does X work" question
+- Plan to grep, find, or glob through the codebase
+- Need to understand an unfamiliar module or trace a call chain
+- Are about to refactor or change something with unclear blast radius
+
+The doc covers graphify (community detection, path tracing, GRAPH_REPORT.md), code-review-graph (MCP tools, impact analysis), when to use each, and the full auto-update pipeline.
