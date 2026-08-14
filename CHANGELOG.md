@@ -1,6 +1,22 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.4] - 2026-08-13
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Remove obsolete specification and project documentation files from the repository, including README.md, EXECUTION.md, PROJECT.md, ROADMAP.md, and STATE.md. This cleanup streamlines the project structure and eliminates outdated content that no longer reflects the current state of development. Additionally, remove associated screenshots and triage documentation to maintain consistency in project resources.
+
+- Update stat-index.json to reflect changes in file sizes, modification times, and word counts for various project documentation and specifications. This update ensures accurate tracking of project resources and maintains consistency across the cache.
+
+- Refactor conversation-cleanup specification to clarify feature description and remove outdated notification and worktree specifications. This update enhances documentation accuracy and streamlines project resources by eliminating obsolete files.
+
+- Remove obsolete testing and specification files for agent selection and conversation cleanup features. This cleanup enhances project organization by eliminating outdated documentation that no longer reflects the current development state, streamlining resources for future work.
+
+- Update .gitignore to exclude .specs directory, enhance AGENTS.md with concise build and test command descriptions, and add lucide-react dependency in package.json and package-lock.json. Refactor App component to initialize with an empty terminal state and integrate Header and EmptyState components for improved user experience.
+
 ## [0.1.3] - 2026-08-12
 
 ### Outros
@@ -10,6 +26,8 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 - Update specifications and tasks across multiple features. Enhanced agent-selection and multi-terminal specs with new task details, including session management improvements and directory selection. Corrected task statuses and integrated components in terminal-statuses and task-kanban features. Verified updates in release-distribution tasks, ensuring accurate tracking of implementation progress and addressing integration gaps. Documented changes to reflect the current state of the project and improve clarity in specifications.
 
 - Update graph output files and enhance documentation. Added new entries to .graphify_labels.json and .graphify_labels.json.sig, reflecting recent changes in project structure and features. Updated GRAPH_REPORT.md to include the latest statistics and community hubs. Adjusted .graphify_root for improved path management. Introduced new files for the 2026-08-11 run, ensuring comprehensive tracking of project evolution and task specifications.
+
+- Merge `terminal-statuses/T5` into `mcp-task-server/T9` to unify the implementation of terminal status updates. The integration resolves the dependency on `IpcServer` for real-time status changes and finalizes the architectural decision regarding `Arc-wrapping`. Additionally, `projects/T5` is descheduled to ensure the original `create` function is properly migrated, aligning with user decisions from the latest triage. Updated project state documentation to reflect these changes and the current status of tasks.
 
 ## [0.1.2] - 2026-08-03
 
