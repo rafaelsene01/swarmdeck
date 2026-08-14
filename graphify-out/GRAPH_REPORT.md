@@ -1,16 +1,16 @@
-# Graph Report - ide  (2026-08-12)
+# Graph Report - ide  (2026-08-13)
 
 ## Corpus Check
-- 142 files · ~118,895 words
+- 146 files · ~154,395 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1514 nodes · 3370 edges · 75 communities (74 shown, 1 thin omitted)
+- 1548 nodes · 3436 edges · 74 communities (72 shown, 2 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 48 edges (avg confidence: 0.77)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `772e3bc8`
+- Built from commit: `bb636037`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -43,35 +43,35 @@
 - SettingsShell.tsx
 - swarmdeck-mcp/src/main.rs
 - restore
-- App.tsx
+- terminals.ts
 - spec-loop skill
 - Validate & Verify doc
 - devDependencies
-- agent_prefs.rs
-- Db
+- Header.tsx
+- EmptyState.tsx
 - compilerOptions
-- resolve.rs
+- Db
 - ProjectsPanel.tsx
 - TerminalHeader.tsx
 - similarity.rs
 - StatusesPanel.tsx
-- skip_version
-- AgentDescriptor
+- with_db
+- App.tsx
 - tlc-spec-driven skill
 - make-portable.mjs
-- Evidence-or-zero core rule
+- agent_prefs.rs
+- skip_version
 - launch.rs
-- agent_default
-- StatusBadge.tsx
+- picker_prefs.rs
 - CI Workflow (ci.yml)
 - Release Workflow (release.yml)
 - cargo build --workspace redundancy (corrected gate description)
-- picker_prefs.rs
-- bump-version.mjs
-- paths.rs
 - project_list
+- agent_default
+- bump-version.mjs
+- Evidence-or-zero core rule
+- paths.rs
 - default.json
-- update_skip_version
 - patch-latest-json.mjs
 - GridLayout.tsx
 - kanban.rs
@@ -80,14 +80,13 @@
 - spec-driven-execution skill
 - Todo ajuste passa pela spec (rule)
 - Execute (implement) doc
-- UpdateBanner.tsx
 - Code Analysis Tools doc
 
 ## God Nodes (most connected - your core abstractions)
-1. `Db` - 46 edges
+1. `Db` - 50 edges
 2. `IpcServer` - 37 edges
-3. `TerminalManager` - 33 edges
-4. `DbError` - 29 edges
+3. `TerminalManager` - 31 edges
+4. `DbError` - 30 edges
 5. `TaskError` - 24 edges
 6. `err_response()` - 23 edges
 7. `RouteResult` - 22 edges
@@ -115,7 +114,7 @@
 - **Author-not-verifier independent verification principle** — claude_skills_tlc_spec_driven_skill_verifier, claude_skills_spec_driven_execution_skill_verifier, claude_skills_spec_loop_references_agent_briefs_validador, claude_skills_spec_driven_eval_skill_judge_author_rule [INFERRED 0.85]
 - **Discover-once project profile pattern** — claude_skills_spec_triage_skill_project_profile, claude_skills_spec_driven_execution_skill_project_profile, claude_skills_spec_loop_skill [INFERRED 0.75]
 
-## Communities (75 total, 1 thin omitted)
+## Communities (74 total, 2 thin omitted)
 
 ### Community 0 - "server.rs"
 Cohesion: 0.09
@@ -150,16 +149,16 @@ Cohesion: 0.10
 Nodes (51): CatalogError, color_distance(), cores_visualmente_proximas_geram_aviso_na_criacao(), create(), create_com_rotulo_e_instrucao_grava_status_habilitado_com_cor_inedita(), create_sem_rotulo_ou_sem_instrucao_e_recusado(), CreateOutcome, delete() (+43 more)
 
 ### Community 8 - "check.rs"
-Cohesion: 0.17
-Nodes (29): S, auto_check_desligado_nao_sai_para_a_rede(), check(), check_with(), erro_na_consulta_remota_nao_propaga_e_vira_none(), exe_dir(), fetch_remote_manifest(), flavor_escolhe_a_entrada_certa_do_manifesto() (+21 more)
+Cohesion: 0.10
+Nodes (43): S, already_pending(), check_and_download(), com_pendente_instala_e_intercepta(), falha_na_instalacao_ainda_intercepta_para_fechar_em_seguida(), handle_close(), AppHandle, FnOnce (+35 more)
 
 ### Community 9 - "db.rs"
 Cohesion: 0.08
 Nodes (31): aplica_migracoes_em_banco_novo(), cria_o_schema_de_terminal_layout(), migracao_e_idempotente(), registra_a_versao_aplicada(), PathBuf, TempDir, temp_db_path(), title_source_so_aceita_agent_ou_user() (+23 more)
 
 ### Community 10 - "projects/service.rs"
-Cohesion: 0.17
-Nodes (35): cor_explicita_e_respeitada(), cor_explicita_ja_usada_recusa(), create(), create_with_options(), cria_subpasta_dentro_da_base(), delete(), find_by_path(), get() (+27 more)
+Cohesion: 0.11
+Nodes (50): exact_path_matches_project(), folder_name(), is_prefix(), mixed_separators_still_resolve(), most_specific_project_wins_among_two_matches(), no_match_falls_back_to_folder_name(), normalized_components(), project() (+42 more)
 
 ### Community 11 - "ipc_server.rs"
 Cohesion: 0.13
@@ -218,20 +217,20 @@ Cohesion: 0.26
 Nodes (20): _auto_prune(), cmd_add(), cmd_init(), cmd_list(), cmd_penalize(), cmd_prune(), cmd_status(), _find() (+12 more)
 
 ### Community 25 - "SettingsShell.tsx"
-Cohesion: 0.15
-Nodes (10): CheckState, MODE_LABEL, UpdateSettings(), UpdateSettingsProps, root, ProjectRecord, SectionId, SECTIONS (+2 more)
+Cohesion: 0.14
+Nodes (11): CheckState, MODE_LABEL, UpdateSettings(), UpdateSettingsProps, root, AgentCatalogEntry, ProjectRecord, SectionId (+3 more)
 
 ### Community 26 - "swarmdeck-mcp/src/main.rs"
 Cohesion: 0.14
 Nodes (16): CheckActiveResult, main(), Box, Error, Json, Option, Result, Self (+8 more)
 
 ### Community 27 - "restore"
-Cohesion: 0.21
+Cohesion: 0.19
 Nodes (18): LayoutEntry, default_entry(), LayoutEntry, now_unix(), restore(), Option, Path, Result (+10 more)
 
-### Community 28 - "App.tsx"
-Cohesion: 0.19
-Nodes (13): App(), createTerminalId(), defaultTerminal(), evenWidths(), TerminalPane(), TerminalPaneProps, close(), LayoutEntry (+5 more)
+### Community 28 - "terminals.ts"
+Cohesion: 0.18
+Nodes (10): App(), evenWidths(), { invokeMock, openMock }, close(), LayoutEntry, maximize(), minimize(), PaneMode (+2 more)
 
 ### Community 29 - "spec-loop skill"
 Cohesion: 0.13
@@ -243,31 +242,27 @@ Nodes (16): Feature-level validation (post-last-task), Lessons self-improving la
 
 ### Community 31 - "devDependencies"
 Cohesion: 0.04
-Nodes (46): jsdom, dependencies, react, react-dom, @tauri-apps/api, @tauri-apps/plugin-dialog, @xterm/addon-fit, @xterm/xterm (+38 more)
+Nodes (48): jsdom, lucide-react, dependencies, lucide-react, react, react-dom, @tauri-apps/api, @tauri-apps/plugin-dialog (+40 more)
 
-### Community 32 - "agent_prefs.rs"
-Cohesion: 0.18
-Nodes (14): agente_padrao_removido_do_sistema_cai_para_o_primeiro_disponivel_e_avisa(), grava_e_le_de_volta_na_mesma_sessao(), padrao_persiste_entre_reinicios(), path_lock(), PathIsoladoGuard, Drop, MutexGuard, Option (+6 more)
-
-### Community 33 - "Db"
-Cohesion: 0.25
-Nodes (8): AsRef, DbError, Error, Db, Connection, Path, Result, Self
+### Community 32 - "Header.tsx"
+Cohesion: 0.40
+Nodes (3): Header(), HeaderProps, INERT_LABELS
 
 ### Community 34 - "compilerOptions"
 Cohesion: 0.07
 Nodes (27): DOM, DOM.Iterable, ES2022, @testing-library/jest-dom, vitest/globals, compilerOptions, allowImportingTsExtensions, baseUrl (+19 more)
 
-### Community 35 - "resolve.rs"
-Cohesion: 0.31
-Nodes (15): exact_path_matches_project(), folder_name(), is_prefix(), mixed_separators_still_resolve(), most_specific_project_wins_among_two_matches(), no_match_falls_back_to_folder_name(), normalized_components(), project() (+7 more)
+### Community 35 - "Db"
+Cohesion: 0.25
+Nodes (8): AsRef, DbError, Error, Db, Connection, Path, Result, Self
 
 ### Community 36 - "ProjectsPanel.tsx"
 Cohesion: 0.39
 Nodes (7): filterProjects(), ProjectRow, ProjectsPanel(), ProjectsPanelProps, sortByLastUsed(), PROJECTS, truncatePath()
 
 ### Community 37 - "TerminalHeader.tsx"
-Cohesion: 0.35
-Nodes (8): ActivityEntry, ActivityLog(), ActivityLogProps, formatActivityTime(), sortByMostRecent(), ENTRIES, TerminalHeader(), TerminalHeaderProps
+Cohesion: 0.21
+Nodes (12): ActivityEntry, ActivityLog(), ActivityLogProps, formatActivityTime(), sortByMostRecent(), ENTRIES, STATUS_BADGE_MAX_LABEL_LENGTH, StatusBadge() (+4 more)
 
 ### Community 38 - "similarity.rs"
 Cohesion: 0.24
@@ -277,13 +272,13 @@ Nodes (16): completed_tasks_are_ignored_even_when_near_identical(), find_similar
 Cohesion: 0.36
 Nodes (5): StatusesPanel(), StatusesPanelProps, StatusRow, STATUSES, truncateInstruction()
 
-### Community 40 - "skip_version"
-Cohesion: 0.22
-Nodes (13): auto_check(), is_version_skipped(), Connection, Result, set_auto_check(), skip_version(), auto_check_nasce_ligado_num_banco_novo(), migracao_de_settings_e_idempotente() (+5 more)
+### Community 40 - "with_db"
+Cohesion: 0.25
+Nodes (17): AppHandle, FnOnce, Mutex, Option, Result, State, String, T (+9 more)
 
-### Community 41 - "AgentDescriptor"
-Cohesion: 0.20
-Nodes (10): AgentCatalogEntry, NewTerminalDialog(), NewTerminalDialogProps, CATALOG, { invokeMock, openMock }, AgentDescriptor, AgentPanel(), AgentPanelProps (+2 more)
+### Community 41 - "App.tsx"
+Cohesion: 0.17
+Nodes (13): AgentCatalogEntry, createTerminalId(), defaultTerminal(), NewTerminalDialog(), NewTerminalDialogProps, CATALOG, { invokeMock, openMock }, TerminalPane() (+5 more)
 
 ### Community 42 - "tlc-spec-driven skill"
 Cohesion: 0.19
@@ -293,21 +288,21 @@ Nodes (14): Context Limits doc, Context zones (healthy/moderate/critical), AD-NN
 Cohesion: 0.26
 Nodes (12): APP_NAME, defaultBinaryPath(), main(), parseArgs(), PORTABLE_MARKER, portableArchiveName(), portableReadme(), ROOT (+4 more)
 
-### Community 44 - "Evidence-or-zero core rule"
-Cohesion: 0.67
-Nodes (3): Evidence-or-zero core rule, "Número copiado para a prosa" anti-pattern, Spec-anchored acceptance criteria check
+### Community 44 - "agent_prefs.rs"
+Cohesion: 0.18
+Nodes (14): agente_padrao_removido_do_sistema_cai_para_o_primeiro_disponivel_e_avisa(), grava_e_le_de_volta_na_mesma_sessao(), padrao_persiste_entre_reinicios(), path_lock(), PathIsoladoGuard, Drop, MutexGuard, Option (+6 more)
 
-### Community 45 - "launch.rs"
+### Community 45 - "skip_version"
+Cohesion: 0.22
+Nodes (13): auto_check(), is_version_skipped(), Connection, Result, set_auto_check(), skip_version(), auto_check_nasce_ligado_num_banco_novo(), migracao_de_settings_e_idempotente() (+5 more)
+
+### Community 46 - "launch.rs"
 Cohesion: 0.33
 Nodes (12): agente_conhecido_e_instalado_lanca_seu_comando(), agente_pedido_mas_nao_instalado_cai_para_shell(), aviso_descreve_o_agente_que_faltou(), fake_catalog(), LaunchResolution, resolve_launch_command(), resolve_with(), AgentDescriptor (+4 more)
 
-### Community 46 - "agent_default"
+### Community 47 - "picker_prefs.rs"
 Cohesion: 0.29
-Nodes (9): agent_catalog(), agent_default(), AgentCatalogEntry, Mutex, Option, Result, State, String (+1 more)
-
-### Community 47 - "StatusBadge.tsx"
-Cohesion: 0.47
-Nodes (4): STATUS_BADGE_MAX_LABEL_LENGTH, StatusBadge(), StatusBadgeProps, truncateLabel()
+Nodes (11): banco_novo_nao_tem_diretorio_gravado(), last_dir(), migracao_e_idempotente_em_banco_persistido(), open_db(), Connection, Option, Result, String (+3 more)
 
 ### Community 48 - "CI Workflow (ci.yml)"
 Cohesion: 0.40
@@ -317,29 +312,29 @@ Nodes (5): CI Workflow (ci.yml), ci.yml: clippy job, ci.yml: commits job (Conven
 Cohesion: 0.90
 Nodes (5): Release Workflow (release.yml), release.yml: build job (Windows/Linux matrix), release.yml: cleanup job, release.yml: finalize job, release.yml: prepare job
 
-### Community 51 - "picker_prefs.rs"
+### Community 51 - "project_list"
+Cohesion: 0.44
+Nodes (10): project_create(), project_delete(), project_list(), project_update(), Mutex, Option, Result, State (+2 more)
+
+### Community 52 - "agent_default"
 Cohesion: 0.29
-Nodes (11): banco_novo_nao_tem_diretorio_gravado(), last_dir(), migracao_e_idempotente_em_banco_persistido(), open_db(), Connection, Option, Result, String (+3 more)
+Nodes (9): agent_catalog(), agent_default(), AgentCatalogEntry, Mutex, Option, Result, State, String (+1 more)
 
 ### Community 53 - "bump-version.mjs"
 Cohesion: 0.38
 Nodes (9): BUMP_KINDS, bumpVersion(), main(), parseArgs(), parseVersion(), resolveVersion(), setJsonVersion(), setWorkspaceVersion() (+1 more)
 
+### Community 54 - "Evidence-or-zero core rule"
+Cohesion: 0.67
+Nodes (3): Evidence-or-zero core rule, "Número copiado para a prosa" anti-pattern, Spec-anchored acceptance criteria check
+
 ### Community 55 - "paths.rs"
 Cohesion: 0.13
 Nodes (31): allow_write(), current_exe_dir(), data_dir(), db_path(), deny_write(), Flavor, is_writable(), is_writable_reprova_diretorio_somente_leitura() (+23 more)
 
-### Community 59 - "project_list"
-Cohesion: 0.44
-Nodes (10): project_create(), project_delete(), project_list(), project_update(), Mutex, Option, Result, State (+2 more)
-
 ### Community 60 - "default.json"
 Cohesion: 0.20
 Nodes (9): core:default, dialog:default, main, updater:default, description, identifier, permissions, $schema (+1 more)
-
-### Community 66 - "update_skip_version"
-Cohesion: 0.29
-Nodes (9): AppHandle, Mutex, Option, Result, State, String, terminals_active_count(), update_check() (+1 more)
 
 ### Community 67 - "patch-latest-json.mjs"
 Cohesion: 0.42
@@ -373,30 +368,26 @@ Nodes (7): Cargo.toml workspace manifest, Ask before writing code principle, Tod
 Cohesion: 0.22
 Nodes (9): Coding Principles doc, Goal-driven principle, Simplicity principle, Surgical changes principle, Test integrity principle, Atomic git commit per task, Execute (implement) doc, Gate Check (VERIFY step) (+1 more)
 
-### Community 82 - "UpdateBanner.tsx"
-Cohesion: 0.50
-Nodes (3): UPDATE, UpdateBanner(), UpdateBannerProps
-
 ### Community 83 - "Code Analysis Tools doc"
 Cohesion: 0.83
 Nodes (4): ast-grep (sg) structural search tool, Code Analysis Tools doc, grep standard text search, ripgrep (rg) text search tool
 
 ## Knowledge Gaps
-- **189 isolated node(s):** `$schema`, `src/**`, `tests/**`, `docs/**`, `Bash(git commit)` (+184 more)
+- **192 isolated node(s):** `$schema`, `src/**`, `tests/**`, `docs/**`, `Bash(git commit)` (+187 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **1 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **2 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Db` connect `Db` to `server.rs`, `TerminalManager`, `update_skip_version`, `status_catalog.rs`, `restore`, `ipc_server.rs`, `agent_default`, `terminal.rs`, `meta.rs`, `picker_prefs.rs`, `project_list`?**
-  _High betweenness centrality (0.113) - this node is a cross-community bridge._
+- **Why does `Db` connect `Db` to `server.rs`, `TerminalManager`, `status_catalog.rs`, `with_db`, `ipc_server.rs`, `picker_prefs.rs`, `terminal.rs`, `meta.rs`, `project_list`, `agent_default`, `restore`?**
+  _High betweenness centrality (0.116) - this node is a cross-community bridge._
 - **Why does `TestEnvGuard` connect `String` to `PtySession`?**
-  _High betweenness centrality (0.086) - this node is a cross-community bridge._
-- **Why does `TerminalManager` connect `TerminalManager` to `server.rs`, `update_skip_version`, `ipc_server.rs`, `terminal.rs`, `send.rs`?**
-  _High betweenness centrality (0.080) - this node is a cross-community bridge._
+  _High betweenness centrality (0.084) - this node is a cross-community bridge._
+- **Why does `TerminalManager` connect `TerminalManager` to `terminal.rs`, `server.rs`, `send.rs`, `ipc_server.rs`?**
+  _High betweenness centrality (0.075) - this node is a cross-community bridge._
 - **What connects `$schema`, `src/**`, `tests/**` to the rest of the system?**
-  _189 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _192 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `server.rs` be split into smaller, more focused modules?**
   _Cohesion score 0.08673050615595075 - nodes in this community are weakly interconnected._
 - **Should `TerminalManager` be split into smaller, more focused modules?**

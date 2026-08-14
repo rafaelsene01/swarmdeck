@@ -51,9 +51,13 @@ minisign-verify = "0.2.5"
 # já usa).
 tauri-plugin-dialog = "2.7.2"
 
+# SPEC: release-distribution (REL-37, REL-38)
+# Timer do checador em segundo plano (src/update/apply.rs): `tokio::spawn`
+# roda dentro do runtime que o próprio Tauri já mantém, `tokio::time::sleep`
+# espaça os ciclos de 1h. Antes só dev-dependency (usado pelos testes de
+# src/update/check.rs via #[tokio::test]); agora dependency de produção com
+# as mesmas features mais "time".
+tokio = { version = "1", features = ["macros", "rt", "time"] }
+
 [dev-dependencies]
 tempfile = "3"
-# SPEC: release-distribution (REL-19, REL-21, REL-24)
-# Runtime mínimo para rodar `check()` (async) nos 7 testes unitários de
-# src/update/check.rs sem depender do runtime do Tauri.
-tokio = { version = "1", features = ["macros", "rt"] }

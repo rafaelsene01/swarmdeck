@@ -24,9 +24,9 @@ const MODE_LABEL: Record<UpdateSettingsProps['mode'], string> = {
 }
 
 /**
- * Seção "Atualizações" das configurações — mesmo padrão de `ProjectsPanel.tsx`
- * / `UpdateBanner.tsx`: puramente apresentacional, recebe dados prontos via
- * props e noticia intenções via callback, nunca chama `invoke()` diretamente.
+ * Seção "Atualizações" das configurações — mesmo padrão de `ProjectsPanel.tsx`:
+ * puramente apresentacional, recebe dados prontos via props e noticia
+ * intenções via callback, nunca chama `invoke()` diretamente.
  *
  * O botão "Verificar agora" fica sempre habilitado (exceto durante a própria
  * checagem), independente do toggle de verificação automática (REL-34): o
@@ -89,6 +89,12 @@ export default function UpdateSettings({
         />
         Verificar atualizações automaticamente
       </label>
+
+      <p className="update-settings__explainer">
+        A verificação automática roda ao abrir o SwarmDeck e a cada hora. Quando há uma versão
+        nova, o download acontece em segundo plano, sem interromper o que você está fazendo; a
+        instalação só ocorre no próximo fechamento do app.
+      </p>
     </div>
   )
 }

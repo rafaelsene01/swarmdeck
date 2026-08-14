@@ -8,6 +8,8 @@
 //! seguintes (T16-T18) desta feature.
 
 mod check;
+pub mod apply;
 pub mod portable;
 
+pub use apply::{handle_close, spawn_background_checker, PendingUpdate};
 pub use check::{check, UpdateError, UpdateInfo};

@@ -75,4 +75,13 @@ describe('UpdateSettings', () => {
 
     expect(onCheckNow).toHaveBeenCalledTimes(1)
   })
+
+  it('explica que a checagem é automática (boot+hora), o download é em segundo plano e a instalação ocorre no fechamento', () => {
+    renderSettings()
+
+    const explainer = screen.getByText(/verificação automática/i)
+    expect(explainer).toHaveTextContent(/hora/i)
+    expect(explainer).toHaveTextContent(/segundo plano/i)
+    expect(explainer).toHaveTextContent(/próximo fechamento/i)
+  })
 })

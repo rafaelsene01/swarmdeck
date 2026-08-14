@@ -2,7 +2,7 @@
 
 use std::sync::Mutex;
 
-use tauri::Manager;
+use tauri::{Manager, WindowEvent};
 
 pub mod agents;
 pub mod commands;
@@ -46,6 +46,42 @@ pub fn run() {
             // e o MCP.
             app.manage(std::sync::Arc::new(terminal::TerminalMetaService::new()));
 
+            // SPEC: release-distribution (REL-37, REL-45, REL-46, REL-47)
+            // Checagem/download automáticos rodam sozinhos em segundo plano
+            // (update::apply); a janela `main` intercepta o próximo
+            // `CloseRequested` para instalar, se houver algo pendente, antes
+            // de fechar de verdade.
+            app.manage(update::PendingUpdate::new(None));
+            update::spawn_background_checker(app.handle().clone());
+
+            if let Some(main_window) = app.get_webview_window("main") {
+                let app_handle = app.handle().clone();
+                main_window.on_window_event(move |event| {
+                    if let WindowEvent::CloseRequested { api, .. } = event {
+                        let pending = app_handle.state::<update::PendingUpdate>();
+                        let taken = pending.lock().expect("update mutex poisoned").take();
+                        let has_pending = taken.is_some();
+                        let app_for_close = app_handle.clone();
+                        let intercepted = update::handle_close(
+                            has_pending,
+                            || {
+                                let (update, bytes) =
+                                    taken.expect("has_pending implica taken == Some");
+                                update.install(bytes).map_err(|e| e.to_string())
+                            },
+                            || {
+                                if let Some(main) = app_for_close.get_webview_window("main") {
+                                    let _ = main.close();
+                                }
+                            },
+                        );
+                        if intercepted {
+                            api.prevent_close();
+                        }
+                    }
+                });
+            }
+
             Ok(())
         })
         // SPEC: release-distribution (REL-19, REL-21, REL-24)
@@ -74,10 +110,11 @@ pub fn run() {
             commands::projects::project_create,
             commands::projects::project_update,
             commands::projects::project_delete,
-            // SPEC: release-distribution (REL-20, REL-23, REL-26)
+            // SPEC: release-distribution (REL-20, REL-23, REL-35, REL-36)
             commands::update::update_check,
             commands::update::update_skip_version,
-            commands::update::terminals_active_count,
+            commands::update::update_auto_check_get,
+            commands::update::update_auto_check_set,
             // SPEC: task-kanban (KAN-08)
             commands::kanban::kanban_open,
             commands::kanban::kanban_focus_main,
