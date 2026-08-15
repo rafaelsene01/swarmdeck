@@ -190,7 +190,9 @@ pub(crate) fn endpoint(app: &AppHandle) -> String {
 
 /// Lê a chave pública minisign de `tauri.conf.json` (`plugins.updater.pubkey`)
 /// — usada por `apply::run` (T7) para verificar a assinatura do artefato
-/// baixado antes de trocar o executável.
+/// baixado antes de trocar o executável. `cfg(windows)` pelo mesmo motivo de
+/// `apply::run_with`: único chamador de produção é o `run` do Windows.
+#[cfg(windows)]
 pub(crate) fn pubkey(app: &AppHandle) -> String {
     app.config()
         .plugins

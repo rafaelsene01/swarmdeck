@@ -12,6 +12,7 @@
 //! no fechamento da janela `main` saem do crate (AD-005).
 
 use std::future::Future;
+#[cfg(windows)]
 use std::path::Path;
 use std::sync::Mutex;
 use std::time::Duration;
@@ -20,6 +21,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use thiserror::Error;
 
 use crate::db::{auto_check, Db};
+#[cfg(windows)]
 use crate::paths::{self, Flavor};
 use crate::update::{manifest, swap};
 
@@ -228,6 +230,13 @@ pub async fn run(app: &AppHandle) -> Result<String, ApplyError> {
 /// entram por parâmetro/closure — mesmo padrão do resto do módulo. A
 /// verificação de assinatura e a troca de arquivo em si rodam de verdade
 /// via `swap::apply_swap` (já testado em `swap.rs`), não injetadas.
+///
+/// `#[cfg(windows)]` porque o único chamador de produção é o `run` do
+/// caminho Windows — sem o cfg, um build/clippy de lib (sem `cfg(test)`,
+/// como `cargo clippy --all-targets` roda em CI no Linux) vê esta função
+/// sem chamador e falha em `-D dead-code` (mesmo padrão de
+/// `swap::set_registry_display_version`, também `cfg(windows)`).
+#[cfg(windows)]
 #[allow(clippy::too_many_arguments)]
 async fn run_with<Fetch, FetchFut, Download, DownloadFut>(
     applying: &Applying,
@@ -397,250 +406,255 @@ mod tests {
         assert_eq!(*ciclos.lock().unwrap(), 2);
     }
 
-    // T7: apply::run / run_with.
+    // T7: apply::run / run_with — módulo inteiro é cfg(windows) porque
+    // `run_with` só existe nesse cfg (ver comentário na definição).
+    #[cfg(windows)]
+    mod run_tests {
+        use super::*;
 
-    use crate::update::manifest::{Manifest, PlatformEntry};
-    use std::collections::HashMap;
-    use std::fs;
+        use crate::update::manifest::{Manifest, PlatformEntry};
+        use std::collections::HashMap;
+        use std::fs;
 
-    // Mesmo par chave pública/assinatura reais de minisign de `swap.rs` —
-    // vetor de teste "pre-hashed mode" do próprio `rust-minisign-verify`.
-    const PUBLIC_KEY: &str = "RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3";
-    const DATA: &[u8] = b"test";
-    const SIGNATURE: &str = "untrusted comment: signature from minisign secret key\nRUQf6LRCGA9i559r3g7V1qNyJDApGip8MfqcadIgT9CuhV3EMhHoN1mGTkUidF/z7SrlQgXdy8ofjb7bNJJylDOocrCo8KLzZwo=\ntrusted comment: timestamp:1556193335\tfile:test\ny/rUw2y8/hOUYjZU71eHp/Wo1KZ40fGy2VJEDl34XMJM+TX48Ss/17u3IvIfbVR1FkZZSNCisQbuQY+bHwhEBg==\n";
+        // Mesmo par chave pública/assinatura reais de minisign de `swap.rs` —
+        // vetor de teste "pre-hashed mode" do próprio `rust-minisign-verify`.
+        const PUBLIC_KEY: &str = "RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3";
+        const DATA: &[u8] = b"test";
+        const SIGNATURE: &str = "untrusted comment: signature from minisign secret key\nRUQf6LRCGA9i559r3g7V1qNyJDApGip8MfqcadIgT9CuhV3EMhHoN1mGTkUidF/z7SrlQgXdy8ofjb7bNJJylDOocrCo8KLzZwo=\ntrusted comment: timestamp:1556193335\tfile:test\ny/rUw2y8/hOUYjZU71eHp/Wo1KZ40fGy2VJEDl34XMJM+TX48Ss/17u3IvIfbVR1FkZZSNCisQbuQY+bHwhEBg==\n";
 
-    fn manifest_with_entry(version: &str, key: &str, url: &str, signature: &str) -> Manifest {
-        let mut platforms = HashMap::new();
-        platforms.insert(
-            key.to_string(),
-            PlatformEntry {
-                url: url.to_string(),
-                signature: signature.to_string(),
-            },
-        );
-        Manifest {
-            version: version.to_string(),
-            notes: String::new(),
-            platforms,
+        fn manifest_with_entry(version: &str, key: &str, url: &str, signature: &str) -> Manifest {
+            let mut platforms = HashMap::new();
+            platforms.insert(
+                key.to_string(),
+                PlatformEntry {
+                    url: url.to_string(),
+                    signature: signature.to_string(),
+                },
+            );
+            Manifest {
+                version: version.to_string(),
+                notes: String::new(),
+                platforms,
+            }
         }
-    }
 
-    fn nunca_baixa(
-        _url: String,
-    ) -> std::pin::Pin<Box<dyn Future<Output = Result<Vec<u8>, String>>>> {
-        panic!("download não deveria ser chamado")
-    }
+        fn nunca_baixa(
+            _url: String,
+        ) -> std::pin::Pin<Box<dyn Future<Output = Result<Vec<u8>, String>>>> {
+            panic!("download não deveria ser chamado")
+        }
 
-    fn nunca_grava_registro(_version: &str) -> std::io::Result<()> {
-        panic!("set_registry não deveria ser chamado")
-    }
+        fn nunca_grava_registro(_version: &str) -> std::io::Result<()> {
+            panic!("set_registry não deveria ser chamado")
+        }
 
-    #[cfg(windows)]
-    fn deny_write(path: &std::path::Path) {
-        let status = std::process::Command::new("icacls")
-            .arg(path)
-            .arg("/deny")
-            .arg("*S-1-1-0:(OI)(CI)W")
-            .status()
-            .expect("falha ao invocar icacls");
-        assert!(status.success(), "icacls /deny falhou");
-    }
+        #[cfg(windows)]
+        fn deny_write(path: &std::path::Path) {
+            let status = std::process::Command::new("icacls")
+                .arg(path)
+                .arg("/deny")
+                .arg("*S-1-1-0:(OI)(CI)W")
+                .status()
+                .expect("falha ao invocar icacls");
+            assert!(status.success(), "icacls /deny falhou");
+        }
 
-    #[cfg(windows)]
-    fn allow_write(path: &std::path::Path) {
-        let _ = std::process::Command::new("icacls")
-            .arg(path)
-            .arg("/remove:d")
-            .arg("*S-1-1-0")
-            .status();
-    }
+        #[cfg(windows)]
+        fn allow_write(path: &std::path::Path) {
+            let _ = std::process::Command::new("icacls")
+                .arg(path)
+                .arg("/remove:d")
+                .arg("*S-1-1-0")
+                .status();
+        }
 
-    // 1. pasta não gravável -> Err antes do fake de download ser acionado.
-    #[tokio::test]
-    async fn pasta_nao_gravavel_reprova_antes_do_download() {
-        let exe_dir = tempfile::tempdir().unwrap();
-        fs::write(exe_dir.path().join("app.exe"), b"antigo").unwrap();
-        deny_write(exe_dir.path());
-        let applying: Applying = Mutex::new(false);
-        let m = manifest_with_entry("0.2.0", "chave", "https://exemplo/app.exe", SIGNATURE);
+        // 1. pasta não gravável -> Err antes do fake de download ser acionado.
+        #[tokio::test]
+        async fn pasta_nao_gravavel_reprova_antes_do_download() {
+            let exe_dir = tempfile::tempdir().unwrap();
+            fs::write(exe_dir.path().join("app.exe"), b"antigo").unwrap();
+            deny_write(exe_dir.path());
+            let applying: Applying = Mutex::new(false);
+            let m = manifest_with_entry("0.2.0", "chave", "https://exemplo/app.exe", SIGNATURE);
 
-        let result = run_with(
-            &applying,
-            exe_dir.path(),
-            "app.exe",
-            "chave",
-            PUBLIC_KEY,
-            Flavor::Portable,
-            || async { Ok(m) },
-            nunca_baixa,
-            nunca_grava_registro,
-        )
-        .await;
+            let result = run_with(
+                &applying,
+                exe_dir.path(),
+                "app.exe",
+                "chave",
+                PUBLIC_KEY,
+                Flavor::Portable,
+                || async { Ok(m) },
+                nunca_baixa,
+                nunca_grava_registro,
+            )
+            .await;
 
-        allow_write(exe_dir.path());
+            allow_write(exe_dir.path());
 
-        assert!(matches!(result, Err(ApplyError::NotWritable(_))));
-    }
+            assert!(matches!(result, Err(ApplyError::NotWritable(_))));
+        }
 
-    // 2. manifesto sem entrada para a chave de plataforma -> Err, sem baixar.
-    #[tokio::test]
-    async fn chave_de_plataforma_ausente_devolve_platform_unavailable_sem_baixar() {
-        let exe_dir = tempfile::tempdir().unwrap();
-        let applying: Applying = Mutex::new(false);
-        let m = manifest_with_entry("0.2.0", "outra-chave", "url", SIGNATURE);
+        // 2. manifesto sem entrada para a chave de plataforma -> Err, sem baixar.
+        #[tokio::test]
+        async fn chave_de_plataforma_ausente_devolve_platform_unavailable_sem_baixar() {
+            let exe_dir = tempfile::tempdir().unwrap();
+            let applying: Applying = Mutex::new(false);
+            let m = manifest_with_entry("0.2.0", "outra-chave", "url", SIGNATURE);
 
-        let result = run_with(
-            &applying,
-            exe_dir.path(),
-            "app.exe",
-            "chave",
-            PUBLIC_KEY,
-            Flavor::Portable,
-            || async { Ok(m) },
-            nunca_baixa,
-            nunca_grava_registro,
-        )
-        .await;
+            let result = run_with(
+                &applying,
+                exe_dir.path(),
+                "app.exe",
+                "chave",
+                PUBLIC_KEY,
+                Flavor::Portable,
+                || async { Ok(m) },
+                nunca_baixa,
+                nunca_grava_registro,
+            )
+            .await;
 
-        assert!(matches!(result, Err(ApplyError::PlatformUnavailable)));
-    }
+            assert!(matches!(result, Err(ApplyError::PlatformUnavailable)));
+        }
 
-    // 3. caminho feliz: baixa, aplica a troca, devolve a versão aplicada.
-    #[tokio::test]
-    async fn caminho_feliz_baixa_aplica_a_troca_e_devolve_a_versao() {
-        let exe_dir = tempfile::tempdir().unwrap();
-        let exe_path = exe_dir.path().join("app.exe");
-        fs::write(&exe_path, b"conteudo antigo").unwrap();
-        let applying: Applying = Mutex::new(false);
-        let m = manifest_with_entry("0.2.0", "chave", "https://exemplo/app.exe", SIGNATURE);
+        // 3. caminho feliz: baixa, aplica a troca, devolve a versão aplicada.
+        #[tokio::test]
+        async fn caminho_feliz_baixa_aplica_a_troca_e_devolve_a_versao() {
+            let exe_dir = tempfile::tempdir().unwrap();
+            let exe_path = exe_dir.path().join("app.exe");
+            fs::write(&exe_path, b"conteudo antigo").unwrap();
+            let applying: Applying = Mutex::new(false);
+            let m = manifest_with_entry("0.2.0", "chave", "https://exemplo/app.exe", SIGNATURE);
 
-        let result = run_with(
-            &applying,
-            exe_dir.path(),
-            "app.exe",
-            "chave",
-            PUBLIC_KEY,
-            Flavor::Portable,
-            || async { Ok(m) },
-            |_url| async { Ok(DATA.to_vec()) },
-            nunca_grava_registro,
-        )
-        .await;
+            let result = run_with(
+                &applying,
+                exe_dir.path(),
+                "app.exe",
+                "chave",
+                PUBLIC_KEY,
+                Flavor::Portable,
+                || async { Ok(m) },
+                |_url| async { Ok(DATA.to_vec()) },
+                nunca_grava_registro,
+            )
+            .await;
 
-        assert_eq!(result.unwrap(), "0.2.0");
-        assert_eq!(fs::read(&exe_path).unwrap(), DATA);
-    }
+            assert_eq!(result.unwrap(), "0.2.0");
+            assert_eq!(fs::read(&exe_path).unwrap(), DATA);
+        }
 
-    // 4. segunda chamada com Applying já true -> retorna sem baixar.
-    #[tokio::test]
-    async fn segunda_chamada_com_applying_true_nao_baixa() {
-        let applying: Applying = Mutex::new(true);
+        // 4. segunda chamada com Applying já true -> retorna sem baixar.
+        #[tokio::test]
+        async fn segunda_chamada_com_applying_true_nao_baixa() {
+            let applying: Applying = Mutex::new(true);
 
-        let result = run_with(
-            &applying,
-            Path::new("."),
-            "app.exe",
-            "chave",
-            PUBLIC_KEY,
-            Flavor::Portable,
-            || async { panic!("fetch_manifest não deveria ser chamado") },
-            nunca_baixa,
-            nunca_grava_registro,
-        )
-        .await;
+            let result = run_with(
+                &applying,
+                Path::new("."),
+                "app.exe",
+                "chave",
+                PUBLIC_KEY,
+                Flavor::Portable,
+                || async { panic!("fetch_manifest não deveria ser chamado") },
+                nunca_baixa,
+                nunca_grava_registro,
+            )
+            .await;
 
-        assert!(matches!(result, Err(ApplyError::AlreadyApplying)));
-    }
+            assert!(matches!(result, Err(ApplyError::AlreadyApplying)));
+        }
 
-    // 5. flavor instalado -> gravador de registro é acionado.
-    #[tokio::test]
-    async fn flavor_instalado_aciona_o_gravador_de_registro() {
-        let exe_dir = tempfile::tempdir().unwrap();
-        fs::write(exe_dir.path().join("app.exe"), b"conteudo antigo").unwrap();
-        let applying: Applying = Mutex::new(false);
-        let m = manifest_with_entry("0.2.0", "chave", "url", SIGNATURE);
-        let chamado = Mutex::new(false);
+        // 5. flavor instalado -> gravador de registro é acionado.
+        #[tokio::test]
+        async fn flavor_instalado_aciona_o_gravador_de_registro() {
+            let exe_dir = tempfile::tempdir().unwrap();
+            fs::write(exe_dir.path().join("app.exe"), b"conteudo antigo").unwrap();
+            let applying: Applying = Mutex::new(false);
+            let m = manifest_with_entry("0.2.0", "chave", "url", SIGNATURE);
+            let chamado = Mutex::new(false);
 
-        let result = run_with(
-            &applying,
-            exe_dir.path(),
-            "app.exe",
-            "chave",
-            PUBLIC_KEY,
-            Flavor::Installed,
-            || async { Ok(m) },
-            |_url| async { Ok(DATA.to_vec()) },
-            |v| {
-                *chamado.lock().unwrap() = true;
-                assert_eq!(v, "0.2.0");
-                Ok(())
-            },
-        )
-        .await;
+            let result = run_with(
+                &applying,
+                exe_dir.path(),
+                "app.exe",
+                "chave",
+                PUBLIC_KEY,
+                Flavor::Installed,
+                || async { Ok(m) },
+                |_url| async { Ok(DATA.to_vec()) },
+                |v| {
+                    *chamado.lock().unwrap() = true;
+                    assert_eq!(v, "0.2.0");
+                    Ok(())
+                },
+            )
+            .await;
 
-        assert!(result.is_ok());
-        assert!(
-            *chamado.lock().unwrap(),
-            "set_registry deveria ser chamado no flavor instalado"
-        );
-    }
+            assert!(result.is_ok());
+            assert!(
+                *chamado.lock().unwrap(),
+                "set_registry deveria ser chamado no flavor instalado"
+            );
+        }
 
-    // 7. SILENT-19: falha em set_registry é só logada — a troca segue
-    // reportada como aplicada com sucesso, com a versão certa.
-    #[tokio::test]
-    async fn falha_no_registro_nao_invalida_a_troca_ja_aplicada() {
-        let exe_dir = tempfile::tempdir().unwrap();
-        let exe_path = exe_dir.path().join("app.exe");
-        fs::write(&exe_path, b"conteudo antigo").unwrap();
-        let applying: Applying = Mutex::new(false);
-        let m = manifest_with_entry("0.2.0", "chave", "url", SIGNATURE);
+        // 7. SILENT-19: falha em set_registry é só logada — a troca segue
+        // reportada como aplicada com sucesso, com a versão certa.
+        #[tokio::test]
+        async fn falha_no_registro_nao_invalida_a_troca_ja_aplicada() {
+            let exe_dir = tempfile::tempdir().unwrap();
+            let exe_path = exe_dir.path().join("app.exe");
+            fs::write(&exe_path, b"conteudo antigo").unwrap();
+            let applying: Applying = Mutex::new(false);
+            let m = manifest_with_entry("0.2.0", "chave", "url", SIGNATURE);
 
-        let result = run_with(
-            &applying,
-            exe_dir.path(),
-            "app.exe",
-            "chave",
-            PUBLIC_KEY,
-            Flavor::Installed,
-            || async { Ok(m) },
-            |_url| async { Ok(DATA.to_vec()) },
-            |_v| Err(std::io::Error::other("reg add falhou (simulado)")),
-        )
-        .await;
+            let result = run_with(
+                &applying,
+                exe_dir.path(),
+                "app.exe",
+                "chave",
+                PUBLIC_KEY,
+                Flavor::Installed,
+                || async { Ok(m) },
+                |_url| async { Ok(DATA.to_vec()) },
+                |_v| Err(std::io::Error::other("reg add falhou (simulado)")),
+            )
+            .await;
 
-        assert_eq!(
-            result.unwrap(),
-            "0.2.0",
-            "falha no registro não deveria virar Err nem mudar a versão reportada"
-        );
-        assert_eq!(
-            fs::read(&exe_path).unwrap(),
-            DATA,
-            "a troca de arquivo já tinha sido aplicada"
-        );
-    }
+            assert_eq!(
+                result.unwrap(),
+                "0.2.0",
+                "falha no registro não deveria virar Err nem mudar a versão reportada"
+            );
+            assert_eq!(
+                fs::read(&exe_path).unwrap(),
+                DATA,
+                "a troca de arquivo já tinha sido aplicada"
+            );
+        }
 
-    // 6. flavor portátil -> gravador de registro NÃO é acionado.
-    #[tokio::test]
-    async fn flavor_portatil_nao_aciona_o_gravador_de_registro() {
-        let exe_dir = tempfile::tempdir().unwrap();
-        fs::write(exe_dir.path().join("app.exe"), b"conteudo antigo").unwrap();
-        let applying: Applying = Mutex::new(false);
-        let m = manifest_with_entry("0.2.0", "chave", "url", SIGNATURE);
+        // 6. flavor portátil -> gravador de registro NÃO é acionado.
+        #[tokio::test]
+        async fn flavor_portatil_nao_aciona_o_gravador_de_registro() {
+            let exe_dir = tempfile::tempdir().unwrap();
+            fs::write(exe_dir.path().join("app.exe"), b"conteudo antigo").unwrap();
+            let applying: Applying = Mutex::new(false);
+            let m = manifest_with_entry("0.2.0", "chave", "url", SIGNATURE);
 
-        let result = run_with(
-            &applying,
-            exe_dir.path(),
-            "app.exe",
-            "chave",
-            PUBLIC_KEY,
-            Flavor::Portable,
-            || async { Ok(m) },
-            |_url| async { Ok(DATA.to_vec()) },
-            nunca_grava_registro,
-        )
-        .await;
+            let result = run_with(
+                &applying,
+                exe_dir.path(),
+                "app.exe",
+                "chave",
+                PUBLIC_KEY,
+                Flavor::Portable,
+                || async { Ok(m) },
+                |_url| async { Ok(DATA.to_vec()) },
+                nunca_grava_registro,
+            )
+            .await;
 
-        assert!(result.is_ok());
+            assert!(result.is_ok());
+        }
     }
 }
