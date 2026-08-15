@@ -1,7 +1,8 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08), agent-selection (AGT-01, AGT-03, AGT-04)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52)
 
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import GridLayout, { type Pane } from './components/grid/GridLayout'
 import Header from './components/shell/Header'
 import EmptyState from './components/shell/EmptyState'
@@ -71,6 +72,23 @@ export default function App() {
   // chave que `terminal_set_title` grava e que o agente usa via MCP — sem
   // isto o rename manual nunca colide com a escrita do agente (TERM-06).
   const [sessionIdByTerminalId, setSessionIdByTerminalId] = useState<Record<string, string>>({})
+  // SPEC: release-distribution (REL-51, REL-52)
+  // `02-background-auto-update` emite `update://available` (payload
+  // `{ version }`) quando acha e baixa uma versão nova em segundo plano.
+  // Só liga a bolinha (Header) uma vez por sessão — nunca desliga sozinha
+  // (spec 03, Assumptions: "fica visível até o app fechar"), por isso um
+  // `useState` simples em vez de guardar a versão em si (não usada aqui).
+  const [hasUpdateAvailable, setHasUpdateAvailable] = useState(false)
+
+  useEffect(() => {
+    const unlistenPromise = listen('update://available', () => {
+      setHasUpdateAvailable(true)
+    })
+
+    return () => {
+      void unlistenPromise.then((unlisten) => unlisten())
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -224,6 +242,7 @@ export default function App() {
         onCreateTerminal={() => setDialogOpen(true)}
         onOpenSettings={() => void invoke('settings_open')}
         atMaxTerminals={terminals.length >= MAX_TERMINALS}
+        hasUpdateAvailable={hasUpdateAvailable}
       />
 
       <div className="app-grid-area">

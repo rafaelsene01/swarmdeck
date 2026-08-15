@@ -1,4 +1,4 @@
-// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11)
+// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11), release-distribution (REL-51)
 
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -91,5 +91,19 @@ describe('Header', () => {
     const styleText = container.querySelector('style')?.textContent ?? ''
     expect(styleText).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
     expect(styleText).not.toMatch(/rgb\(/)
+  })
+
+  it('renders the update-available dot on the settings icon when hasUpdateAvailable is true (REL-51)', () => {
+    renderHeader({ hasUpdateAvailable: true })
+
+    expect(screen.getByLabelText('update available')).toBeInTheDocument()
+  })
+
+  it('does not render the update-available dot when hasUpdateAvailable is false or absent (REL-51)', () => {
+    renderHeader({ hasUpdateAvailable: false })
+    expect(screen.queryByLabelText('update available')).not.toBeInTheDocument()
+
+    renderHeader()
+    expect(screen.queryByLabelText('update available')).not.toBeInTheDocument()
   })
 })

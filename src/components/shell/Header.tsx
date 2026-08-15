@@ -1,4 +1,4 @@
-// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11)
+// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11), release-distribution (REL-51)
 
 import {
   Hexagon,
@@ -19,6 +19,7 @@ export interface HeaderProps {
   onCreateTerminal: () => void
   onOpenSettings: () => void
   atMaxTerminals: boolean
+  hasUpdateAvailable?: boolean
 }
 
 /**
@@ -27,7 +28,12 @@ export interface HeaderProps {
  * every other icon is inert on purpose (HDR-09..HDR-11) — see
  * `.specs/features/shell-chrome/overview.md` Out of Scope.
  */
-export default function Header({ onCreateTerminal, onOpenSettings, atMaxTerminals }: HeaderProps) {
+export default function Header({
+  onCreateTerminal,
+  onOpenSettings,
+  atMaxTerminals,
+  hasUpdateAvailable = false,
+}: HeaderProps) {
   return (
     <header className="shell-header">
       <style>{`
@@ -48,6 +54,16 @@ export default function Header({ onCreateTerminal, onOpenSettings, atMaxTerminal
           position: absolute;
           top: -2px;
           right: -2px;
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: var(--accent);
+        }
+        .shell-header__settings { position: relative; }
+        .shell-header__update-dot {
+          position: absolute;
+          top: 2px;
+          right: 2px;
           width: 6px;
           height: 6px;
           border-radius: 50%;
@@ -141,8 +157,16 @@ export default function Header({ onCreateTerminal, onOpenSettings, atMaxTerminal
         <button type="button" disabled aria-label="avatar">
           <User size={18} />
         </button>
-        <button type="button" onClick={onOpenSettings} aria-label="settings">
+        <button
+          type="button"
+          onClick={onOpenSettings}
+          aria-label="settings"
+          className="shell-header__settings"
+        >
           <Settings size={18} />
+          {hasUpdateAvailable && (
+            <span className="shell-header__update-dot" aria-label="update available" />
+          )}
         </button>
       </div>
     </header>

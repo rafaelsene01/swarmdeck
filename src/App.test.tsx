@@ -1,14 +1,15 @@
-// SPEC: shell-chrome (HDR-01, HDR-08, EMPTY-01..EMPTY-09)
+// SPEC: shell-chrome (HDR-01, HDR-08, EMPTY-01..EMPTY-09), release-distribution (REL-52)
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import App from './App'
 
 // Same `vi.hoisted` pattern as `NewTerminalDialog.test.tsx` — the `vi.mock`
 // factories below are hoisted above these imports by Vitest's transform.
-const { invokeMock, openMock } = vi.hoisted(() => ({
+const { invokeMock, openMock, listenMock } = vi.hoisted(() => ({
   invokeMock: vi.fn(),
   openMock: vi.fn(),
+  listenMock: vi.fn(),
 }))
 
 vi.mock('@tauri-apps/api/core', () => ({
@@ -16,9 +17,21 @@ vi.mock('@tauri-apps/api/core', () => ({
   Channel: class {},
 }))
 
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: listenMock,
+}))
+
 vi.mock('@tauri-apps/plugin-dialog', () => ({
   open: openMock,
 }))
+
+/** Mesmo padrão de `useTaskStore.test.ts` — acha o handler registrado via
+ * `listen('update://available', ...)` para disparar o evento manualmente. */
+function getUpdateAvailableHandler() {
+  const call = listenMock.mock.calls.find(([name]) => name === 'update://available')
+  if (!call) throw new Error('listen("update://available", ...) não foi chamado')
+  return call[1] as (event: { payload: { version: string } }) => void
+}
 
 // `TerminalPane` drives real xterm.js against a PTY backend — out of scope
 // for App-level wiring tests (HDR-01/HDR-08) and not viable in jsdom; a stub
@@ -30,6 +43,8 @@ vi.mock('./components/terminal/TerminalPane', () => ({
 beforeEach(() => {
   invokeMock.mockReset()
   openMock.mockReset()
+  listenMock.mockReset()
+  listenMock.mockResolvedValue(() => {})
   // `TerminalHeader.handleClose` confirms before closing a terminal with an
   // active process (App always passes `hasActiveProcess`) - jsdom has no
   // native `window.confirm`.
@@ -80,6 +95,45 @@ describe('App - shell-chrome wiring', () => {
     fireEvent.click(screen.getByLabelText('settings'))
 
     expect(invokeMock).toHaveBeenCalledWith('settings_open')
+  })
+})
+
+describe('App - release-distribution update badge (REL-52)', () => {
+  it('receiving update://available shows the badge on the settings icon, and it stays visible for the rest of the session', async () => {
+    render(<App />)
+    await waitFor(() => expect(listenMock).toHaveBeenCalledWith('update://available', expect.any(Function)))
+
+    expect(screen.queryByLabelText('update available')).not.toBeInTheDocument()
+
+    const handler = getUpdateAvailableHandler()
+    act(() => {
+      handler({ payload: { version: '1.2.3' } })
+    })
+
+    expect(screen.getByLabelText('update available')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText('settings'))
+    expect(screen.getByLabelText('update available')).toBeInTheDocument()
+  })
+
+  it('repeated update://available events do not flicker or duplicate the badge (Edge Case)', async () => {
+    render(<App />)
+    await waitFor(() => expect(listenMock).toHaveBeenCalledWith('update://available', expect.any(Function)))
+
+    const handler = getUpdateAvailableHandler()
+    act(() => {
+      handler({ payload: { version: '1.2.3' } })
+      handler({ payload: { version: '1.2.4' } })
+    })
+
+    expect(screen.getAllByLabelText('update available')).toHaveLength(1)
+  })
+
+  it('with no event received, Header keeps hasUpdateAvailable=false', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    expect(screen.queryByLabelText('update available')).not.toBeInTheDocument()
   })
 })
 
