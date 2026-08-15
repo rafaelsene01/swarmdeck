@@ -1,11 +1,19 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.7] - 2026-08-15
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.6] - 2026-08-15
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Implement quota indicator functionality in the application, including a new QuotaIndicator component and associated tests. Enhance the SettingsShell to manage quota preferences, allowing users to toggle the indicator and select the tracking window. Update Cargo.toml to include necessary dependencies for HTTP requests and date handling. Ensure all components are integrated and tested for a seamless user experience.
 
 ## [0.1.5] - 2026-08-15
 
