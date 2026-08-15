@@ -21,7 +21,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Manager};
 use thiserror::Error;
 
-use crate::db::{auto_check, is_version_skipped, Db, DbError};
+use crate::db::{is_version_skipped, Db, DbError};
 use crate::paths::{self, Flavor};
 use crate::update::manifest::{self, Manifest, UpdateError as ManifestError};
 
@@ -46,77 +46,6 @@ pub enum UpdateError {
     CurrentExe(#[source] std::io::Error),
     #[error("executável sem diretório pai")]
     NoExeDir,
-    /// Compat: só existe para o `check_and_download_with` de `apply.rs`
-    /// compilar até T6 o retirar (o download automático some ali).
-    #[error("falha ao consultar o plugin de update: {0}")]
-    Plugin(String),
-}
-
-/// Compat provisório para `apply.rs`/`commands/update.rs`, que ainda
-/// esperam o formato antigo até T6/T7 retirarem o download automático.
-/// Usa o mesmo caminho HTTP de `status` — sem `UpdaterExt` — em vez do
-/// `fetch_remote_manifest` original.
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct UpdateInfo {
-    pub version: String,
-    pub notes: String,
-    pub flavor: String,
-    pub download_url: String,
-    pub signature: String,
-}
-
-pub async fn check(app: &AppHandle) -> Result<Option<UpdateInfo>, UpdateError> {
-    let db_state = app.state::<Mutex<Db>>();
-    let auto_check_enabled = {
-        let db = db_state.lock().expect("db mutex poisoned");
-        auto_check(db.conn())?
-    };
-    if !auto_check_enabled {
-        return Ok(None);
-    }
-
-    let current_version = app.package_info().version.to_string();
-    let flavor = paths::flavor(&exe_dir()?);
-    let key = target_key(flavor);
-    let endpoint_url = endpoint(app);
-
-    let manifest = match manifest::fetch(&endpoint_url).await {
-        Ok(manifest) => manifest,
-        Err(err) => {
-            eprintln!(
-                "swarmdeck: verificação de atualização falhou, tratando como sem atualização: {err}"
-            );
-            return Ok(None);
-        }
-    };
-
-    let remote = Version::parse(manifest.version.trim_start_matches('v'));
-    let current = Version::parse(current_version.trim_start_matches('v'));
-    let (Ok(remote_v), Ok(current_v)) = (remote, current) else {
-        return Ok(None);
-    };
-    if remote_v <= current_v {
-        return Ok(None);
-    }
-
-    {
-        let db = db_state.lock().expect("db mutex poisoned");
-        if is_version_skipped(db.conn(), &manifest.version)? {
-            return Ok(None);
-        }
-    }
-
-    let Some(entry) = manifest.platforms.get(&key) else {
-        return Ok(None);
-    };
-
-    Ok(Some(UpdateInfo {
-        version: manifest.version,
-        notes: manifest.notes,
-        flavor: key,
-        download_url: entry.url.clone(),
-        signature: entry.signature.clone(),
-    }))
 }
 
 /// Consulta o manifesto e devolve o status completo. Sempre ativo,

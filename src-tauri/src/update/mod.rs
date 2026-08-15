@@ -1,11 +1,9 @@
-// SPEC: release-distribution (REL-19, REL-21, REL-24)
+// SPEC: silent-update (SILENT-01, SILENT-09)
 
-//! Verificação de atualização do SwarmDeck.
-//!
-//! Metade instalada (REL-24): fala com o `tauri-plugin-updater` — ver
-//! [`check`]. A aplicação da atualização (instalada e portátil, REL-22,
-//! REL-25) e a UI que a aciona (REL-20, REL-23, REL-26) chegam nas tarefas
-//! seguintes (T16-T18) desta feature.
+//! Atualização do SwarmDeck: manifesto lido por um caminho HTTP único
+//! (`manifest`), status com versão instalada e mais recente (`check`),
+//! troca de executável assinada (`swap`) e aplicação confirmada
+//! (`apply::run`) — ver `.specs/features/silent-update/design.md`.
 
 pub mod apply;
 mod check;
@@ -13,4 +11,4 @@ pub mod manifest;
 pub mod swap;
 
 pub use apply::spawn_background_checker;
-pub use check::{check, status, UpdateError, UpdateInfo, UpdateStatus};
+pub use check::{status, UpdateError, UpdateStatus};

@@ -585,6 +585,41 @@ mod tests {
         );
     }
 
+    // 7. SILENT-19: falha em set_registry é só logada — a troca segue
+    // reportada como aplicada com sucesso, com a versão certa.
+    #[tokio::test]
+    async fn falha_no_registro_nao_invalida_a_troca_ja_aplicada() {
+        let exe_dir = tempfile::tempdir().unwrap();
+        let exe_path = exe_dir.path().join("app.exe");
+        fs::write(&exe_path, b"conteudo antigo").unwrap();
+        let applying: Applying = Mutex::new(false);
+        let m = manifest_with_entry("0.2.0", "chave", "url", SIGNATURE);
+
+        let result = run_with(
+            &applying,
+            exe_dir.path(),
+            "app.exe",
+            "chave",
+            PUBLIC_KEY,
+            Flavor::Installed,
+            || async { Ok(m) },
+            |_url| async { Ok(DATA.to_vec()) },
+            |_v| Err(std::io::Error::other("reg add falhou (simulado)")),
+        )
+        .await;
+
+        assert_eq!(
+            result.unwrap(),
+            "0.2.0",
+            "falha no registro não deveria virar Err nem mudar a versão reportada"
+        );
+        assert_eq!(
+            fs::read(&exe_path).unwrap(),
+            DATA,
+            "a troca de arquivo já tinha sido aplicada"
+        );
+    }
+
     // 6. flavor portátil -> gravador de registro NÃO é acionado.
     #[tokio::test]
     async fn flavor_portatil_nao_aciona_o_gravador_de_registro() {
