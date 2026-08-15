@@ -74,6 +74,7 @@ pub fn run() {
                                     let _ = main.close();
                                 }
                             },
+                            |msg| eprintln!("{msg}"),
                         );
                         if intercepted {
                             api.prevent_close();

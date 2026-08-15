@@ -40,11 +40,37 @@ const CHECK_INTERVAL: Duration = Duration::from_secs(3600);
 /// depois se repete a cada hora (REL-38), pelo resto da vida do processo.
 pub fn spawn_background_checker(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
-        loop {
-            check_and_download(&app).await;
-            tokio::time::sleep(CHECK_INTERVAL).await;
-        }
+        run_loop(
+            || check_and_download(&app),
+            |interval| tokio::time::sleep(interval),
+            None,
+        )
+        .await;
     });
+}
+
+/// Núcleo testável do loop de checagem: dispara `cycle` (boot-fire, REL-37),
+/// depois `wait(CHECK_INTERVAL)` (repetição a cada hora, REL-38), e repete.
+/// `cycle` nunca propaga erro (já loga e retorna dentro de
+/// `check_and_download_with`), então uma falha num ciclo não quebra a
+/// cadência — o próximo `wait`/`cycle` roda de qualquer jeito. `max_cycles`
+/// só existe para o teste parar o loop; produção passa `None` (infinito).
+async fn run_loop<C, CFut, W, WFut>(mut cycle: C, mut wait: W, max_cycles: Option<usize>)
+where
+    C: FnMut() -> CFut,
+    CFut: Future<Output = ()>,
+    W: FnMut(Duration) -> WFut,
+    WFut: Future<Output = ()>,
+{
+    let mut ran = 0;
+    loop {
+        cycle().await;
+        ran += 1;
+        if max_cycles == Some(ran) {
+            return;
+        }
+        wait(CHECK_INTERVAL).await;
+    }
 }
 
 /// Guarda de concorrência (REL-44): `true` se já há um update pendente no
@@ -81,6 +107,7 @@ async fn check_and_download(app: &AppHandle) {
                 serde_json::json!({ "version": version }),
             );
         },
+        |msg| eprintln!("{msg}"),
     )
     .await;
 }
@@ -100,6 +127,7 @@ async fn check_and_download_with<T, CheckFut, FetchFut>(
     check: impl FnOnce() -> CheckFut,
     fetch_and_download: impl FnOnce(&str) -> FetchFut,
     emit: impl FnOnce(&str),
+    mut log: impl FnMut(&str),
 ) where
     CheckFut: Future<Output = Result<Option<crate::update::UpdateInfo>, crate::update::UpdateError>>,
     FetchFut: Future<Output = Result<Option<T>, String>>,
@@ -112,7 +140,7 @@ async fn check_and_download_with<T, CheckFut, FetchFut>(
         Ok(Some(info)) => info,
         Ok(None) => return,
         Err(err) => {
-            eprintln!("swarmdeck: checagem automática de update falhou: {err}");
+            log(&format!("swarmdeck: checagem automática de update falhou: {err}"));
             return;
         }
     };
@@ -126,7 +154,7 @@ async fn check_and_download_with<T, CheckFut, FetchFut>(
         Err(err) => {
             // REL-43: download/plugin falhou, loga e mantém o Mutex vazio —
             // não sobrescreve, não repete fora do próximo ciclo.
-            eprintln!("swarmdeck: download de update falhou: {err}");
+            log(&format!("swarmdeck: download de update falhou: {err}"));
         }
     }
 }
@@ -135,19 +163,22 @@ async fn check_and_download_with<T, CheckFut, FetchFut>(
 /// update pendente, não faz nada (o fechamento segue normal, sem
 /// interceptar). Com update pendente, instala (erro só é logado — REL-47:
 /// falha na instalação não pode travar o fechamento) e então chama `close`
-/// para fechar de verdade. `install`/`close` entram como closures pelo
-/// mesmo motivo de `already_pending`: `Update::install` e `WebviewWindow`
-/// não são fakeáveis em teste.
+/// para fechar de verdade. `install`/`close`/`log` entram como closures pelo
+/// mesmo motivo de `already_pending`: `Update::install`, `WebviewWindow` e
+/// `eprintln!` não são fakeáveis/capturáveis em teste.
 pub fn handle_close(
     has_pending: bool,
     install: impl FnOnce() -> Result<(), String>,
     close: impl FnOnce(),
+    mut log: impl FnMut(&str),
 ) -> bool {
     if !has_pending {
         return false;
     }
     if let Err(err) = install() {
-        eprintln!("swarmdeck: falha ao instalar update, fechando sem instalar: {err}");
+        log(&format!(
+            "swarmdeck: falha ao instalar update, fechando sem instalar: {err}"
+        ));
     }
     close();
     true
@@ -178,6 +209,10 @@ mod tests {
         assert!(already_pending(&ocupado));
     }
 
+    fn nunca_loga(_msg: &str) {
+        panic!("log não deveria ser chamado nesse caminho");
+    }
+
     // REL-44: com update já pendente, um novo ciclo não chama check nem
     // fetch_and_download — o guard corta antes de qualquer rede.
     #[tokio::test]
@@ -189,6 +224,7 @@ mod tests {
             || async { panic!("check não deveria ser chamado com update já pendente") },
             |_v| async { panic!("fetch_and_download não deveria ser chamado") },
             |_v| panic!("emit não deveria ser chamado"),
+            nunca_loga,
         )
         .await;
 
@@ -205,6 +241,7 @@ mod tests {
             || async { Ok(None) },
             |_v| async { panic!("fetch_and_download não deveria ser chamado") },
             |_v| panic!("emit não deveria ser chamado"),
+            nunca_loga,
         )
         .await;
 
@@ -216,16 +253,19 @@ mod tests {
     #[tokio::test]
     async fn ciclo_com_erro_no_check_mantem_pendente_vazio() {
         let pending: Mutex<Option<&str>> = Mutex::new(None);
+        let mut logada = None;
 
         check_and_download_with(
             &pending,
             || async { Err(UpdateError::Plugin("rede indisponível".to_string())) },
             |_v| async { panic!("fetch_and_download não deveria ser chamado") },
             |_v| panic!("emit não deveria ser chamado"),
+            |msg| logada = Some(msg.to_string()),
         )
         .await;
 
         assert_eq!(*pending.lock().unwrap(), None);
+        assert!(logada.unwrap().contains("rede indisponível"));
     }
 
     // REL-41: versão nova encontrada, mas o plugin não confirma
@@ -239,6 +279,7 @@ mod tests {
             || async { Ok(Some(info("0.2.0"))) },
             |_v| async { Ok(None) },
             |_v| panic!("emit não deveria ser chamado"),
+            nunca_loga,
         )
         .await;
 
@@ -249,16 +290,19 @@ mod tests {
     #[tokio::test]
     async fn ciclo_com_falha_no_download_mantem_pendente_vazio() {
         let pending: Mutex<Option<&str>> = Mutex::new(None);
+        let mut logada = None;
 
         check_and_download_with(
             &pending,
             || async { Ok(Some(info("0.2.0"))) },
             |_v| async { Err("download falhou".to_string()) },
             |_v| panic!("emit não deveria ser chamado"),
+            |msg| logada = Some(msg.to_string()),
         )
         .await;
 
         assert_eq!(*pending.lock().unwrap(), None);
+        assert!(logada.unwrap().contains("download falhou"));
     }
 
     // REL-41/42: download com sucesso -> guarda no Mutex e emite a versão certa.
@@ -272,11 +316,58 @@ mod tests {
             || async { Ok(Some(info("0.2.0"))) },
             |_v| async { Ok(Some("update-baixado")) },
             |v| emitida = Some(v.to_string()),
+            nunca_loga,
         )
         .await;
 
         assert_eq!(*pending.lock().unwrap(), Some("update-baixado"));
         assert_eq!(emitida.as_deref(), Some("0.2.0"));
+    }
+
+    // P1-a: o loop dispara o ciclo antes de qualquer espera (boot-fire,
+    // REL-37) e repete espera+ciclo a cada CHECK_INTERVAL (REL-38) — a
+    // ordem das chamadas prova as duas coisas de uma vez.
+    #[tokio::test]
+    async fn run_loop_dispara_ciclo_no_boot_e_repete_no_intervalo() {
+        let eventos = Mutex::new(Vec::<String>::new());
+
+        run_loop(
+            || async { eventos.lock().unwrap().push("cycle".to_string()) },
+            |interval| {
+                eventos
+                    .lock()
+                    .unwrap()
+                    .push(format!("wait:{}", interval.as_secs()));
+                async {}
+            },
+            Some(3),
+        )
+        .await;
+
+        assert_eq!(
+            *eventos.lock().unwrap(),
+            vec!["cycle", "wait:3600", "cycle", "wait:3600", "cycle"]
+        );
+    }
+
+    // P1-a: um ciclo que "falha" (loga e retorna, como check_and_download_with
+    // já faz) não interrompe a cadência — o próximo wait/cycle roda igual.
+    #[tokio::test]
+    async fn run_loop_sobrevive_a_ciclo_com_falha() {
+        let ciclos = Mutex::new(0);
+
+        run_loop(
+            || async {
+                *ciclos.lock().unwrap() += 1;
+                // ciclo "falho": não retorna nada de especial, só roda —
+                // check_and_download_with já engole o erro internamente.
+            },
+            |_interval| async {},
+            Some(2),
+        )
+        .await;
+
+        assert_eq!(*ciclos.lock().unwrap(), 2);
     }
 
     // T4 (REL-45/46): sem pendente, não intercepta — install e close nunca rodam.
@@ -286,6 +377,7 @@ mod tests {
             false,
             || panic!("não deveria instalar sem pendente"),
             || panic!("não deveria fechar por conta própria sem pendente"),
+            nunca_loga,
         );
         assert!(!intercepted);
     }
@@ -302,18 +394,27 @@ mod tests {
                 Ok(())
             },
             || fechou = true,
+            nunca_loga,
         );
         assert!(intercepted);
         assert!(instalou);
         assert!(fechou);
     }
 
-    // T4 (REL-47): falha na instalação ainda fecha em seguida — só loga.
+    // T4 (REL-47): falha na instalação ainda fecha em seguida — e agora o
+    // log da falha é asserido, não só exercitado.
     #[test]
     fn falha_na_instalacao_ainda_fecha_em_seguida() {
         let mut fechou = false;
-        let intercepted = handle_close(true, || Err("boom".to_string()), || fechou = true);
+        let mut logada = None;
+        let intercepted = handle_close(
+            true,
+            || Err("boom".to_string()),
+            || fechou = true,
+            |msg| logada = Some(msg.to_string()),
+        );
         assert!(intercepted);
         assert!(fechou);
+        assert!(logada.unwrap().contains("boom"));
     }
 }
