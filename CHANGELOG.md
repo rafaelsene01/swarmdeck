@@ -1,6 +1,24 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.5] - 2026-08-15
+
+### Outros
+
+- Delete graphify-out directory
+
+- Delete screenshots directory
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Enhance CLAUDE.MD with new Knowledge Graph section detailing usage scenarios and best practices. Update settings.json to introduce PreToolUse hooks for smart grep functionality and improve command execution for code review graph tools, ensuring better integration and user experience.
+
+- Add .gitignore and project.yml for Serena configuration; enhance update handling in Tauri
+
+- Implement release-distribution update handling in App component; add tests for update badge visibility in Header. Enhance App and Header components to manage and display update availability status, ensuring a seamless user experience during updates.
+
+- Refactor async function signature and improve logging format in update handling. Ensure consistent code style in apply.rs and re-order module imports in mod.rs for better organization.
+
 ## [0.1.4] - 2026-08-13
 
 ### Outros
@@ -16,6 +34,8 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 - Remove obsolete testing and specification files for agent selection and conversation cleanup features. This cleanup enhances project organization by eliminating outdated documentation that no longer reflects the current development state, streamlining resources for future work.
 
 - Update .gitignore to exclude .specs directory, enhance AGENTS.md with concise build and test command descriptions, and add lucide-react dependency in package.json and package-lock.json. Refactor App component to initialize with an empty terminal state and integrate Header and EmptyState components for improved user experience.
+
+- Update .gitignore to refine ignored files, remove AGENTS.md for improved project clarity, and enhance CLAUDE.MD with detailed MCP tools usage instructions. Introduce new skills for debugging, exploring the codebase, refactoring safely, and reviewing changes, while deleting obsolete spec-driven-eval files to streamline resources and maintain documentation accuracy.
 
 ## [0.1.3] - 2026-08-12
 
