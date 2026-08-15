@@ -9,7 +9,8 @@
 
 pub mod apply;
 mod check;
-pub mod portable;
+pub mod manifest;
+pub mod swap;
 
-pub use apply::{handle_close, spawn_background_checker, PendingUpdate};
-pub use check::{check, UpdateError, UpdateInfo};
+pub use apply::spawn_background_checker;
+pub use check::{check, status, UpdateError, UpdateInfo, UpdateStatus};

@@ -227,6 +227,27 @@ jobs:
           npx tauri signer sign "$ZIP"
           gh release upload "${{ needs.prepare.outputs.tag }}" "$ZIP" "$ZIP.sig" --clobber
 
+      # SPEC: silent-update (SILENT-20)
+      # Payload da atualização silenciosa: o executável cru assinado, sem
+      # instalador nem zip — `swap::apply_swap` já recebe `&[u8]` e verifica
+      # minisign. Publicado sob a chave de manifesto `windows-x86_64-silent`,
+      # separada de `windows-x86_64` (MSI/NSIS) e `windows-x86_64-portable`
+      # (zip) — os três convivem no mesmo `latest.json`.
+      - name: Executável cru assinado (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.prepare.outputs.version }}"
+          RAW_EXE="SwarmDeck_${VERSION}_x64.exe"
+          cp target/release/SwarmDeck.exe "$RAW_EXE"
+          npx tauri signer sign "$RAW_EXE"
+          gh release upload "${{ needs.prepare.outputs.tag }}" "$RAW_EXE" "$RAW_EXE.sig" --clobber
+
   finalize:
     name: Publicar a release
     needs: [prepare, build]
@@ -265,6 +286,32 @@ jobs:
             --assets assets.json \
             --name "$ZIP_NAME" \
             --signature-file "${ZIP_NAME}.sig"
+
+          gh release upload "$TAG" latest.json --clobber
+
+      # SPEC: silent-update (SILENT-20)
+      # Segunda entrada no mesmo latest.json: o executável cru assinado,
+      # sob a chave windows-x86_64-silent — payload da atualização silenciosa
+      # (SILENT-01: um manifesto só, lido por um caminho HTTP só).
+      - name: Injetar a entrada silenciosa no latest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ needs.prepare.outputs.tag }}"
+          VERSION="${{ needs.prepare.outputs.version }}"
+          RAW_NAME="SwarmDeck_${VERSION}_x64.exe"
+
+          gh release download "$TAG" -p latest.json -p "${RAW_NAME}.sig" --clobber
+          gh release view "$TAG" --json assets --jq '.assets' > assets.json
+
+          node scripts/patch-latest-json.mjs \
+            --manifest latest.json \
+            --key windows-x86_64-silent \
+            --tag "$TAG" \
+            --assets assets.json \
+            --name "$RAW_NAME" \
+            --signature-file "${RAW_NAME}.sig"
 
           gh release upload "$TAG" latest.json --clobber
 

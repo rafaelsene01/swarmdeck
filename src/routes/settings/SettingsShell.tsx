@@ -1,6 +1,6 @@
-// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10)
+// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10), silent-update (SILENT-09, SILENT-13, SILENT-25)
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { CircleDot, Download, FolderOpen, SlidersHorizontal, Users, X } from 'lucide-react'
@@ -8,8 +8,7 @@ import AgentPanel, { type AgentDescriptor } from './AgentPanel'
 import GeneralPanel, { type QuotaPrefs } from './GeneralPanel'
 import ProjectsPanel, { type ProjectRow } from './ProjectsPanel'
 import StatusesPanel, { type StatusRow } from './StatusesPanel'
-import UpdateSettings, { type CheckState } from '../../components/settings/UpdateSettings'
-import packageJson from '../../../package.json'
+import UpdateSettings, { type UpdateState } from '../../components/settings/UpdateSettings'
 
 type SectionId = 'general' | 'agents' | 'projects' | 'statuses' | 'updates'
 
@@ -46,11 +45,15 @@ interface ProjectRecord {
   last_used: number | null
 }
 
-/** Forma que `update_check` devolve (`UpdateInfo` em
- * `src-tauri/src/update/check.rs`) quando há atualização — `null` quando o
- * app já está na versão mais recente ou `auto_check` está desligado. */
-interface UpdateCheckResult {
-  version: string
+/** Espelha `UpdateStatus` de `src-tauri/src/update/check.rs` — sem
+ * `rename_all`, então os campos chegam em snake_case. */
+interface UpdateStatusResult {
+  current: string
+  latest: string | null
+  notes: string
+  has_update: boolean
+  mode: 'installed' | 'portable'
+  platform_key: string
 }
 
 export default function SettingsShell() {
@@ -81,16 +84,18 @@ export default function SettingsShell() {
   // mas nada aqui persiste no banco. Ver DESVIO no relatório da task.
   const [statuses, setStatuses] = useState<StatusRow[]>([])
 
-  // Atualizações (REL-32/33/34): `update_check` já está registrado e é
-  // reusado como está. `installedVersion` vem do `package.json` (única
-  // fonte hoje sem depender de comando novo); `mode` não tem detector
-  // exposto ao frontend (fica fixo em `'installed'`, mesma limitação de
-  // `statuses` acima). `autoCheckEnabled` (SET-09/SET-10) carrega e persiste
-  // de verdade via `update_auto_check_get`/`update_auto_check_set`
-  // (`release-distribution/01-auto-check-toggle-commands`) — o `true` aqui
-  // é só o valor inicial até a resposta chegar.
+  // Atualizações (SILENT-09/13/25): `update_status` sempre consulta ao abrir
+  // a seção, independente do toggle de verificação automática abaixo — esse
+  // toggle só governa o checador em segundo plano. `autoCheckEnabled`
+  // (SET-09/SET-10) carrega e persiste de verdade via
+  // `update_auto_check_get`/`update_auto_check_set` — o `true` aqui é só o
+  // valor inicial até a resposta chegar.
   const [autoCheckEnabled, setAutoCheckEnabled] = useState(true)
-  const [checkState, setCheckState] = useState<CheckState>({ status: 'idle' })
+  const [updateState, setUpdateState] = useState<UpdateState>({ status: 'loading' })
+  // Preserva a última versão instalada conhecida através de uma falha de
+  // `update_status` (SILENT-25) — a versão instalada não muda entre
+  // consultas, só a de rede pode falhar.
+  const lastKnownVersionRef = useRef('')
 
   useEffect(() => {
     let cancelled = false
@@ -177,15 +182,55 @@ export default function SettingsShell() {
     void invoke('quota_prefs_set', { prefs: next })
   }
 
-  const handleCheckNow = () => {
-    setCheckState({ status: 'checking' })
-    void invoke<UpdateCheckResult | null>('update_check')
-      .then((info) => {
-        setCheckState(info ? { status: 'available', version: info.version } : { status: 'up_to_date' })
-      })
-      .catch((error: unknown) => {
-        setCheckState({ status: 'error', message: String(error) })
-      })
+  // SILENT-09/SILENT-25: consulta ao abrir a seção — sempre, mesmo com a
+  // verificação automática desligada (a preferência só governa o checador
+  // em segundo plano). Falha de rede já chega como `latest: null` no `Ok`
+  // (tratada abaixo); só a rejeição do próprio `invoke` (erro de backend)
+  // cai no `catch`.
+  useEffect(() => {
+    if (section !== 'updates') return
+    let cancelled = false
+    setUpdateState({ status: 'loading' })
+    invoke<UpdateStatusResult>('update_status').then(
+      (result) => {
+        if (cancelled) return
+        lastKnownVersionRef.current = result.current
+        setUpdateState(
+          result.latest === null
+            ? { status: 'unavailable', current: result.current }
+            : {
+                status: 'ready',
+                current: result.current,
+                latest: result.latest,
+                hasUpdate: result.has_update,
+                mode: result.mode,
+              },
+        )
+      },
+      () => {
+        if (cancelled) return
+        setUpdateState({ status: 'unavailable', current: lastKnownVersionRef.current })
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [section])
+
+  // SILENT-02/13: confirmação explícita baixa e aplica a atualização;
+  // "Reiniciar agora" só existe depois de aplicada com sucesso.
+  const handleApply = () => {
+    if (updateState.status !== 'ready' || !updateState.hasUpdate) return
+    const { current, latest } = updateState
+    setUpdateState({ status: 'applying', current, latest })
+    void invoke<string>('update_apply').then(
+      (version) => setUpdateState({ status: 'applied', version }),
+      (error: unknown) => setUpdateState({ status: 'error', current, message: String(error) }),
+    )
+  }
+
+  const handleRestart = () => {
+    void invoke('update_restart')
   }
 
   const handleCreateStatus = (label: string, instruction: string) => {
@@ -368,12 +413,11 @@ export default function SettingsShell() {
 
           {section === 'updates' && (
             <UpdateSettings
-              installedVersion={packageJson.version}
-              mode="installed"
+              state={updateState}
               autoCheckEnabled={autoCheckEnabled}
-              checkState={checkState}
               onToggleAutoCheck={handleToggleAutoCheck}
-              onCheckNow={handleCheckNow}
+              onApply={handleApply}
+              onRestart={handleRestart}
             />
           )}
         </div>

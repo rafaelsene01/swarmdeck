@@ -1,4 +1,4 @@
-// SPEC: release-distribution (REL-20, REL-23, REL-35, REL-36)
+// SPEC: silent-update (SILENT-09, SILENT-25)
 
 //! Comandos Tauri que alimentam a seção "Atualizações" de `UpdateSettings.tsx`.
 //!
@@ -12,13 +12,27 @@ use std::sync::Mutex;
 use tauri::{AppHandle, State};
 
 use crate::db::{self, skip_version, Db};
-use crate::update::{self, UpdateInfo};
+use crate::update::apply;
+use crate::update::{self, UpdateStatus};
 
-/// Verificação sob demanda: mesmo núcleo de `update::check` usado no boot
-/// (T15), aqui acionável a qualquer momento (ex.: um botão futuro em T18).
+/// Versão instalada e mais recente publicada, sempre — mesmo quando são
+/// iguais (SILENT-09) ou quando a consulta falha (SILENT-25, `latest: None`).
 #[tauri::command]
-pub async fn update_check(app: AppHandle) -> Result<Option<UpdateInfo>, String> {
-    update::check(&app).await.map_err(|e| e.to_string())
+pub async fn update_status(app: AppHandle) -> Result<UpdateStatus, String> {
+    update::status(&app).await.map_err(|e| e.to_string())
+}
+
+/// Baixa e aplica a atualização confirmada, devolvendo a versão aplicada.
+#[tauri::command]
+pub async fn update_apply(app: AppHandle) -> Result<String, String> {
+    apply::run(&app).await.map_err(|e| e.to_string())
+}
+
+/// Reinicia o processo do app (SILENT-13) — chamado depois de `update_apply`
+/// ter trocado o executável.
+#[tauri::command]
+pub fn update_restart(app: AppHandle) {
+    app.restart();
 }
 
 /// Marca `version` como pulada (REL-23) — só essa versão para de gerar
@@ -94,5 +108,18 @@ mod tests {
 
         let result = with_db(&mutex, |db| db::auto_check(db.conn()));
         assert!(result.is_err(), "mutex poisoned deve virar Err, não panic");
+    }
+
+    // T8: `update_apply` traduz `ApplyError` para `Err(String)` via
+    // `.to_string()` — mesmo mecanismo de tradução que `with_db` usa para
+    // `DbError`, testado aqui direto na mensagem, sem app Tauri montado
+    // (`apply::run` exige `AppHandle`, não fakeável neste crate).
+    #[test]
+    fn apply_error_traduz_para_string_com_mensagem_legivel() {
+        let err = apply::ApplyError::PlatformUnavailable;
+        assert_eq!(
+            err.to_string(),
+            "atualização não disponível para esta instalação"
+        );
     }
 }

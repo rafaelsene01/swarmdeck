@@ -1,35 +1,28 @@
-// SPEC: release-distribution (REL-22, REL-24, REL-25)
+// SPEC: silent-update (SILENT-04, SILENT-05, SILENT-18, SILENT-19, SILENT-22, SILENT-23, SILENT-26)
 
-//! Aplicação da atualização no modo portátil.
+//! Troca de executável na pasta do app — vale para os dois flavors,
+//! instalado e portátil (SILENT-05, SILENT-18): a instalação real via NSIS
+//! usa `installMode: "currentUser"`, então `%LOCALAPPDATA%\SwarmDeck` é
+//! gravável sem admin, e a operação de troca é idêntica nos dois casos.
 //!
-//! Cobre REL-22 (baixar, verificar assinatura, aplicar e reiniciar),
-//! REL-24 (metade portátil do fluxo de update) e REL-25 (assinatura
-//! inválida aborta sem tocar em nenhum arquivo).
+//! Renomeado de `portable.rs` (T4) — corpos e testes migram sem alteração
+//! de comportamento; só o nome deixa de mentir sobre o escopo.
 //!
-//! ## Fronteiras desta task (T16)
-//!
-//! - **Download**: fora desta função. `apply_portable` recebe
+//! - **Download**: fora desta função. `apply_swap` recebe
 //!   `downloaded_bytes: &[u8]` — bytes já completos, em memória. Essa
 //!   assinatura de função é, ela mesma, a garantia estrutural de "sem
-//!   parcial" (REL-22): não existe um caminho de stream/`.part` por onde
-//!   bytes parciais cheguem até aqui. Quem baixa (T17/T18) é responsável
-//!   por só chamar esta função depois que o download inteiro terminar; o
-//!   teste `apply_portable_rejeita_bytes_truncados_pela_assinatura_do_arquivo_completo`
-//!   prova a consequência prática: mesmo que bytes truncados escapem
-//!   dessa responsabilidade e cheguem aqui, a assinatura (calculada sobre
-//!   o arquivo inteiro) os rejeita antes de tocar em qualquer arquivo.
+//!   parcial" (SILENT-22): não existe um caminho de stream/`.part` por onde
+//!   bytes parciais cheguem até aqui. Quem baixa (T7) é responsável por só
+//!   chamar esta função depois que o download inteiro terminar; o teste
+//!   `apply_swap_rejeita_bytes_truncados_pela_assinatura_do_arquivo_completo`
+//!   prova a consequência prática: mesmo que bytes truncados escapem dessa
+//!   responsabilidade e cheguem aqui, a assinatura (calculada sobre o
+//!   arquivo inteiro) os rejeita antes de tocar em qualquer arquivo.
 //! - **Extração de zip**: `downloaded_bytes` é tratado, nesta task, como o
-//!   conteúdo direto do novo executável — não um `.zip` inteiro. Nenhuma
-//!   dependência de descompactação está no workspace hoje; extração de
-//!   zip real fica para quando o formato do artefato portátil exigir (ver
-//!   DESVIO no relatório desta task). A lógica de troca/rollback abaixo é
-//!   a mesma independente disso.
-//! - **Relançamento do processo**: fora do escopo (T19, verificação
-//!   manual declarada no `tasks.md`).
-//! - **Erro próprio**: [`PortableUpdateError`] é distinto de
-//!   `crate::update::UpdateError` (definido em `check.rs`, fora dos
-//!   arquivos que esta task pode tocar) — unificar os dois, se fizer
-//!   sentido, é decisão de quem escrever o chamador em T17/T18.
+//!   conteúdo direto do novo executável — não um `.zip` inteiro. Fora de
+//!   escopo por decisão da spec (ver `spec.md`, Out of Scope).
+//! - **Relançamento do processo**: fora do escopo desta função (comando
+//!   `update_restart`, T8).
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -54,14 +47,14 @@ pub enum PortableUpdateError {
 }
 
 /// Verifica a assinatura minisign de `data` contra `public_key` (base64,
-/// no mesmo formato usado pelo `pubkey` de `tauri.conf.json` — ver
-/// design.md, componente 7). A chave pública é recebida por parâmetro:
-/// buscá-la da config do app é responsabilidade de quem chama, não desta
-/// função, para ela continuar testável isoladamente.
+/// no mesmo formato usado pelo `pubkey` de `tauri.conf.json`). A chave
+/// pública é recebida por parâmetro: buscá-la da config do app é
+/// responsabilidade de quem chama, não desta função, para ela continuar
+/// testável isoladamente.
 ///
 /// `allow_legacy = false`: só aceita o modo "pre-hashed" que ferramentas
 /// modernas (minisign atual, rsign2, `tauri signer`) produzem — o mesmo
-/// esquema que o `tauri-plugin-updater` usa internamente (REL-19..REL-21).
+/// esquema que o `tauri-plugin-updater` usa internamente.
 pub fn verify_signature(
     data: &[u8],
     signature: &str,
@@ -75,21 +68,21 @@ pub fn verify_signature(
         .map_err(|e| PortableUpdateError::SignatureMismatch(e.to_string()))
 }
 
-/// Aplica a atualização portátil em `exe_dir`: reprova pasta
-/// somente-leitura antes de processar qualquer byte, verifica a
-/// assinatura antes de tocar em qualquer arquivo, e só então troca o
-/// executável — renomeando o atual para `<exe_name>.old` (rename, não
-/// cópia: atômico no mesmo filesystem) antes de escrever o novo. Falha na
-/// escrita do novo executável restaura o `.old` de volta, deixando o
-/// estado final idêntico ao inicial (REL-25).
-pub fn apply_portable(
+/// Aplica a troca de executável em `exe_dir`: reprova pasta somente-leitura
+/// antes de processar qualquer byte, verifica a assinatura antes de tocar
+/// em qualquer arquivo, e só então troca o executável — renomeando o atual
+/// para `<exe_name>.old` (rename, não cópia: atômico no mesmo filesystem)
+/// antes de escrever o novo. Falha na escrita do novo executável restaura
+/// o `.old` de volta, deixando o estado final idêntico ao inicial
+/// (SILENT-23).
+pub fn apply_swap(
     exe_dir: &Path,
     exe_name: &str,
     downloaded_bytes: &[u8],
     signature: &str,
     public_key: &str,
 ) -> Result<(), PortableUpdateError> {
-    apply_portable_with(
+    apply_swap_with(
         exe_dir,
         exe_name,
         downloaded_bytes,
@@ -99,12 +92,12 @@ pub fn apply_portable(
     )
 }
 
-/// Núcleo testável de `apply_portable`: a escrita do novo executável entra
-/// por closure, para o teste injetar uma falha no meio da troca sem
-/// precisar manipular permissões de arquivo reais no meio do fluxo (mesmo
-/// padrão de `check_with` em `check.rs` e `resolve_data_dir` em
+/// Núcleo testável de `apply_swap`: a escrita do novo executável entra por
+/// closure, para o teste injetar uma falha no meio da troca sem precisar
+/// manipular permissões de arquivo reais no meio do fluxo (mesmo padrão de
+/// `check_with`/`status_with` em `check.rs` e `resolve_data_dir` em
 /// `paths.rs`: dependência injetável em vez de mock de framework).
-fn apply_portable_with(
+fn apply_swap_with(
     exe_dir: &Path,
     exe_name: &str,
     downloaded_bytes: &[u8],
@@ -136,14 +129,48 @@ fn apply_portable_with(
 }
 
 /// Apaga `<exe_name>.old` remanescente, se existir. Chamado no boot
-/// seguinte a uma troca bem-sucedida — quem chama isto no boot real do
-/// app é responsabilidade de fora desta task.
+/// seguinte a uma troca bem-sucedida (SILENT-07).
 pub fn cleanup_stale_old(exe_dir: &Path, exe_name: &str) -> std::io::Result<()> {
     let old_path = exe_dir.join(format!("{exe_name}.old"));
     if old_path.exists() {
         fs::remove_file(&old_path)?;
     }
     Ok(())
+}
+
+/// Chave de desinstalação padrão do flavor instalado no Windows
+/// (`HKCU`, sem admin — o NSIS usa `installMode: "currentUser"`).
+#[cfg(windows)]
+pub const UNINSTALL_KEY: &str =
+    r"HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\SwarmDeck";
+
+/// Grava `DisplayVersion` em `key` via `reg add` (SILENT-18) — sem crate
+/// `winreg` nova, mesmo padrão de `std::process::Command` que `paths.rs` já
+/// usa para `icacls` nos testes. Falha aqui é responsabilidade de quem
+/// chama tratar como não-fatal (SILENT-19): o binário novo já está no
+/// lugar antes desta chamada rodar.
+#[cfg(windows)]
+pub fn set_registry_display_version(key: &str, version: &str) -> std::io::Result<()> {
+    let status = std::process::Command::new("reg")
+        .args([
+            "add",
+            key,
+            "/v",
+            "DisplayVersion",
+            "/t",
+            "REG_SZ",
+            "/d",
+            version,
+            "/f",
+        ])
+        .status()?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(std::io::Error::other(format!(
+            "reg add saiu com código {status}"
+        )))
+    }
 }
 
 #[cfg(test)]
@@ -187,12 +214,12 @@ mod tests {
     // checagem de gravabilidade roda antes da verificação de assinatura,
     // não depois.
     #[test]
-    fn apply_portable_reprova_pasta_somente_leitura_antes_de_verificar_assinatura() {
+    fn apply_swap_reprova_pasta_somente_leitura_antes_de_verificar_assinatura() {
         let exe_dir = tempfile::tempdir().unwrap();
         let path = exe_dir.path();
         deny_write(path);
 
-        let result = apply_portable(path, "app.exe", DATA, SIGNATURE, PUBLIC_KEY);
+        let result = apply_swap(path, "app.exe", DATA, SIGNATURE, PUBLIC_KEY);
 
         allow_write(path);
 
@@ -209,12 +236,12 @@ mod tests {
     // 5. fluxo completo com sucesso: exe_name termina com o conteúdo novo,
     // exe_name.old existe com o conteúdo antigo.
     #[test]
-    fn apply_portable_com_sucesso_troca_o_executavel_e_preserva_o_old() {
+    fn apply_swap_com_sucesso_troca_o_executavel_e_preserva_o_old() {
         let exe_dir = tempfile::tempdir().unwrap();
         let exe_path = exe_dir.path().join("app.exe");
         fs::write(&exe_path, b"conteudo antigo").unwrap();
 
-        apply_portable(exe_dir.path(), "app.exe", DATA, SIGNATURE, PUBLIC_KEY).unwrap();
+        apply_swap(exe_dir.path(), "app.exe", DATA, SIGNATURE, PUBLIC_KEY).unwrap();
 
         assert_eq!(fs::read(&exe_path).unwrap(), DATA);
         assert_eq!(
@@ -225,15 +252,15 @@ mod tests {
 
     // 6. falha na escrita do novo executável (injetada) -> restaura o
     // executável original, sem `.old` sobrando (o rename de volta já o
-    // consome -- ver comentário em apply_portable_with sobre a decisão de
-    // não deixar resíduo de rollback).
+    // consome -- ver comentário em apply_swap_with sobre a decisão de não
+    // deixar resíduo de rollback).
     #[test]
-    fn apply_portable_restaura_o_executavel_anterior_quando_a_escrita_falha() {
+    fn apply_swap_restaura_o_executavel_anterior_quando_a_escrita_falha() {
         let exe_dir = tempfile::tempdir().unwrap();
         let exe_path = exe_dir.path().join("app.exe");
         fs::write(&exe_path, b"conteudo original").unwrap();
 
-        let result = apply_portable_with(
+        let result = apply_swap_with(
             exe_dir.path(),
             "app.exe",
             DATA,
@@ -270,24 +297,24 @@ mod tests {
         assert!(cleanup_stale_old(exe_dir.path(), "app.exe").is_ok());
     }
 
-    // 8. garantia estrutural de "sem parcial" (REL-22): apply_portable só
+    // 8. garantia estrutural de "sem parcial" (SILENT-22): apply_swap só
     // aceita `&[u8]` completo, nunca um stream -- não há, na assinatura da
     // função, um jeito de "ir alimentando" bytes parciais. Este teste prova
     // a consequência prática dessa escolha de design: se alguém chamasse
-    // apply_portable com bytes truncados (um download interrompido que
-    // escapou da responsabilidade de quem baixa), a verificação de
-    // assinatura -- que cobre o arquivo inteiro -- rejeita, e nada no disco
-    // muda. "Sem parcial" não depende de checar um contador de bytes; é a
-    // assinatura minisign, calculada sobre o arquivo completo, que torna
-    // qualquer prefixo truncado inválido.
+    // apply_swap com bytes truncados (um download interrompido que escapou
+    // da responsabilidade de quem baixa), a verificação de assinatura --
+    // que cobre o arquivo inteiro -- rejeita, e nada no disco muda. "Sem
+    // parcial" não depende de checar um contador de bytes; é a assinatura
+    // minisign, calculada sobre o arquivo completo, que torna qualquer
+    // prefixo truncado inválido.
     #[test]
-    fn apply_portable_rejeita_bytes_truncados_pela_assinatura_do_arquivo_completo() {
+    fn apply_swap_rejeita_bytes_truncados_pela_assinatura_do_arquivo_completo() {
         let exe_dir = tempfile::tempdir().unwrap();
         let exe_path = exe_dir.path().join("app.exe");
         fs::write(&exe_path, b"conteudo original").unwrap();
         let partial = &DATA[..2]; // "te" -- download interrompido no meio
 
-        let result = apply_portable(exe_dir.path(), "app.exe", partial, SIGNATURE, PUBLIC_KEY);
+        let result = apply_swap(exe_dir.path(), "app.exe", partial, SIGNATURE, PUBLIC_KEY);
 
         assert!(matches!(
             result,
@@ -334,5 +361,48 @@ mod tests {
             .arg("/remove:d")
             .arg("*S-1-1-0")
             .status();
+    }
+
+    // T5: DisplayVersion no registro. Subchave descartável de HKCU, apagada
+    // ao final — nunca a chave real de desinstalação.
+    #[cfg(windows)]
+    mod registry_tests {
+        use super::super::*;
+
+        const TEST_KEY: &str = r"HKCU\Software\SwarmDeckUpdateTest";
+
+        fn delete_test_key() {
+            let _ = std::process::Command::new("reg")
+                .args(["delete", TEST_KEY, "/f"])
+                .status();
+        }
+
+        // 9. grava uma versão, relê com reg query, confere o valor.
+        #[test]
+        fn grava_e_relê_display_version_numa_subchave_descartavel() {
+            delete_test_key();
+
+            set_registry_display_version(TEST_KEY, "0.2.0").expect("gravação deve funcionar");
+
+            let output = std::process::Command::new("reg")
+                .args(["query", TEST_KEY, "/v", "DisplayVersion"])
+                .output()
+                .expect("reg query deve rodar");
+            let text = String::from_utf8_lossy(&output.stdout);
+
+            delete_test_key();
+
+            assert!(
+                text.contains("0.2.0"),
+                "reg query deveria devolver a versão gravada, saída: {text}"
+            );
+        }
+
+        // 10. chave inválida -> Err, sem panicar.
+        #[test]
+        fn chave_invalida_devolve_err_sem_panicar() {
+            let result = set_registry_display_version("", "0.2.0");
+            assert!(result.is_err());
+        }
     }
 }

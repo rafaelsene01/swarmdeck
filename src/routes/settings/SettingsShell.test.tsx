@@ -83,6 +83,15 @@ describe('SettingsShell — sidebar com ícones e trilho (SET-06/07/08)', () => 
   })
 })
 
+const READY_STATUS = {
+  current: '0.1.0',
+  latest: '0.1.0',
+  notes: '',
+  has_update: false,
+  mode: 'installed' as const,
+  platform_key: 'windows-x86_64-silent',
+}
+
 describe('SettingsShell — persistência do toggle de auto-check (SET-09/10)', () => {
   beforeEach(() => {
     invokeMock.mockImplementation((command: string) => {
@@ -91,6 +100,7 @@ describe('SettingsShell — persistência do toggle de auto-check (SET-09/10)', 
       if (command === 'project_list') return Promise.resolve([])
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
       if (command === 'update_auto_check_get') return Promise.resolve(false)
+      if (command === 'update_status') return Promise.resolve(READY_STATUS)
       return Promise.resolve(null)
     })
   })
@@ -124,6 +134,7 @@ describe('SettingsShell — persistência do toggle de auto-check (SET-09/10)', 
       if (command === 'project_list') return Promise.resolve([])
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
       if (command === 'update_auto_check_get') return Promise.reject(new Error('boom'))
+      if (command === 'update_status') return Promise.resolve(READY_STATUS)
       return Promise.resolve(null)
     })
 
@@ -194,5 +205,108 @@ describe('SettingsShell — seção Geral do indicador de cota (QUOTA-08/09/10)'
     expect(invokeMock).toHaveBeenCalledWith('quota_prefs_set', {
       prefs: { enabled: true, window: 'both' },
     })
+  })
+})
+
+describe('SettingsShell — seção Atualizações ligada ao fluxo confirmado (SILENT-09/13/25)', () => {
+  function baseMock(overrides: Record<string, () => Promise<unknown>> = {}) {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === 'agent_catalog') return Promise.resolve([])
+      if (command === 'agent_default') return Promise.resolve(null)
+      if (command === 'project_list') return Promise.resolve([])
+      if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
+      if (command === 'update_auto_check_get') return Promise.resolve(true)
+      const override = overrides[command]
+      if (override) return override()
+      return Promise.resolve(null)
+    })
+  }
+
+  it('abrir a seção chama update_status e monta o estado ready com os campos devolvidos', async () => {
+    baseMock({
+      update_status: () =>
+        Promise.resolve({
+          current: '0.1.0',
+          latest: '0.2.0',
+          notes: '',
+          has_update: true,
+          mode: 'installed',
+          platform_key: 'windows-x86_64-silent',
+        }),
+    })
+
+    render(<SettingsShell />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+    fireEvent.click(screen.getByRole('button', { name: /Atualizações/ }))
+
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_status'))
+    expect(await screen.findByText('0.1.0')).toBeInTheDocument()
+    expect(await screen.findByText(/Nova versão disponível: 0.2.0/)).toBeInTheDocument()
+  })
+
+  it('falha de update_status monta o estado unavailable com a versão instalada preservada', async () => {
+    baseMock({
+      update_status: () => Promise.reject(new Error('boom')),
+    })
+
+    render(<SettingsShell />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+    fireEvent.click(screen.getByRole('button', { name: /Atualizações/ }))
+
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_status'))
+    expect(await screen.findByText(/Não foi possível consultar/)).toBeInTheDocument()
+  })
+
+  it('confirmação chama update_apply e transiciona applying para applied', async () => {
+    baseMock({
+      update_status: () =>
+        Promise.resolve({
+          current: '0.1.0',
+          latest: '0.2.0',
+          notes: '',
+          has_update: true,
+          mode: 'installed',
+          platform_key: 'windows-x86_64-silent',
+        }),
+      update_apply: () => Promise.resolve('0.2.0'),
+    })
+
+    render(<SettingsShell />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+    fireEvent.click(screen.getByRole('button', { name: /Atualizações/ }))
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_status'))
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Baixar e atualizar' }))
+
+    expect(invokeMock).toHaveBeenCalledWith('update_apply')
+    expect(
+      await screen.findByText('Atualizado para 0.2.0. Reinicie para concluir.'),
+    ).toBeInTheDocument()
+  })
+
+  it('"Reiniciar agora" chama update_restart', async () => {
+    baseMock({
+      update_status: () =>
+        Promise.resolve({
+          current: '0.1.0',
+          latest: '0.2.0',
+          notes: '',
+          has_update: true,
+          mode: 'installed',
+          platform_key: 'windows-x86_64-silent',
+        }),
+      update_apply: () => Promise.resolve('0.2.0'),
+    })
+
+    render(<SettingsShell />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+    fireEvent.click(screen.getByRole('button', { name: /Atualizações/ }))
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_status'))
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Baixar e atualizar' }))
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_apply'))
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Reiniciar agora' }))
+    expect(invokeMock).toHaveBeenCalledWith('update_restart')
   })
 })

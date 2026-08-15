@@ -2,7 +2,7 @@
 
 use std::sync::Mutex;
 
-use tauri::{Manager, WindowEvent};
+use tauri::Manager;
 
 pub mod agents;
 pub mod commands;
@@ -53,49 +53,32 @@ pub fn run() {
             // grava aqui via `app.state::<QuotaCache>()`.
             app.manage(quota::QuotaCache::new());
 
-            // SPEC: release-distribution (REL-37, REL-45, REL-46, REL-47)
-            // Checagem/download automáticos rodam sozinhos em segundo plano
-            // (update::apply); a janela `main` intercepta o próximo
-            // `CloseRequested` para instalar, se houver algo pendente, antes
-            // de fechar de verdade.
-            app.manage(update::PendingUpdate::new(None));
+            // SPEC: silent-update (SILENT-07, SILENT-14)
+            // Checagem em segundo plano só consulta e avisa (SILENT-15,
+            // SILENT-16) — nunca baixa nem instala no fechamento da janela
+            // `main` (AD-005). `Applying` é o guarda de acionamento duplo
+            // (SILENT-28) de `update_apply`; `cleanup_stale_old` apaga um
+            // `.old` remanescente de uma troca anterior (SILENT-07) — erro
+            // aqui é só logado, nunca trava o boot.
+            app.manage(update::apply::Applying::default());
             update::spawn_background_checker(app.handle().clone());
 
-            if let Some(main_window) = app.get_webview_window("main") {
-                let app_handle = app.handle().clone();
-                main_window.on_window_event(move |event| {
-                    if let WindowEvent::CloseRequested { api, .. } = event {
-                        let pending = app_handle.state::<update::PendingUpdate>();
-                        let taken = pending.lock().expect("update mutex poisoned").take();
-                        let has_pending = taken.is_some();
-                        let app_for_close = app_handle.clone();
-                        let intercepted = update::handle_close(
-                            has_pending,
-                            || {
-                                let (update, bytes) =
-                                    taken.expect("has_pending implica taken == Some");
-                                update.install(bytes).map_err(|e| e.to_string())
-                            },
-                            || {
-                                if let Some(main) = app_for_close.get_webview_window("main") {
-                                    let _ = main.close();
-                                }
-                            },
-                            |msg| eprintln!("{msg}"),
-                        );
-                        if intercepted {
-                            api.prevent_close();
-                        }
+            if let Ok(exe) = std::env::current_exe() {
+                if let (Some(exe_dir), Some(exe_name)) =
+                    (exe.parent(), exe.file_name().and_then(|n| n.to_str()))
+                {
+                    if let Err(err) = update::swap::cleanup_stale_old(exe_dir, exe_name) {
+                        eprintln!("swarmdeck: falha ao limpar .old remanescente: {err}");
                     }
-                });
+                }
             }
 
             Ok(())
         })
-        // SPEC: release-distribution (REL-19, REL-21, REL-24)
-        // Regista o plugin oficial de update; `update::check` fala com ele
-        // via `UpdaterExt` para a metade instalada, contra o endpoint em
-        // `tauri.conf.json`.
+        // SPEC: silent-update (SILENT-08)
+        // Regista o plugin oficial de update — fora do Windows, é por onde
+        // `apply::run` aplica a atualização (`UpdaterExt`/`Update::install`);
+        // no Windows a troca de arquivo não depende dele.
         .plugin(tauri_plugin_updater::Builder::new().build())
         // SPEC: multi-terminal (TERM-10, TERM-11)
         // Regista o plugin oficial de diálogo; o `NewTerminalDialog` (T15)
@@ -118,8 +101,10 @@ pub fn run() {
             commands::projects::project_create,
             commands::projects::project_update,
             commands::projects::project_delete,
-            // SPEC: release-distribution (REL-20, REL-23, REL-35, REL-36)
-            commands::update::update_check,
+            // SPEC: silent-update (SILENT-09, SILENT-13, SILENT-25)
+            commands::update::update_status,
+            commands::update::update_apply,
+            commands::update::update_restart,
             commands::update::update_skip_version,
             commands::update::update_auto_check_get,
             commands::update::update_auto_check_set,

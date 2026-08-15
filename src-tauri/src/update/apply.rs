@@ -1,47 +1,38 @@
-// SPEC: release-distribution (REL-37, REL-38, REL-39, REL-40, REL-41, REL-42, REL-43, REL-44, REL-45, REL-46, REL-47)
+// SPEC: silent-update (SILENT-02, SILENT-03, SILENT-06, SILENT-08, SILENT-14, SILENT-15, SILENT-16, SILENT-17, SILENT-21, SILENT-24, SILENT-27, SILENT-28)
 
-//! Checagem automática em segundo plano, download silencioso e instalação
-//! no próximo fechamento da janela `main` — ver `design.md` da feature para
-//! o desenho completo.
+//! Checagem automática em segundo plano (`check_only`, T6): consulta e
+//! avisa, nunca baixa. Download confirmado (`run`/`run_with`, T7): a única
+//! porta de download do módulo (SILENT-03) — resolve a entrada de
+//! plataforma, reprova pasta não gravável antes de baixar (SILENT-24),
+//! baixa, troca via `swap::apply_swap` (verifica assinatura antes de tocar
+//! arquivo) e grava `DisplayVersion` no flavor instalado.
 //!
-//! Desvio do pseudocódigo de `design.md`: lá o `Mutex` guarda só `Update`
-//! ("que já carrega `.install()` pronto"). Na API real de
-//! `tauri-plugin-updater` 2.10, `Update::download()` devolve os bytes
-//! baixados (`Vec<u8>`) e `Update::install(bytes)` exige esses bytes como
-//! argumento — nenhum dos dois "carrega" o outro. Por isso o `Mutex` guarda
-//! a tupla `(Update, Vec<u8>)`: o handle (dono da URL/assinatura já
-//! verificada) e os bytes já baixados, exatamente o par que
-//! `Update::install` precisa.
-//!
-//! `Update` não tem construtor público (campos privados, só a lib do plugin
-//! consegue criar um) e `tauri::test::mock_builder` quebra no binário de
-//! teste deste ambiente Windows (`STATUS_ENTRYPOINT_NOT_FOUND`, linkagem
-//! WebView2/wry — confirmado isolando o teste, não é bug do código). Por
-//! isso `check_and_download` e `handle_close` (o fechamento de verdade) são
-//! invólucros finos, sem lógica própria, em cima de núcleos genéricos em
-//! `T`/injetados por closure — mesmo padrão que `update::check_with` já usa
-//! neste módulo — que os testes abaixo exercitam de ponta a ponta com fakes.
+//! Aposentados em T6: `PendingUpdate`, `handle_close`, `check_and_download`,
+//! `check_and_download_with` — o download em segundo plano e a instalação
+//! no fechamento da janela `main` saem do crate (AD-005).
 
 use std::future::Future;
+use std::path::Path;
 use std::sync::Mutex;
 use std::time::Duration;
 
 use tauri::{AppHandle, Emitter, Manager};
-use tauri_plugin_updater::{Update, UpdaterExt};
+use thiserror::Error;
 
-/// Update baixado e pronto para instalar no próximo fechamento da `main`.
-/// `None` enquanto não há nada pendente — também serve de guarda contra
-/// download duplicado (REL-44): um ciclo só baixa se o slot estiver vazio.
-pub type PendingUpdate = Mutex<Option<(Update, Vec<u8>)>>;
+use crate::db::{auto_check, Db};
+use crate::paths::{self, Flavor};
+use crate::update::{manifest, swap};
 
 const CHECK_INTERVAL: Duration = Duration::from_secs(3600);
 
-/// Inicia o checador em segundo plano (REL-37): roda uma vez no boot e
-/// depois se repete a cada hora (REL-38), pelo resto da vida do processo.
+/// Inicia o checador em segundo plano (SILENT-15): roda uma vez no boot e
+/// depois se repete a cada hora, pelo resto da vida do processo. Nunca
+/// baixa nada — só consulta e emite `update://available` quando há
+/// novidade (SILENT-16).
 pub fn spawn_background_checker(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         run_loop(
-            || check_and_download(&app),
+            || check_only(&app),
             |interval| tokio::time::sleep(interval),
             None,
         )
@@ -49,12 +40,12 @@ pub fn spawn_background_checker(app: AppHandle) {
     });
 }
 
-/// Núcleo testável do loop de checagem: dispara `cycle` (boot-fire, REL-37),
-/// depois `wait(CHECK_INTERVAL)` (repetição a cada hora, REL-38), e repete.
-/// `cycle` nunca propaga erro (já loga e retorna dentro de
-/// `check_and_download_with`), então uma falha num ciclo não quebra a
-/// cadência — o próximo `wait`/`cycle` roda de qualquer jeito. `max_cycles`
-/// só existe para o teste parar o loop; produção passa `None` (infinito).
+/// Núcleo testável do loop de checagem: dispara `cycle` (boot-fire),
+/// depois `wait(CHECK_INTERVAL)` (repetição a cada hora), e repete. `cycle`
+/// nunca propaga erro (já loga e retorna dentro de `check_only`), então uma
+/// falha num ciclo não quebra a cadência — o próximo `wait`/`cycle` roda de
+/// qualquer jeito. `max_cycles` só existe para o teste parar o loop;
+/// produção passa `None` (infinito).
 async fn run_loop<C, CFut, W, WFut>(mut cycle: C, mut wait: W, max_cycles: Option<usize>)
 where
     C: FnMut() -> CFut,
@@ -73,34 +64,18 @@ where
     }
 }
 
-/// Guarda de concorrência (REL-44): `true` se já há um update pendente no
-/// `Mutex`, caso em que um novo ciclo não deve baixar por cima. Genérica em
-/// `T` para ser reaproveitada tanto pelo núcleo testável quanto pelo tipo
-/// real `(Update, Vec<u8>)`.
-fn already_pending<T>(pending: &Mutex<Option<T>>) -> bool {
-    pending.lock().expect("update mutex poisoned").is_some()
-}
+/// Invólucro fino: liga o núcleo testável (`check_only_with`) à preferência
+/// real de verificação automática (SILENT-17) e ao `status_gated` de
+/// `check.rs`.
+async fn check_only(app: &AppHandle) {
+    let db_state = app.state::<Mutex<Db>>();
+    let auto_check_enabled = {
+        let db = db_state.lock().expect("db mutex poisoned");
+        auto_check(db.conn()).unwrap_or(true)
+    };
 
-/// Invólucro fino: liga o núcleo testável (`check_and_download_with`) às
-/// chamadas de rede de verdade — `update::check` (decisão pura já testada
-/// via `check_with`) e `updater.check()`/`update.download()` (plugin, sem
-/// como fakear).
-async fn check_and_download(app: &AppHandle) {
-    let pending = app.state::<PendingUpdate>();
-    check_and_download_with(
-        &pending,
-        || super::check(app),
-        |_version| async {
-            let updater = app.updater().map_err(|e| e.to_string())?;
-            let Some(update) = updater.check().await.map_err(|e| e.to_string())? else {
-                return Ok(None);
-            };
-            let bytes = update
-                .download(|_, _| {}, || {})
-                .await
-                .map_err(|e| e.to_string())?;
-            Ok(Some((update, bytes)))
-        },
+    check_only_with(
+        || super::check::status_gated(app, auto_check_enabled),
         |version| {
             let _ = app.emit(
                 "update://available",
@@ -112,224 +87,275 @@ async fn check_and_download(app: &AppHandle) {
     .await;
 }
 
-/// Núcleo testável de um ciclo de checagem — mesmo espírito de
-/// `update::check_with`: rede e persistência entram por parâmetro, para o
-/// teste substituir por fakes.
-///
-/// - `check`: decide se há versão nova/não pulada/`auto_check` ligado
-///   (REL-39/40) — reaproveita `update::check`, nunca reimplementado aqui.
-/// - `fetch_and_download`: recebe a versão encontrada por `check` e
-///   devolve o que deve ficar pendente (REL-41); `Ok(None)` se o plugin não
-///   confirmar a atualização, `Err` se rede/plugin falharem (REL-43).
-/// - `emit`: avisa o frontend (REL-42) só quando algo ficou pendente.
-async fn check_and_download_with<T, CheckFut, FetchFut>(
-    pending: &Mutex<Option<T>>,
+/// Núcleo testável de um ciclo de checagem: `check` decide se há versão
+/// nova (SILENT-16) e nunca baixa nada — a decisão de baixar é do usuário,
+/// via `run` (T7). `emit` só roda quando há atualização de fato; consulta
+/// que falhou loga e não emite, sem quebrar a cadência do `run_loop`.
+async fn check_only_with<CheckFut>(
     check: impl FnOnce() -> CheckFut,
-    fetch_and_download: impl FnOnce(&str) -> FetchFut,
     emit: impl FnOnce(&str),
     mut log: impl FnMut(&str),
 ) where
-    CheckFut:
-        Future<Output = Result<Option<crate::update::UpdateInfo>, crate::update::UpdateError>>,
-    FetchFut: Future<Output = Result<Option<T>, String>>,
+    CheckFut: Future<Output = Result<crate::update::UpdateStatus, crate::update::UpdateError>>,
 {
-    if already_pending(pending) {
-        return; // REL-44: já há um update baixado, não sobrescreve.
-    }
-
-    let info = match check().await {
-        Ok(Some(info)) => info,
-        Ok(None) => return,
+    match check().await {
+        Ok(status) if status.has_update => {
+            if let Some(latest) = status.latest {
+                emit(&latest);
+            }
+        }
+        Ok(_) => {}
         Err(err) => {
             log(&format!(
                 "swarmdeck: checagem automática de update falhou: {err}"
             ));
-            return;
-        }
-    };
-
-    match fetch_and_download(&info.version).await {
-        Ok(Some(item)) => {
-            *pending.lock().expect("update mutex poisoned") = Some(item);
-            emit(&info.version); // REL-42: só avisa quando ficou algo pendente.
-        }
-        Ok(None) => {}
-        Err(err) => {
-            // REL-43: download/plugin falhou, loga e mantém o Mutex vazio —
-            // não sobrescreve, não repete fora do próximo ciclo.
-            log(&format!("swarmdeck: download de update falhou: {err}"));
         }
     }
 }
 
-/// Decisão + efeito do fechamento da janela `main` (REL-45/46/47): sem
-/// update pendente, não faz nada (o fechamento segue normal, sem
-/// interceptar). Com update pendente, instala (erro só é logado — REL-47:
-/// falha na instalação não pode travar o fechamento) e então chama `close`
-/// para fechar de verdade. `install`/`close`/`log` entram como closures pelo
-/// mesmo motivo de `already_pending`: `Update::install`, `WebviewWindow` e
-/// `eprintln!` não são fakeáveis/capturáveis em teste.
-pub fn handle_close(
-    has_pending: bool,
-    install: impl FnOnce() -> Result<(), String>,
-    close: impl FnOnce(),
-    mut log: impl FnMut(&str),
-) -> bool {
-    if !has_pending {
-        return false;
+#[derive(Debug, Error)]
+pub enum ApplyError {
+    #[error("não foi possível localizar o executável atual: {0}")]
+    CurrentExe(#[source] std::io::Error),
+    #[error("executável sem nome ou diretório pai")]
+    NoExePath,
+    #[error("consulta ao manifesto falhou: {0}")]
+    Manifest(#[from] manifest::UpdateError),
+    #[error("atualização não disponível para esta instalação")]
+    PlatformUnavailable,
+    #[error("pasta {0} não é gravável")]
+    NotWritable(std::path::PathBuf),
+    #[error("falha ao baixar o artefato de atualização: {0}")]
+    Download(String),
+    #[error("{0}")]
+    Swap(#[from] swap::PortableUpdateError),
+    #[error("já existe uma atualização em andamento")]
+    AlreadyApplying,
+}
+
+/// Guarda de acionamento duplo (SILENT-28): `true` enquanto uma troca está
+/// em andamento — um segundo clique em "Baixar e atualizar" nesse meio
+/// tempo é ignorado, não enfileirado.
+pub type Applying = Mutex<bool>;
+
+/// Única porta de download do módulo (SILENT-03): resolve a entrada de
+/// plataforma do manifesto, reprova pasta não gravável antes de baixar
+/// qualquer byte (SILENT-24), baixa, troca via `swap::apply_swap` e grava
+/// `DisplayVersion` no flavor instalado (SILENT-18). No Windows, os dois
+/// flavors passam por aqui (SILENT-05); fora do Windows, delega ao
+/// `tauri-plugin-updater` (SILENT-08) — `Update::install` nunca roda no
+/// caminho Windows.
+#[cfg(windows)]
+pub async fn run(app: &AppHandle) -> Result<String, ApplyError> {
+    let applying = app.state::<Applying>();
+    let exe = std::env::current_exe().map_err(ApplyError::CurrentExe)?;
+    let exe_dir = exe.parent().ok_or(ApplyError::NoExePath)?.to_path_buf();
+    let exe_name = exe
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or(ApplyError::NoExePath)?
+        .to_string();
+    let flavor = paths::flavor(&exe_dir);
+    let key = super::check::target_key(flavor);
+    let endpoint_url = super::check::endpoint(app);
+    let public_key = super::check::pubkey(app);
+
+    run_with(
+        &applying,
+        &exe_dir,
+        &exe_name,
+        &key,
+        &public_key,
+        flavor,
+        || manifest::fetch(&endpoint_url),
+        |url| async move {
+            let response = reqwest::get(&url).await.map_err(|e| e.to_string())?;
+            response
+                .bytes()
+                .await
+                .map(|b| b.to_vec())
+                .map_err(|e| e.to_string())
+        },
+        |version| swap::set_registry_display_version(swap::UNINSTALL_KEY, version),
+    )
+    .await
+}
+
+/// Fora do Windows, delega ao `tauri-plugin-updater` (SILENT-08): a troca
+/// de arquivo é exclusiva do Windows (`spec.md`, Out of Scope). `Update`
+/// não tem construtor público e `tauri::test::mock_builder` quebra neste
+/// binário de teste — por isso este caminho não é testável isoladamente,
+/// mesmo padrão já documentado para o resto do módulo antes desta feature.
+#[cfg(not(windows))]
+pub async fn run(app: &AppHandle) -> Result<String, ApplyError> {
+    use tauri_plugin_updater::UpdaterExt;
+
+    let applying = app.state::<Applying>();
+    {
+        let mut guard = applying.lock().expect("applying mutex poisoned");
+        if *guard {
+            return Err(ApplyError::AlreadyApplying);
+        }
+        *guard = true;
     }
-    if let Err(err) = install() {
-        log(&format!(
-            "swarmdeck: falha ao instalar update, fechando sem instalar: {err}"
-        ));
+
+    let result: Result<String, ApplyError> = async {
+        let updater = app
+            .updater()
+            .map_err(|err| ApplyError::Download(err.to_string()))?;
+        let update = updater
+            .check()
+            .await
+            .map_err(|err| ApplyError::Download(err.to_string()))?
+            .ok_or(ApplyError::PlatformUnavailable)?;
+        let version = update.version.clone();
+        let bytes = update
+            .download(|_, _| {}, || {})
+            .await
+            .map_err(|err| ApplyError::Download(err.to_string()))?;
+        update
+            .install(bytes)
+            .map_err(|err| ApplyError::Download(err.to_string()))?;
+        Ok(version)
     }
-    close();
-    true
+    .await;
+
+    *applying.lock().expect("applying mutex poisoned") = false;
+    result
+}
+
+/// Núcleo testável de `run`: manifesto, download e o mutex `Applying`
+/// entram por parâmetro/closure — mesmo padrão do resto do módulo. A
+/// verificação de assinatura e a troca de arquivo em si rodam de verdade
+/// via `swap::apply_swap` (já testado em `swap.rs`), não injetadas.
+#[allow(clippy::too_many_arguments)]
+async fn run_with<Fetch, FetchFut, Download, DownloadFut>(
+    applying: &Applying,
+    exe_dir: &Path,
+    exe_name: &str,
+    key: &str,
+    public_key: &str,
+    flavor: Flavor,
+    fetch_manifest: Fetch,
+    download: Download,
+    set_registry: impl FnOnce(&str) -> std::io::Result<()>,
+) -> Result<String, ApplyError>
+where
+    Fetch: FnOnce() -> FetchFut,
+    FetchFut: Future<Output = Result<manifest::Manifest, manifest::UpdateError>>,
+    Download: FnOnce(String) -> DownloadFut,
+    DownloadFut: Future<Output = Result<Vec<u8>, String>>,
+{
+    {
+        let mut guard = applying.lock().expect("applying mutex poisoned");
+        if *guard {
+            return Err(ApplyError::AlreadyApplying);
+        }
+        *guard = true;
+    }
+
+    let result: Result<String, ApplyError> = async {
+        let manifest = fetch_manifest().await?;
+        let entry = manifest
+            .platforms
+            .get(key)
+            .cloned()
+            .ok_or(ApplyError::PlatformUnavailable)?;
+
+        if !paths::is_writable(exe_dir) {
+            return Err(ApplyError::NotWritable(exe_dir.to_path_buf()));
+        }
+
+        let bytes = download(entry.url.clone())
+            .await
+            .map_err(ApplyError::Download)?;
+
+        swap::apply_swap(exe_dir, exe_name, &bytes, &entry.signature, public_key)?;
+
+        // SILENT-18/19: só no flavor instalado; falha aqui é cosmética e
+        // não invalida a troca (o binário novo já está no lugar).
+        if flavor == Flavor::Installed {
+            if let Err(err) = set_registry(&manifest.version) {
+                eprintln!("swarmdeck: falha ao atualizar DisplayVersion do registro: {err}");
+            }
+        }
+
+        Ok(manifest.version)
+    }
+    .await;
+
+    *applying.lock().expect("applying mutex poisoned") = false;
+    result
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::update::{UpdateError, UpdateInfo};
+    use crate::update::UpdateStatus;
 
-    fn info(version: &str) -> UpdateInfo {
-        UpdateInfo {
-            version: version.to_string(),
+    fn status(has_update: bool, latest: Option<&str>) -> UpdateStatus {
+        UpdateStatus {
+            current: "0.1.0".to_string(),
+            latest: latest.map(str::to_string),
             notes: String::new(),
-            flavor: "windows-x86_64".to_string(),
-            download_url: "https://exemplo/app.exe".to_string(),
-            signature: "sig".to_string(),
+            has_update,
+            mode: "installed",
+            platform_key: "windows-x86_64-silent".to_string(),
         }
-    }
-
-    // REL-44: mutex vazio não bloqueia; mutex ocupado bloqueia.
-    #[test]
-    fn already_pending_reflete_o_estado_do_mutex() {
-        let vazio: Mutex<Option<()>> = Mutex::new(None);
-        assert!(!already_pending(&vazio));
-
-        let ocupado: Mutex<Option<()>> = Mutex::new(Some(()));
-        assert!(already_pending(&ocupado));
     }
 
     fn nunca_loga(_msg: &str) {
         panic!("log não deveria ser chamado nesse caminho");
     }
 
-    // REL-44: com update já pendente, um novo ciclo não chama check nem
-    // fetch_and_download — o guard corta antes de qualquer rede.
+    // 1. ciclo com versão nova emite update://available uma vez, sem baixar
+    // nada -- não há função de download alcançável a partir daqui: o núcleo
+    // testável só recebe `check` e `emit`.
     #[tokio::test]
-    async fn ciclo_com_pendente_nao_chama_check_nem_fetch() {
-        let pending: Mutex<Option<&str>> = Mutex::new(Some("0.2.0"));
-
-        check_and_download_with(
-            &pending,
-            || async { panic!("check não deveria ser chamado com update já pendente") },
-            |_v| async { panic!("fetch_and_download não deveria ser chamado") },
-            |_v| panic!("emit não deveria ser chamado"),
-            nunca_loga,
-        )
-        .await;
-
-        assert_eq!(*pending.lock().unwrap(), Some("0.2.0"));
-    }
-
-    // REL-39/40: check() sem novidade (Ok(None)) não chama fetch_and_download.
-    #[tokio::test]
-    async fn ciclo_sem_versao_nova_nao_baixa() {
-        let pending: Mutex<Option<&str>> = Mutex::new(None);
-
-        check_and_download_with(
-            &pending,
-            || async { Ok(None) },
-            |_v| async { panic!("fetch_and_download não deveria ser chamado") },
-            |_v| panic!("emit não deveria ser chamado"),
-            nunca_loga,
-        )
-        .await;
-
-        assert_eq!(*pending.lock().unwrap(), None);
-    }
-
-    // check() falhou (rede/plugin no lado da decisão) -> loga, Mutex vazio,
-    // fetch_and_download nunca chamado.
-    #[tokio::test]
-    async fn ciclo_com_erro_no_check_mantem_pendente_vazio() {
-        let pending: Mutex<Option<&str>> = Mutex::new(None);
-        let mut logada = None;
-
-        check_and_download_with(
-            &pending,
-            || async { Err(UpdateError::Plugin("rede indisponível".to_string())) },
-            |_v| async { panic!("fetch_and_download não deveria ser chamado") },
-            |_v| panic!("emit não deveria ser chamado"),
-            |msg| logada = Some(msg.to_string()),
-        )
-        .await;
-
-        assert_eq!(*pending.lock().unwrap(), None);
-        assert!(logada.unwrap().contains("rede indisponível"));
-    }
-
-    // REL-41: versão nova encontrada, mas o plugin não confirma
-    // (Ok(None)) -> Mutex continua vazio, sem emit.
-    #[tokio::test]
-    async fn ciclo_com_versao_nova_mas_plugin_nao_confirma_nao_baixa() {
-        let pending: Mutex<Option<&str>> = Mutex::new(None);
-
-        check_and_download_with(
-            &pending,
-            || async { Ok(Some(info("0.2.0"))) },
-            |_v| async { Ok(None) },
-            |_v| panic!("emit não deveria ser chamado"),
-            nunca_loga,
-        )
-        .await;
-
-        assert_eq!(*pending.lock().unwrap(), None);
-    }
-
-    // REL-43: download/plugin falhou -> loga, Mutex fica vazio, sem emit.
-    #[tokio::test]
-    async fn ciclo_com_falha_no_download_mantem_pendente_vazio() {
-        let pending: Mutex<Option<&str>> = Mutex::new(None);
-        let mut logada = None;
-
-        check_and_download_with(
-            &pending,
-            || async { Ok(Some(info("0.2.0"))) },
-            |_v| async { Err("download falhou".to_string()) },
-            |_v| panic!("emit não deveria ser chamado"),
-            |msg| logada = Some(msg.to_string()),
-        )
-        .await;
-
-        assert_eq!(*pending.lock().unwrap(), None);
-        assert!(logada.unwrap().contains("download falhou"));
-    }
-
-    // REL-41/42: download com sucesso -> guarda no Mutex e emite a versão certa.
-    #[tokio::test]
-    async fn ciclo_com_sucesso_guarda_pendente_e_emite_a_versao() {
-        let pending: Mutex<Option<&str>> = Mutex::new(None);
+    async fn ciclo_com_versao_nova_emite_uma_vez() {
         let mut emitida = None;
 
-        check_and_download_with(
-            &pending,
-            || async { Ok(Some(info("0.2.0"))) },
-            |_v| async { Ok(Some("update-baixado")) },
+        check_only_with(
+            || async { Ok(status(true, Some("0.2.0"))) },
             |v| emitida = Some(v.to_string()),
             nunca_loga,
         )
         .await;
 
-        assert_eq!(*pending.lock().unwrap(), Some("update-baixado"));
         assert_eq!(emitida.as_deref(), Some("0.2.0"));
     }
 
-    // P1-a: o loop dispara o ciclo antes de qualquer espera (boot-fire,
-    // REL-37) e repete espera+ciclo a cada CHECK_INTERVAL (REL-38) — a
-    // ordem das chamadas prova as duas coisas de uma vez.
+    // 2. ciclo sem versão nova não emite nada.
+    #[tokio::test]
+    async fn ciclo_sem_versao_nova_nao_emite() {
+        check_only_with(
+            || async { Ok(status(false, Some("0.1.0"))) },
+            |_v| panic!("emit não deveria ser chamado sem atualização"),
+            nunca_loga,
+        )
+        .await;
+    }
+
+    // 3. ciclo com falha de consulta loga e não emite -- a cadência do
+    // run_loop é verificada separadamente pelos testes de run_loop abaixo,
+    // que continuam passando porque check_only_with nunca propaga Err.
+    #[tokio::test]
+    async fn ciclo_com_falha_na_consulta_loga_e_nao_emite() {
+        let mut logada = None;
+
+        check_only_with(
+            || async { Err(crate::update::UpdateError::NoExeDir) },
+            |_v| panic!("emit não deveria ser chamado com falha na consulta"),
+            |msg| logada = Some(msg.to_string()),
+        )
+        .await;
+
+        assert!(logada.unwrap().contains("checagem automática"));
+    }
+
+    // P1-a: o loop dispara o ciclo antes de qualquer espera (boot-fire) e
+    // repete espera+ciclo a cada CHECK_INTERVAL -- a ordem das chamadas
+    // prova as duas coisas de uma vez.
     #[tokio::test]
     async fn run_loop_dispara_ciclo_no_boot_e_repete_no_intervalo() {
         let eventos = Mutex::new(Vec::<String>::new());
@@ -353,8 +379,8 @@ mod tests {
         );
     }
 
-    // P1-a: um ciclo que "falha" (loga e retorna, como check_and_download_with
-    // já faz) não interrompe a cadência — o próximo wait/cycle roda igual.
+    // P1-a: um ciclo que "falha" (loga e retorna, como check_only_with já
+    // faz) não interrompe a cadência -- o próximo wait/cycle roda igual.
     #[tokio::test]
     async fn run_loop_sobrevive_a_ciclo_com_falha() {
         let ciclos = Mutex::new(0);
@@ -362,8 +388,6 @@ mod tests {
         run_loop(
             || async {
                 *ciclos.lock().unwrap() += 1;
-                // ciclo "falho": não retorna nada de especial, só roda —
-                // check_and_download_with já engole o erro internamente.
             },
             |_interval| async {},
             Some(2),
@@ -373,51 +397,215 @@ mod tests {
         assert_eq!(*ciclos.lock().unwrap(), 2);
     }
 
-    // T4 (REL-45/46): sem pendente, não intercepta — install e close nunca rodam.
-    #[test]
-    fn sem_pendente_nao_intercepta_nem_instala_nem_fecha() {
-        let intercepted = handle_close(
-            false,
-            || panic!("não deveria instalar sem pendente"),
-            || panic!("não deveria fechar por conta própria sem pendente"),
-            nunca_loga,
+    // T7: apply::run / run_with.
+
+    use crate::update::manifest::{Manifest, PlatformEntry};
+    use std::collections::HashMap;
+    use std::fs;
+
+    // Mesmo par chave pública/assinatura reais de minisign de `swap.rs` —
+    // vetor de teste "pre-hashed mode" do próprio `rust-minisign-verify`.
+    const PUBLIC_KEY: &str = "RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3";
+    const DATA: &[u8] = b"test";
+    const SIGNATURE: &str = "untrusted comment: signature from minisign secret key\nRUQf6LRCGA9i559r3g7V1qNyJDApGip8MfqcadIgT9CuhV3EMhHoN1mGTkUidF/z7SrlQgXdy8ofjb7bNJJylDOocrCo8KLzZwo=\ntrusted comment: timestamp:1556193335\tfile:test\ny/rUw2y8/hOUYjZU71eHp/Wo1KZ40fGy2VJEDl34XMJM+TX48Ss/17u3IvIfbVR1FkZZSNCisQbuQY+bHwhEBg==\n";
+
+    fn manifest_with_entry(version: &str, key: &str, url: &str, signature: &str) -> Manifest {
+        let mut platforms = HashMap::new();
+        platforms.insert(
+            key.to_string(),
+            PlatformEntry {
+                url: url.to_string(),
+                signature: signature.to_string(),
+            },
         );
-        assert!(!intercepted);
+        Manifest {
+            version: version.to_string(),
+            notes: String::new(),
+            platforms,
+        }
     }
 
-    // T4 (REL-45/46): com pendente, instala e fecha de verdade.
-    #[test]
-    fn com_pendente_instala_e_fecha() {
-        let mut instalou = false;
-        let mut fechou = false;
-        let intercepted = handle_close(
-            true,
-            || {
-                instalou = true;
+    fn nunca_baixa(
+        _url: String,
+    ) -> std::pin::Pin<Box<dyn Future<Output = Result<Vec<u8>, String>>>> {
+        panic!("download não deveria ser chamado")
+    }
+
+    fn nunca_grava_registro(_version: &str) -> std::io::Result<()> {
+        panic!("set_registry não deveria ser chamado")
+    }
+
+    #[cfg(windows)]
+    fn deny_write(path: &std::path::Path) {
+        let status = std::process::Command::new("icacls")
+            .arg(path)
+            .arg("/deny")
+            .arg("*S-1-1-0:(OI)(CI)W")
+            .status()
+            .expect("falha ao invocar icacls");
+        assert!(status.success(), "icacls /deny falhou");
+    }
+
+    #[cfg(windows)]
+    fn allow_write(path: &std::path::Path) {
+        let _ = std::process::Command::new("icacls")
+            .arg(path)
+            .arg("/remove:d")
+            .arg("*S-1-1-0")
+            .status();
+    }
+
+    // 1. pasta não gravável -> Err antes do fake de download ser acionado.
+    #[tokio::test]
+    async fn pasta_nao_gravavel_reprova_antes_do_download() {
+        let exe_dir = tempfile::tempdir().unwrap();
+        fs::write(exe_dir.path().join("app.exe"), b"antigo").unwrap();
+        deny_write(exe_dir.path());
+        let applying: Applying = Mutex::new(false);
+        let m = manifest_with_entry("0.2.0", "chave", "https://exemplo/app.exe", SIGNATURE);
+
+        let result = run_with(
+            &applying,
+            exe_dir.path(),
+            "app.exe",
+            "chave",
+            PUBLIC_KEY,
+            Flavor::Portable,
+            || async { Ok(m) },
+            nunca_baixa,
+            nunca_grava_registro,
+        )
+        .await;
+
+        allow_write(exe_dir.path());
+
+        assert!(matches!(result, Err(ApplyError::NotWritable(_))));
+    }
+
+    // 2. manifesto sem entrada para a chave de plataforma -> Err, sem baixar.
+    #[tokio::test]
+    async fn chave_de_plataforma_ausente_devolve_platform_unavailable_sem_baixar() {
+        let exe_dir = tempfile::tempdir().unwrap();
+        let applying: Applying = Mutex::new(false);
+        let m = manifest_with_entry("0.2.0", "outra-chave", "url", SIGNATURE);
+
+        let result = run_with(
+            &applying,
+            exe_dir.path(),
+            "app.exe",
+            "chave",
+            PUBLIC_KEY,
+            Flavor::Portable,
+            || async { Ok(m) },
+            nunca_baixa,
+            nunca_grava_registro,
+        )
+        .await;
+
+        assert!(matches!(result, Err(ApplyError::PlatformUnavailable)));
+    }
+
+    // 3. caminho feliz: baixa, aplica a troca, devolve a versão aplicada.
+    #[tokio::test]
+    async fn caminho_feliz_baixa_aplica_a_troca_e_devolve_a_versao() {
+        let exe_dir = tempfile::tempdir().unwrap();
+        let exe_path = exe_dir.path().join("app.exe");
+        fs::write(&exe_path, b"conteudo antigo").unwrap();
+        let applying: Applying = Mutex::new(false);
+        let m = manifest_with_entry("0.2.0", "chave", "https://exemplo/app.exe", SIGNATURE);
+
+        let result = run_with(
+            &applying,
+            exe_dir.path(),
+            "app.exe",
+            "chave",
+            PUBLIC_KEY,
+            Flavor::Portable,
+            || async { Ok(m) },
+            |_url| async { Ok(DATA.to_vec()) },
+            nunca_grava_registro,
+        )
+        .await;
+
+        assert_eq!(result.unwrap(), "0.2.0");
+        assert_eq!(fs::read(&exe_path).unwrap(), DATA);
+    }
+
+    // 4. segunda chamada com Applying já true -> retorna sem baixar.
+    #[tokio::test]
+    async fn segunda_chamada_com_applying_true_nao_baixa() {
+        let applying: Applying = Mutex::new(true);
+
+        let result = run_with(
+            &applying,
+            Path::new("."),
+            "app.exe",
+            "chave",
+            PUBLIC_KEY,
+            Flavor::Portable,
+            || async { panic!("fetch_manifest não deveria ser chamado") },
+            nunca_baixa,
+            nunca_grava_registro,
+        )
+        .await;
+
+        assert!(matches!(result, Err(ApplyError::AlreadyApplying)));
+    }
+
+    // 5. flavor instalado -> gravador de registro é acionado.
+    #[tokio::test]
+    async fn flavor_instalado_aciona_o_gravador_de_registro() {
+        let exe_dir = tempfile::tempdir().unwrap();
+        fs::write(exe_dir.path().join("app.exe"), b"conteudo antigo").unwrap();
+        let applying: Applying = Mutex::new(false);
+        let m = manifest_with_entry("0.2.0", "chave", "url", SIGNATURE);
+        let chamado = Mutex::new(false);
+
+        let result = run_with(
+            &applying,
+            exe_dir.path(),
+            "app.exe",
+            "chave",
+            PUBLIC_KEY,
+            Flavor::Installed,
+            || async { Ok(m) },
+            |_url| async { Ok(DATA.to_vec()) },
+            |v| {
+                *chamado.lock().unwrap() = true;
+                assert_eq!(v, "0.2.0");
                 Ok(())
             },
-            || fechou = true,
-            nunca_loga,
+        )
+        .await;
+
+        assert!(result.is_ok());
+        assert!(
+            *chamado.lock().unwrap(),
+            "set_registry deveria ser chamado no flavor instalado"
         );
-        assert!(intercepted);
-        assert!(instalou);
-        assert!(fechou);
     }
 
-    // T4 (REL-47): falha na instalação ainda fecha em seguida — e agora o
-    // log da falha é asserido, não só exercitado.
-    #[test]
-    fn falha_na_instalacao_ainda_fecha_em_seguida() {
-        let mut fechou = false;
-        let mut logada = None;
-        let intercepted = handle_close(
-            true,
-            || Err("boom".to_string()),
-            || fechou = true,
-            |msg| logada = Some(msg.to_string()),
-        );
-        assert!(intercepted);
-        assert!(fechou);
-        assert!(logada.unwrap().contains("boom"));
+    // 6. flavor portátil -> gravador de registro NÃO é acionado.
+    #[tokio::test]
+    async fn flavor_portatil_nao_aciona_o_gravador_de_registro() {
+        let exe_dir = tempfile::tempdir().unwrap();
+        fs::write(exe_dir.path().join("app.exe"), b"conteudo antigo").unwrap();
+        let applying: Applying = Mutex::new(false);
+        let m = manifest_with_entry("0.2.0", "chave", "url", SIGNATURE);
+
+        let result = run_with(
+            &applying,
+            exe_dir.path(),
+            "app.exe",
+            "chave",
+            PUBLIC_KEY,
+            Flavor::Portable,
+            || async { Ok(m) },
+            |_url| async { Ok(DATA.to_vec()) },
+            nunca_grava_registro,
+        )
+        .await;
+
+        assert!(result.is_ok());
     }
 }
