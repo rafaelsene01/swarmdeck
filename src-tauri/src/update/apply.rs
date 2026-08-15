@@ -129,7 +129,8 @@ async fn check_and_download_with<T, CheckFut, FetchFut>(
     emit: impl FnOnce(&str),
     mut log: impl FnMut(&str),
 ) where
-    CheckFut: Future<Output = Result<Option<crate::update::UpdateInfo>, crate::update::UpdateError>>,
+    CheckFut:
+        Future<Output = Result<Option<crate::update::UpdateInfo>, crate::update::UpdateError>>,
     FetchFut: Future<Output = Result<Option<T>, String>>,
 {
     if already_pending(pending) {
@@ -140,7 +141,9 @@ async fn check_and_download_with<T, CheckFut, FetchFut>(
         Ok(Some(info)) => info,
         Ok(None) => return,
         Err(err) => {
-            log(&format!("swarmdeck: checagem automática de update falhou: {err}"));
+            log(&format!(
+                "swarmdeck: checagem automática de update falhou: {err}"
+            ));
             return;
         }
     };

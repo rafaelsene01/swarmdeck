@@ -7,8 +7,8 @@
 //! REL-25) e a UI que a aciona (REL-20, REL-23, REL-26) chegam nas tarefas
 //! seguintes (T16-T18) desta feature.
 
-mod check;
 pub mod apply;
+mod check;
 pub mod portable;
 
 pub use apply::{handle_close, spawn_background_checker, PendingUpdate};
