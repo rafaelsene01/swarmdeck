@@ -1,10 +1,20 @@
-// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11), release-distribution (REL-51)
+// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11), release-distribution (REL-51), quota-indicator (QUOTA-01, QUOTA-12)
 
-import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Header from './Header'
 
-const INERT_LABELS = ['layout', 'history', 'camera', 'search', 'agents', 'run', 'copy', 'split', 'avatar']
+// `QuotaIndicator` (QUOTA-01) chama `invoke('quota_claude')` na montagem —
+// mesmo padrão hoisted de `QuotaIndicator.test.tsx`.
+const { invokeMock } = vi.hoisted(() => ({
+  invokeMock: vi.fn(),
+}))
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: invokeMock,
+}))
+
+const INERT_LABELS = ['layout', 'history', 'camera', 'search', 'agents', 'run', 'copy', 'split']
 
 function renderHeader(props: Partial<Parameters<typeof Header>[0]> = {}) {
   return render(
@@ -18,7 +28,18 @@ function renderHeader(props: Partial<Parameters<typeof Header>[0]> = {}) {
 }
 
 describe('Header', () => {
-  it('renders all twelve elements described by HDR-02 (logo + 11 icons)', () => {
+  beforeEach(() => {
+    invokeMock.mockReset()
+    invokeMock.mockResolvedValue({
+      state: 'disabled',
+      windows: [],
+      planLabel: null,
+      fetchedAt: null,
+      retryAt: null,
+    })
+  })
+
+  it('renders all eleven elements described by HDR-02 (logo + 10 icons) - the avatar slot is now QuotaIndicator (QUOTA-01)', () => {
     renderHeader()
 
     expect(screen.getByLabelText('SwarmDeck')).toBeInTheDocument()
@@ -31,7 +52,6 @@ describe('Header', () => {
     expect(screen.getByLabelText('run')).toBeInTheDocument()
     expect(screen.getByLabelText('copy')).toBeInTheDocument()
     expect(screen.getByLabelText('split')).toBeInTheDocument()
-    expect(screen.getByLabelText('avatar')).toBeInTheDocument()
     expect(screen.getByLabelText('settings')).toBeInTheDocument()
   })
 
@@ -79,10 +99,11 @@ describe('Header', () => {
   it('renders every icon via a lucide-react SVG - one per described element (HDR-04)', () => {
     const { container } = renderHeader()
 
-    // 12 icons: Hexagon, LayoutGrid, Plus, History, Camera, Search, Users, Play, Copy, Columns2, User, Settings.
+    // 11 icons with quotaPrefs absent (QuotaIndicator not mounted): Hexagon,
+    // LayoutGrid, Plus, History, Camera, Search, Users, Play, Copy, Columns2, Settings.
     // `.lucide` is the base class every lucide-react icon renders (createLucideIcon.mjs) -
     // proves provenance, not just SVG count (no hand-drawn inline SVG would pass this).
-    expect(container.querySelectorAll('svg.lucide')).toHaveLength(12)
+    expect(container.querySelectorAll('svg.lucide')).toHaveLength(11)
   })
 
   it('uses only --bg/--fg/--accent/--muted custom properties for color - no hex/rgb literal (HDR-03)', () => {
@@ -105,5 +126,29 @@ describe('Header', () => {
 
     renderHeader()
     expect(screen.queryByLabelText('update available')).not.toBeInTheDocument()
+  })
+
+  it('shows the quota indicator when quotaPrefs.enabled is true, and nothing when false/absent (QUOTA-01, QUOTA-12)', async () => {
+    const { unmount } = renderHeader({ quotaPrefs: { enabled: true, window: 'both' } })
+    await waitFor(() => expect(screen.getByLabelText('quota')).toBeInTheDocument())
+    unmount()
+
+    renderHeader({ quotaPrefs: { enabled: false, window: 'both' } })
+    expect(screen.queryByLabelText('quota')).not.toBeInTheDocument()
+
+    renderHeader()
+    expect(screen.queryByLabelText('quota')).not.toBeInTheDocument()
+  })
+
+  it('keeps the right-group button order unchanged around the quota indicator slot', async () => {
+    const { container } = renderHeader({ quotaPrefs: { enabled: true, window: 'both' } })
+    await waitFor(() => expect(invokeMock).toHaveBeenCalled())
+
+    const rightGroup = container.querySelectorAll('.shell-header__group')[1]!
+    const labels = Array.from(rightGroup.querySelectorAll('[aria-label]')).map((el) =>
+      el.getAttribute('aria-label'),
+    )
+
+    expect(labels).toEqual(['search', 'agents', 'run', 'copy', 'split', 'quota', 'settings'])
   })
 })

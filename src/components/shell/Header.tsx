@@ -1,4 +1,4 @@
-// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11), release-distribution (REL-51)
+// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11), release-distribution (REL-51), quota-indicator (QUOTA-01, QUOTA-12)
 
 import {
   Hexagon,
@@ -11,15 +11,17 @@ import {
   Play,
   Copy,
   Columns2,
-  User,
   Settings,
 } from 'lucide-react'
+import QuotaIndicator, { type QuotaIndicatorProps } from './QuotaIndicator'
 
 export interface HeaderProps {
   onCreateTerminal: () => void
   onOpenSettings: () => void
   atMaxTerminals: boolean
   hasUpdateAvailable?: boolean
+  /** `undefined`/`null` = preferências ainda não carregadas, mesmo efeito que `enabled: false` (QUOTA-12). */
+  quotaPrefs?: { enabled: boolean; window: QuotaIndicatorProps['window'] } | null
 }
 
 /**
@@ -33,6 +35,7 @@ export default function Header({
   onOpenSettings,
   atMaxTerminals,
   hasUpdateAvailable = false,
+  quotaPrefs,
 }: HeaderProps) {
   return (
     <header className="shell-header">
@@ -154,9 +157,7 @@ export default function Header({
         <button type="button" disabled aria-label="split">
           <Columns2 size={18} />
         </button>
-        <button type="button" disabled aria-label="avatar">
-          <User size={18} />
-        </button>
+        {quotaPrefs?.enabled && <QuotaIndicator window={quotaPrefs.window} />}
         <button
           type="button"
           onClick={onOpenSettings}

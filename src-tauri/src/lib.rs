@@ -10,6 +10,8 @@ pub mod db;
 pub mod ipc;
 pub mod paths;
 pub mod projects;
+// SPEC: quota-indicator (QUOTA-15, QUOTA-19, QUOTA-25)
+pub mod quota;
 pub mod tasks;
 pub mod terminal;
 pub mod update;
@@ -45,6 +47,11 @@ pub fn run() {
             // "rename manual vence o agente" não teria como valer entre a UI
             // e o MCP.
             app.manage(std::sync::Arc::new(terminal::TerminalMetaService::new()));
+
+            // SPEC: quota-indicator (QUOTA-13, QUOTA-14)
+            // Cache em memória da busca de cota — `quota_claude` (T8) lê e
+            // grava aqui via `app.state::<QuotaCache>()`.
+            app.manage(quota::QuotaCache::new());
 
             // SPEC: release-distribution (REL-37, REL-45, REL-46, REL-47)
             // Checagem/download automáticos rodam sozinhos em segundo plano
@@ -131,6 +138,10 @@ pub fn run() {
             // SPEC: agent-selection (AGT-01, AGT-03, AGT-04)
             commands::agents::agent_catalog,
             commands::agents::agent_default,
+            // SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-11, QUOTA-17)
+            commands::quota::quota_prefs_get,
+            commands::quota::quota_prefs_set,
+            commands::quota::quota_claude,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o SwarmDeck");

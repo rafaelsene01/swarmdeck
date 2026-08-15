@@ -108,7 +108,7 @@ mod tests {
         // apagar o dado gravado na primeira abertura.
         let db = Db::open(&path).expect("reabrir banco deve ser idempotente");
 
-        assert_eq!(db.schema_version().expect("schema_version"), 5);
+        assert_eq!(db.schema_version().expect("schema_version"), 6);
         assert_eq!(
             last_dir(db.conn()).expect("last_dir"),
             Some("/home/user/projects".to_string())

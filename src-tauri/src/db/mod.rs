@@ -17,6 +17,9 @@ pub use error::DbError;
 mod settings;
 pub use settings::{auto_check, is_version_skipped, set_auto_check, skip_version};
 
+// SPEC: quota-indicator (QUOTA-09, QUOTA-10)
+pub mod quota_prefs;
+
 /// Uma migração: número de versão e o SQL correspondente.
 ///
 /// A ordem desta lista **é** a ordem de aplicação. Migrações novas entram
@@ -28,6 +31,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
     (3, include_str!("migrations/003_tasks.sql")),
     (4, include_str!("migrations/004_agent_prefs.sql")),
     (5, include_str!("migrations/005_terminal_picker_prefs.sql")),
+    (6, include_str!("migrations/006_quota_prefs.sql")),
 ];
 
 /// Conexão com o banco do app, já migrada.
@@ -119,4 +123,27 @@ fn now_unix() -> i64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs() as i64)
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // SPEC: quota-indicator (QUOTA-09, QUOTA-10)
+    #[test]
+    fn migracao_006_semeia_quota_prefs_com_defaults() {
+        let db = Db::open_in_memory().expect("abrir banco em memória");
+
+        let (enabled, window): (i64, String) = db
+            .conn()
+            .query_row(
+                "SELECT enabled, window FROM quota_prefs WHERE id = 1",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("linha 1 de quota_prefs deve existir após a migração 6");
+
+        assert_eq!(enabled, 1);
+        assert_eq!(window, "both");
+    }
 }

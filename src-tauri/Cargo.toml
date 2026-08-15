@@ -59,5 +59,27 @@ tauri-plugin-dialog = "2.7.2"
 # as mesmas features mais "time".
 tokio = { version = "1", features = ["macros", "rt", "time"] }
 
+# SPEC: quota-indicator (QUOTA-13)
+# Cliente HTTP da busca de cota (src/quota.rs), AD-003: reqwest 0.13.4 já
+# está no Cargo.lock como dependência transitiva de tauri-plugin-updater,
+# então promovê-la a direta não adiciona crate nem tempo de compilação.
+# `rustls-no-provider` (não `rustls`, que puxaria aws-lc-rs — crate nova,
+# ausente do lock) casa com o provedor de cripto (ring) que
+# tauri-plugin-updater já instala via sua própria feature `rustls-tls`.
+# Versão e feature set confirmados no Cargo.lock em 15/08/2026.
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls-no-provider"] }
+
+# SPEC: quota-indicator (QUOTA-25)
+# Validação de `resets_at` em src/quota.rs (edge case QUOTA-25: data
+# inválida vira "sem tempo até o reset", não erro). chrono 0.4.45 já está
+# no Cargo.lock, puxado transitivamente por schemars; `default-features = false`
+# porque só o parser RFC 3339 é usado, sem `Local`/`clock`.
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+
+# SPEC: quota-indicator (QUOTA-16, QUOTA-18)
+# Resolução de `~/.claude/.credentials.json` em src/quota.rs. dirs 6.0.0 já
+# está no Cargo.lock, puxado transitivamente por tauri-plugin-updater.
+dirs = "6"
+
 [dev-dependencies]
 tempfile = "3"

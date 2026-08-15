@@ -1,10 +1,11 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11)
 
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import GridLayout, { type Pane } from './components/grid/GridLayout'
 import Header from './components/shell/Header'
+import type { QuotaIndicatorProps } from './components/shell/QuotaIndicator'
 import EmptyState from './components/shell/EmptyState'
 import TerminalPane from './components/terminal/TerminalPane'
 import TerminalHeader from './components/terminal/TerminalHeader'
@@ -80,12 +81,43 @@ export default function App() {
   // `useState` simples em vez de guardar a versão em si (não usada aqui).
   const [hasUpdateAvailable, setHasUpdateAvailable] = useState(false)
 
+  // SPEC: quota-indicator (QUOTA-11)
+  // A janela de Configurações é um `WebviewWindow` separado (SET-01) — uma
+  // mudança de preferência lá não chega aqui por estado React compartilhado,
+  // só pelo evento `quota://prefs-changed` (mesmo mecanismo de
+  // `update://available` acima). `null` até a primeira leitura resolver:
+  // mesmo efeito que `enabled: false` no `Header` (QUOTA-12).
+  const [quotaPrefs, setQuotaPrefs] = useState<{
+    enabled: boolean
+    window: QuotaIndicatorProps['window']
+  } | null>(null)
+
   useEffect(() => {
     const unlistenPromise = listen('update://available', () => {
       setHasUpdateAvailable(true)
     })
 
     return () => {
+      void unlistenPromise.then((unlisten) => unlisten())
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    void invoke<{ enabled: boolean; window: QuotaIndicatorProps['window'] }>(
+      'quota_prefs_get',
+    ).then((prefs) => {
+      if (!cancelled) setQuotaPrefs(prefs)
+    })
+
+    const unlistenPromise = listen<{ enabled: boolean; window: QuotaIndicatorProps['window'] }>(
+      'quota://prefs-changed',
+      (event) => setQuotaPrefs(event.payload),
+    )
+
+    return () => {
+      cancelled = true
       void unlistenPromise.then((unlisten) => unlisten())
     }
   }, [])
@@ -243,6 +275,7 @@ export default function App() {
         onOpenSettings={() => void invoke('settings_open')}
         atMaxTerminals={terminals.length >= MAX_TERMINALS}
         hasUpdateAvailable={hasUpdateAvailable}
+        quotaPrefs={quotaPrefs}
       />
 
       <div className="app-grid-area">

@@ -3,6 +3,8 @@
 // SPEC: agent-selection (AGT-01, AGT-03, AGT-04)
 pub mod agents;
 pub mod projects;
+// SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-11)
+pub mod quota;
 // SPEC: task-kanban (KAN-01, KAN-04)
 pub mod tasks;
 pub mod terminal;

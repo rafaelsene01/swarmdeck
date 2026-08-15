@@ -1,20 +1,26 @@
-// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10)
+// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10)
 
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { CircleDot, Download, FolderOpen, Users, X } from 'lucide-react'
+import { CircleDot, Download, FolderOpen, SlidersHorizontal, Users, X } from 'lucide-react'
 import AgentPanel, { type AgentDescriptor } from './AgentPanel'
+import GeneralPanel, { type QuotaPrefs } from './GeneralPanel'
 import ProjectsPanel, { type ProjectRow } from './ProjectsPanel'
 import StatusesPanel, { type StatusRow } from './StatusesPanel'
 import UpdateSettings, { type CheckState } from '../../components/settings/UpdateSettings'
 import packageJson from '../../../package.json'
 
-type SectionId = 'agents' | 'projects' | 'statuses' | 'updates'
+type SectionId = 'general' | 'agents' | 'projects' | 'statuses' | 'updates'
+
+const DEFAULT_QUOTA_PREFS: QuotaPrefs = { enabled: true, window: 'both' }
 
 // SET-07: ícone por seção — nenhuma escolha específica foi pedida, reaproveita
 // `lucide-react` (já instalado, mesmo padrão de `Header.tsx`).
+// QUOTA-08: "Geral" é o primeiro item — a spec pede que ela seja a seção
+// padrão da janela.
 const SECTIONS: ReadonlyArray<{ id: SectionId; label: string; icon: typeof Users }> = [
+  { id: 'general', label: 'Geral', icon: SlidersHorizontal },
   { id: 'agents', label: 'Agentes', icon: Users },
   { id: 'projects', label: 'Projetos', icon: FolderOpen },
   { id: 'statuses', label: 'Status de terminal', icon: CircleDot },
@@ -48,7 +54,12 @@ interface UpdateCheckResult {
 }
 
 export default function SettingsShell() {
-  const [section, setSection] = useState<SectionId>('agents')
+  const [section, setSection] = useState<SectionId>('general')
+
+  // Geral (QUOTA-09/10): carrega ao abrir a seção; falha de `invoke` mantém
+  // o default local em vez de travar a seção — mesmo tratamento do bloco de
+  // Atualizações abaixo (SET-09).
+  const [quotaPrefs, setQuotaPrefs] = useState<QuotaPrefs>(DEFAULT_QUOTA_PREFS)
 
   // Agentes (AGT-01/03/04): dado real, via `agent_catalog`/`agent_default`,
   // já registrados no `invoke_handler!` — mesmo padrão de busca do `App.tsx`.
@@ -138,6 +149,32 @@ export default function SettingsShell() {
   const handleToggleAutoCheck = (enabled: boolean) => {
     setAutoCheckEnabled(enabled)
     void invoke('update_auto_check_set', { enabled })
+  }
+
+  // QUOTA-09/10: carrega ao abrir a seção "Geral", mesmo padrão do bloco de
+  // Atualizações acima — falha mantém `DEFAULT_QUOTA_PREFS` em vez de
+  // travar a seção.
+  useEffect(() => {
+    if (section !== 'general') return
+    let cancelled = false
+    invoke<QuotaPrefs>('quota_prefs_get').then(
+      (prefs) => {
+        if (!cancelled) setQuotaPrefs(prefs)
+      },
+      () => {
+        /* mantém o default local — edge case da spec */
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [section])
+
+  // QUOTA-09/10: cada mudança persiste de imediato — `GeneralPanel` é
+  // apresentacional e não chama `invoke` sozinho.
+  const handleChangeQuotaPrefs = (next: QuotaPrefs) => {
+    setQuotaPrefs(next)
+    void invoke('quota_prefs_set', { prefs: next })
   }
 
   const handleCheckNow = () => {
@@ -301,6 +338,10 @@ export default function SettingsShell() {
         </nav>
 
         <div className="settings-shell__content">
+          {section === 'general' && (
+            <GeneralPanel prefs={quotaPrefs} onChange={handleChangeQuotaPrefs} />
+          )}
+
           {section === 'agents' && (
             <AgentPanel
               agents={agents}

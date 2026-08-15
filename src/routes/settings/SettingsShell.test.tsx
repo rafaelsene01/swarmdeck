@@ -26,6 +26,7 @@ describe('SettingsShell — fechar a janela (SET-03/04/05)', () => {
       if (command === 'agent_catalog') return Promise.resolve([])
       if (command === 'agent_default') return Promise.resolve(null)
       if (command === 'project_list') return Promise.resolve([])
+      if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
       return Promise.resolve(null)
     })
   })
@@ -51,6 +52,7 @@ describe('SettingsShell — sidebar com ícones e trilho (SET-06/07/08)', () => 
       if (command === 'agent_catalog') return Promise.resolve([])
       if (command === 'agent_default') return Promise.resolve(null)
       if (command === 'project_list') return Promise.resolve([])
+      if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
       return Promise.resolve(null)
     })
   })
@@ -59,7 +61,8 @@ describe('SettingsShell — sidebar com ícones e trilho (SET-06/07/08)', () => 
     render(<SettingsShell />)
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
-    expect(screen.getByText('Configurações › Agentes')).toBeInTheDocument()
+    // QUOTA-08: "Geral" passou a ser a seção padrão da janela.
+    expect(screen.getByText('Configurações › Geral')).toBeInTheDocument()
     const projectsItem = screen.getByRole('button', { name: /Projetos/ })
     expect(projectsItem).not.toHaveAttribute('aria-current')
 
@@ -69,11 +72,11 @@ describe('SettingsShell — sidebar com ícones e trilho (SET-06/07/08)', () => 
     expect(projectsItem).toHaveAttribute('aria-current', 'page')
   })
 
-  it('cada um dos 4 itens da sidebar tem ícone', async () => {
+  it('cada um dos 5 itens da sidebar tem ícone', async () => {
     render(<SettingsShell />)
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
-    for (const label of ['Agentes', 'Projetos', 'Status de terminal', 'Atualizações']) {
+    for (const label of ['Geral', 'Agentes', 'Projetos', 'Status de terminal', 'Atualizações']) {
       const item = screen.getByRole('button', { name: new RegExp(label) })
       expect(item.querySelector('svg')).not.toBeNull()
     }
@@ -86,6 +89,7 @@ describe('SettingsShell — persistência do toggle de auto-check (SET-09/10)', 
       if (command === 'agent_catalog') return Promise.resolve([])
       if (command === 'agent_default') return Promise.resolve(null)
       if (command === 'project_list') return Promise.resolve([])
+      if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
       if (command === 'update_auto_check_get') return Promise.resolve(false)
       return Promise.resolve(null)
     })
@@ -118,6 +122,7 @@ describe('SettingsShell — persistência do toggle de auto-check (SET-09/10)', 
       if (command === 'agent_catalog') return Promise.resolve([])
       if (command === 'agent_default') return Promise.resolve(null)
       if (command === 'project_list') return Promise.resolve([])
+      if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
       if (command === 'update_auto_check_get') return Promise.reject(new Error('boom'))
       return Promise.resolve(null)
     })
@@ -129,5 +134,65 @@ describe('SettingsShell — persistência do toggle de auto-check (SET-09/10)', 
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_auto_check_get'))
     const toggle = await screen.findByRole('checkbox', { name: 'Verificar atualizações automaticamente' })
     expect(toggle).toBeChecked()
+  })
+})
+
+describe('SettingsShell — seção Geral do indicador de cota (QUOTA-08/09/10)', () => {
+  beforeEach(() => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === 'agent_catalog') return Promise.resolve([])
+      if (command === 'agent_default') return Promise.resolve(null)
+      if (command === 'project_list') return Promise.resolve([])
+      if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
+      if (command === 'quota_prefs_set') return Promise.resolve(undefined)
+      return Promise.resolve(null)
+    })
+  })
+
+  it('"Geral" é o primeiro item do menu e a seção selecionada na abertura', async () => {
+    render(<SettingsShell />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    expect(screen.getByText('Configurações › Geral')).toBeInTheDocument()
+    const navButtons = screen.getAllByRole('button', {
+      name: /Geral|Agentes|Projetos|Status de terminal|Atualizações/,
+    })
+    expect(navButtons[0]).toHaveAccessibleName(/Geral/)
+    expect(navButtons[0]).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('alternar o switch chama invoke("quota_prefs_set", ...) com enabled: false', async () => {
+    render(<SettingsShell />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('quota_prefs_get'))
+
+    const toggle = await screen.findByRole('checkbox')
+    await waitFor(() => expect(toggle).toBeChecked())
+
+    fireEvent.click(toggle)
+
+    expect(invokeMock).toHaveBeenCalledWith('quota_prefs_set', {
+      prefs: { enabled: false, window: 'both' },
+    })
+  })
+
+  it('escolher "Ambos" persiste window: "both"', async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === 'agent_catalog') return Promise.resolve([])
+      if (command === 'agent_default') return Promise.resolve(null)
+      if (command === 'project_list') return Promise.resolve([])
+      if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'five_hour' })
+      if (command === 'quota_prefs_set') return Promise.resolve(undefined)
+      return Promise.resolve(null)
+    })
+
+    render(<SettingsShell />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('quota_prefs_get'))
+
+    const bothOption = await screen.findByRole('radio', { name: 'Ambos' })
+    fireEvent.click(bothOption)
+
+    expect(invokeMock).toHaveBeenCalledWith('quota_prefs_set', {
+      prefs: { enabled: true, window: 'both' },
+    })
   })
 })

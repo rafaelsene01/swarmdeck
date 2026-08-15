@@ -55,12 +55,12 @@ fn migracao_de_settings_e_idempotente() {
 
     {
         let db = Db::open(&path).expect("primeira abertura");
-        assert_eq!(db.schema_version().unwrap(), 5);
+        assert_eq!(db.schema_version().unwrap(), 6);
     }
 
     // Segunda abertura sobre o mesmo arquivo: não deve reaplicar nada.
     let db = Db::open(&path).expect("segunda abertura");
-    assert_eq!(db.schema_version().unwrap(), 5);
+    assert_eq!(db.schema_version().unwrap(), 6);
 
     let linhas: i64 = db
         .conn()

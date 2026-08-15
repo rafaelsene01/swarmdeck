@@ -33,6 +33,13 @@ function getUpdateAvailableHandler() {
   return call[1] as (event: { payload: { version: string } }) => void
 }
 
+/** Mesmo padrão de `getUpdateAvailableHandler`, para `quota://prefs-changed` (QUOTA-11). */
+function getQuotaPrefsChangedHandler() {
+  const call = listenMock.mock.calls.find(([name]) => name === 'quota://prefs-changed')
+  if (!call) throw new Error('listen("quota://prefs-changed", ...) não foi chamado')
+  return call[1] as (event: { payload: { enabled: boolean; window: string } }) => void
+}
+
 // `TerminalPane` drives real xterm.js against a PTY backend — out of scope
 // for App-level wiring tests (HDR-01/HDR-08) and not viable in jsdom; a stub
 // is enough since these tests never assert on terminal content.
@@ -54,6 +61,16 @@ beforeEach(() => {
     if (command === 'agent_default') return Promise.resolve(null)
     if (command === 'terminal_picker_last_dir') return Promise.resolve(null)
     if (command === 'settings_open') return Promise.resolve(undefined)
+    if (command === 'quota_prefs_get') return Promise.resolve({ enabled: false, window: 'both' })
+    if (command === 'quota_claude') {
+      return Promise.resolve({
+        state: 'disabled',
+        windows: [],
+        planLabel: null,
+        fetchedAt: null,
+        retryAt: null,
+      })
+    }
     return Promise.resolve(undefined)
   })
 })
@@ -213,5 +230,66 @@ describe('App - shell-chrome empty state', () => {
     fireEvent.keyDown(window, { key: 't', ctrlKey: true })
 
     expect(screen.queryByRole('button', { name: 'criar' })).not.toBeInTheDocument()
+  })
+})
+
+describe('App - quota-indicator prefs wiring (QUOTA-11)', () => {
+  it('busca quota_prefs_get uma vez na montagem e o resultado desce para o Header', async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === 'agent_catalog') return Promise.resolve([])
+      if (command === 'agent_default') return Promise.resolve(null)
+      if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
+      if (command === 'quota_claude') {
+        return Promise.resolve({
+          state: 'disabled',
+          windows: [],
+          planLabel: null,
+          fetchedAt: null,
+          retryAt: null,
+        })
+      }
+      return Promise.resolve(undefined)
+    })
+
+    render(<App />)
+
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('quota_prefs_get'))
+    expect(invokeMock.mock.calls.filter(([cmd]) => cmd === 'quota_prefs_get')).toHaveLength(1)
+    await waitFor(() => expect(screen.getByLabelText('quota')).toBeInTheDocument())
+  })
+
+  it('quota://prefs-changed com enabled:false remove o indicador sem remontar os painéis', async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === 'agent_catalog') return Promise.resolve([])
+      if (command === 'agent_default') return Promise.resolve(null)
+      if (command === 'terminal_picker_last_dir') return Promise.resolve(null)
+      if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
+      if (command === 'quota_claude') {
+        return Promise.resolve({
+          state: 'disabled',
+          windows: [],
+          planLabel: null,
+          fetchedAt: null,
+          retryAt: null,
+        })
+      }
+      return Promise.resolve(undefined)
+    })
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByLabelText('quota')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: '+ Create Terminal' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
+    await createTerminalViaDialog()
+
+    const paneBefore = screen.getByTestId('terminal-pane-stub')
+
+    act(() => {
+      getQuotaPrefsChangedHandler()({ payload: { enabled: false, window: 'both' } })
+    })
+
+    expect(screen.queryByLabelText('quota')).not.toBeInTheDocument()
+    expect(screen.getByTestId('terminal-pane-stub')).toBe(paneBefore)
   })
 })
