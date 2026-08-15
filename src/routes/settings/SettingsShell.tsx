@@ -1,7 +1,9 @@
-// SPEC: settings-shell (SET-02)
+// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10)
 
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { getCurrentWindow } from '@tauri-apps/api/window'
+import { CircleDot, Download, FolderOpen, Users, X } from 'lucide-react'
 import AgentPanel, { type AgentDescriptor } from './AgentPanel'
 import ProjectsPanel, { type ProjectRow } from './ProjectsPanel'
 import StatusesPanel, { type StatusRow } from './StatusesPanel'
@@ -10,11 +12,13 @@ import packageJson from '../../../package.json'
 
 type SectionId = 'agents' | 'projects' | 'statuses' | 'updates'
 
-const SECTIONS: ReadonlyArray<{ id: SectionId; label: string }> = [
-  { id: 'agents', label: 'Agentes' },
-  { id: 'projects', label: 'Projetos' },
-  { id: 'statuses', label: 'Status de terminal' },
-  { id: 'updates', label: 'Atualizações' },
+// SET-07: ícone por seção — nenhuma escolha específica foi pedida, reaproveita
+// `lucide-react` (já instalado, mesmo padrão de `Header.tsx`).
+const SECTIONS: ReadonlyArray<{ id: SectionId; label: string; icon: typeof Users }> = [
+  { id: 'agents', label: 'Agentes', icon: Users },
+  { id: 'projects', label: 'Projetos', icon: FolderOpen },
+  { id: 'statuses', label: 'Status de terminal', icon: CircleDot },
+  { id: 'updates', label: 'Atualizações', icon: Download },
 ]
 
 /** Espelha `AgentCatalogEntry` de `src-tauri/src/commands/agents.rs` (T5 de
@@ -70,11 +74,10 @@ export default function SettingsShell() {
   // reusado como está. `installedVersion` vem do `package.json` (única
   // fonte hoje sem depender de comando novo); `mode` não tem detector
   // exposto ao frontend (fica fixo em `'installed'`, mesma limitação de
-  // `statuses` acima); `autoCheckEnabled` reflete só o padrão documentado
-  // em `db::auto_check`/`release-distribution/tasks.md` T13 ("`auto_check`
-  // nasce ligado") — `db::auto_check`/`set_auto_check`
-  // (`src-tauri/src/db/settings.rs`) existem mas não têm invólucro
-  // `#[tauri::command]`, então o toggle aqui também é só local à sessão.
+  // `statuses` acima). `autoCheckEnabled` (SET-09/SET-10) carrega e persiste
+  // de verdade via `update_auto_check_get`/`update_auto_check_set`
+  // (`release-distribution/01-auto-check-toggle-commands`) — o `true` aqui
+  // é só o valor inicial até a resposta chegar.
   const [autoCheckEnabled, setAutoCheckEnabled] = useState(true)
   const [checkState, setCheckState] = useState<CheckState>({ status: 'idle' })
 
@@ -111,6 +114,31 @@ export default function SettingsShell() {
       cancelled = true
     }
   }, [])
+
+  // SET-09: carrega o valor real de `auto_check` quando a seção Atualizações
+  // é aberta. Falha de `invoke` mantém o padrão atual do componente (`true`)
+  // em vez de travar a seção (edge case da spec).
+  useEffect(() => {
+    if (section !== 'updates') return
+    let cancelled = false
+    invoke<boolean>('update_auto_check_get').then(
+      (value) => {
+        if (!cancelled) setAutoCheckEnabled(value)
+      },
+      () => {
+        /* mantém o valor padrão atual — edge case da spec */
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [section])
+
+  // SET-10: alternar o toggle persiste de verdade.
+  const handleToggleAutoCheck = (enabled: boolean) => {
+    setAutoCheckEnabled(enabled)
+    void invoke('update_auto_check_set', { enabled })
+  }
 
   const handleCheckNow = () => {
     setCheckState({ status: 'checking' })
@@ -169,10 +197,52 @@ export default function SettingsShell() {
     setStatuses([])
   }
 
+  // SET-06: trilho "Configurações › [Seção ativa]".
+  const activeSection = SECTIONS.find((item) => item.id === section)
+
+  // SET-04/SET-05: X e "Fechar" fecham a janela `settings` de dentro do
+  // app — a capability `core:window:allow-close` (T1) autoriza a chamada.
+  const handleClose = () => {
+    void getCurrentWindow().close()
+  }
+
   return (
     <div className="settings-shell">
       <style>{`
-        .settings-shell { display: flex; height: 100%; }
+        .settings-shell { display: flex; flex-direction: column; height: 100%; }
+        .settings-shell__body { display: flex; flex: 1 1 auto; min-height: 0; }
+        .settings-shell__header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0.5rem 1rem;
+          border-bottom: 1px solid #222;
+        }
+        .settings-shell__breadcrumb { font-size: 0.9rem; opacity: 0.8; }
+        .settings-shell__close {
+          padding: 0.25rem;
+          border: none;
+          background: transparent;
+          color: inherit;
+          cursor: pointer;
+          border-radius: 6px;
+        }
+        .settings-shell__close:hover { background: rgba(255, 255, 255, 0.06); }
+        .settings-shell__footer {
+          display: flex;
+          justify-content: flex-end;
+          padding: 0.75rem 1rem;
+          border-top: 1px solid #222;
+        }
+        .settings-shell__footer-close {
+          padding: 0.5rem 1rem;
+          border-radius: 6px;
+          border: 1px solid #333;
+          background: transparent;
+          color: inherit;
+          cursor: pointer;
+        }
+        .settings-shell__footer-close:hover { background: rgba(255, 255, 255, 0.06); }
         .settings-shell__nav {
           display: flex;
           flex-direction: column;
@@ -183,6 +253,9 @@ export default function SettingsShell() {
           flex: 0 0 auto;
         }
         .settings-shell__nav-item {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
           text-align: left;
           padding: 0.5rem 0.75rem;
           border-radius: 6px;
@@ -199,55 +272,76 @@ export default function SettingsShell() {
         .settings-shell__content { flex: 1 1 auto; min-width: 0; overflow: auto; padding: 1rem; }
       `}</style>
 
-      <nav className="settings-shell__nav" aria-label="Seções de Configurações">
-        {SECTIONS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className="settings-shell__nav-item"
-            aria-current={section === item.id ? 'page' : undefined}
-            onClick={() => setSection(item.id)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </nav>
+      <div className="settings-shell__header">
+        <span className="settings-shell__breadcrumb">Configurações › {activeSection?.label}</span>
+        <button
+          type="button"
+          className="settings-shell__close"
+          aria-label="Fechar Configurações"
+          onClick={handleClose}
+        >
+          <X size={18} />
+        </button>
+      </div>
 
-      <div className="settings-shell__content">
-        {section === 'agents' && (
-          <AgentPanel
-            agents={agents}
-            installedIds={installedIds}
-            defaultAgentId={defaultAgentId}
-            onSelectDefault={setDefaultAgentId}
-          />
-        )}
+      <div className="settings-shell__body">
+        <nav className="settings-shell__nav" aria-label="Seções de Configurações">
+          {SECTIONS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className="settings-shell__nav-item"
+              aria-current={section === item.id ? 'page' : undefined}
+              onClick={() => setSection(item.id)}
+            >
+              <item.icon size={16} />
+              {item.label}
+            </button>
+          ))}
+        </nav>
 
-        {section === 'projects' && <ProjectsPanel projects={projects} />}
+        <div className="settings-shell__content">
+          {section === 'agents' && (
+            <AgentPanel
+              agents={agents}
+              installedIds={installedIds}
+              defaultAgentId={defaultAgentId}
+              onSelectDefault={setDefaultAgentId}
+            />
+          )}
 
-        {section === 'statuses' && (
-          <StatusesPanel
-            statuses={statuses}
-            terminalCountByStatus={{}}
-            onCreate={handleCreateStatus}
-            onEdit={handleEditStatus}
-            onToggleEnabled={handleToggleStatus}
-            onDelete={handleDeleteStatus}
-            onReorder={handleReorderStatuses}
-            onRestoreDefaults={handleRestoreDefaults}
-          />
-        )}
+          {section === 'projects' && <ProjectsPanel projects={projects} />}
 
-        {section === 'updates' && (
-          <UpdateSettings
-            installedVersion={packageJson.version}
-            mode="installed"
-            autoCheckEnabled={autoCheckEnabled}
-            checkState={checkState}
-            onToggleAutoCheck={setAutoCheckEnabled}
-            onCheckNow={handleCheckNow}
-          />
-        )}
+          {section === 'statuses' && (
+            <StatusesPanel
+              statuses={statuses}
+              terminalCountByStatus={{}}
+              onCreate={handleCreateStatus}
+              onEdit={handleEditStatus}
+              onToggleEnabled={handleToggleStatus}
+              onDelete={handleDeleteStatus}
+              onReorder={handleReorderStatuses}
+              onRestoreDefaults={handleRestoreDefaults}
+            />
+          )}
+
+          {section === 'updates' && (
+            <UpdateSettings
+              installedVersion={packageJson.version}
+              mode="installed"
+              autoCheckEnabled={autoCheckEnabled}
+              checkState={checkState}
+              onToggleAutoCheck={handleToggleAutoCheck}
+              onCheckNow={handleCheckNow}
+            />
+          )}
+        </div>
+      </div>
+
+      <div className="settings-shell__footer">
+        <button type="button" className="settings-shell__footer-close" onClick={handleClose}>
+          Fechar
+        </button>
       </div>
     </div>
   )
