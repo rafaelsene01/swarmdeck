@@ -1,6 +1,12 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.6] - 2026-08-15
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.5] - 2026-08-15
 
 ### Outros
@@ -18,6 +24,8 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 - Implement release-distribution update handling in App component; add tests for update badge visibility in Header. Enhance App and Header components to manage and display update availability status, ensuring a seamless user experience during updates.
 
 - Refactor async function signature and improve logging format in update handling. Ensure consistent code style in apply.rs and re-order module imports in mod.rs for better organization.
+
+- Add tests for SettingsShell component to validate window close functionality, sidebar navigation, and auto-check toggle persistence. Enhance SettingsShell with icons for sidebar sections and implement real persistence for auto-check settings.
 
 ## [0.1.4] - 2026-08-13
 
