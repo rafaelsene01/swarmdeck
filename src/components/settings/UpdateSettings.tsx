@@ -1,4 +1,4 @@
-// SPEC: silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-12, SILENT-13, SILENT-25)
+// SPEC: silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-12, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34)
 
 export type UpdateState =
   | { status: 'loading' }
@@ -11,8 +11,12 @@ export type UpdateState =
 export interface UpdateSettingsProps {
   state: UpdateState
   autoCheckEnabled: boolean
+  /** `true` enquanto uma consulta acionada por `onCheck` está em andamento (SILENT-34). */
+  checking: boolean
   /** Persiste por fora (via `set_auto_check`, fora deste componente) — aqui só noticia a intenção. */
   onToggleAutoCheck: (enabled: boolean) => void
+  /** Reconsulta o manifesto sob demanda (`update_status`), SILENT-32/33. */
+  onCheck: () => void
   /** Baixa e aplica a atualização confirmada (`update_apply`). */
   onApply: () => void
   /** Reinicia o app depois de uma troca aplicada (`update_restart`). */
@@ -37,10 +41,18 @@ const MODE_LABEL: Record<'installed' | 'portable', string> = {
 export default function UpdateSettings({
   state,
   autoCheckEnabled,
+  checking,
   onToggleAutoCheck,
+  onCheck,
   onApply,
   onRestart,
 }: UpdateSettingsProps) {
+  // SILENT-32/33: a busca sob demanda vale enquanto a tela está mostrando
+  // versão — some só durante a própria troca (`applying`) e depois dela
+  // (`applied`), quando o número em tela já é o da versão recém-aplicada e
+  // reconsultar não decide mais nada.
+  const canCheck = state.status === 'ready' || state.status === 'unavailable' || state.status === 'error'
+
   return (
     <div className="update-settings">
       <h2 className="update-settings__title">Atualizações</h2>
@@ -66,6 +78,12 @@ export default function UpdateSettings({
             </div>
           )}
         </dl>
+      )}
+
+      {canCheck && (
+        <button type="button" className="update-settings__check-now" onClick={onCheck} disabled={checking}>
+          {checking ? 'Verificando…' : 'Buscar atualizações'}
+        </button>
       )}
 
       {state.status === 'ready' && !state.hasUpdate && (

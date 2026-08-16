@@ -122,7 +122,10 @@ jobs:
             cat RELEASE_NOTES.md
             echo 'RELEASE_NOTES_EOF'
           } >> "$GITHUB_OUTPUT"
-          rm -f RELEASE_NOTES.md
+          # O arquivo sobrevive de propósito: o passo que cria o rascunho da
+          # release usa `--notes-file`, para as notas não passarem por
+          # interpolação de shell. `git add` lista arquivo por arquivo, então
+          # este arquivo não rastreado nunca entra no commit de versão.
 
       - name: Commitar e taguear
         id: commit
@@ -140,6 +143,24 @@ jobs:
           # Repassado ao `cleanup`, que reverte exatamente este commit se o
           # run nunca chegar numa release publicada.
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # SPEC: silent-update (SILENT-29, SILENT-30)
+      # Um rascunho só por tag, criado aqui — antes da matriz. Os dois jobs
+      # de `build` rodam em paralelo e o `tauri-action` cria um rascunho
+      # quando não acha nenhum para a tag: sem este passo, Windows e Linux
+      # criam dois rascunhos concorrentes, cada um com metade dos artefatos
+      # e um `latest.json` parcial, e o `finalize` publica só um deles. Foi
+      # exatamente o que deixou a v0.1.9 sair sem MSI e sem NSIS.
+      - name: Criar o rascunho da release (um só, antes da matriz)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --draft \
+            --title "SwarmDeck ${{ steps.version.outputs.tag }}" \
+            --notes-file RELEASE_NOTES.md
+          rm -f RELEASE_NOTES.md
 
   build:
     name: "Empacotar (${{ matrix.os }})"

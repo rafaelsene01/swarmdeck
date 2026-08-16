@@ -1,4 +1,4 @@
-// SPEC: silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-12, SILENT-13, SILENT-25)
+// SPEC: silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-12, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34)
 
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -8,7 +8,9 @@ function renderSettings(state: UpdateState, overrides: Partial<Parameters<typeof
   const props = {
     state,
     autoCheckEnabled: true,
+    checking: false,
     onToggleAutoCheck: vi.fn(),
+    onCheck: vi.fn(),
     onApply: vi.fn(),
     onRestart: vi.fn(),
     ...overrides,
@@ -67,6 +69,44 @@ describe('UpdateSettings', () => {
 
     const alert = screen.getByRole('alert')
     expect(alert).toHaveTextContent('disco cheio')
+  })
+
+  // SILENT-32/33: o botão fica ao lado da versão instalada e reconsulta sob demanda.
+  it('mostra "Buscar atualizações" junto da versão instalada e aciona onCheck', () => {
+    const onCheck = vi.fn()
+    renderSettings(
+      { status: 'ready', current: '0.3.1', latest: '0.3.1', hasUpdate: false, mode: 'installed' },
+      { onCheck },
+    )
+
+    expect(screen.getByText('0.3.1')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar atualizações' }))
+    expect(onCheck).toHaveBeenCalledTimes(1)
+  })
+
+  // SILENT-32: falha de consulta é justamente quando o usuário quer tentar de novo.
+  it('mostra "Buscar atualizações" também quando a consulta falhou', () => {
+    renderSettings({ status: 'unavailable', current: '0.3.1' })
+
+    expect(screen.getByRole('button', { name: 'Buscar atualizações' })).toBeEnabled()
+  })
+
+  // SILENT-34: durante a consulta o botão desabilita e a versão instalada continua em tela.
+  it('com checking o botão vira "Verificando…" desabilitado, sem esconder a versão instalada', () => {
+    renderSettings(
+      { status: 'ready', current: '0.3.1', latest: '0.3.1', hasUpdate: false, mode: 'installed' },
+      { checking: true },
+    )
+
+    expect(screen.getByRole('button', { name: 'Verificando…' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Buscar atualizações' })).not.toBeInTheDocument()
+    expect(screen.getByText('0.3.1')).toBeInTheDocument()
+  })
+
+  // SILENT-34: depois da troca aplicada, reconsultar não decide mais nada.
+  it('não mostra "Buscar atualizações" durante a aplicação nem depois dela', () => {
+    renderSettings({ status: 'applying', current: '0.3.1', latest: '0.4.0' })
+    expect(screen.queryByRole('button', { name: 'Buscar atualizações' })).not.toBeInTheDocument()
   })
 
   it('o texto explicativo não menciona mais instalação no fechamento do app', () => {

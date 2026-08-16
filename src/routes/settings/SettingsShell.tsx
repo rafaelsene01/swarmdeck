@@ -1,6 +1,6 @@
-// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10), silent-update (SILENT-09, SILENT-13, SILENT-25)
+// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10), silent-update (SILENT-09, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34)
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { CircleDot, Download, FolderOpen, SlidersHorizontal, Users, X } from 'lucide-react'
@@ -92,6 +92,8 @@ export default function SettingsShell() {
   // valor inicial até a resposta chegar.
   const [autoCheckEnabled, setAutoCheckEnabled] = useState(true)
   const [updateState, setUpdateState] = useState<UpdateState>({ status: 'loading' })
+  // SILENT-34: só a consulta acionada pelo botão, não a da abertura da seção.
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
   // Preserva a última versão instalada conhecida através de uma falha de
   // `update_status` (SILENT-25) — a versão instalada não muda entre
   // consultas, só a de rede pode falhar.
@@ -182,18 +184,14 @@ export default function SettingsShell() {
     void invoke('quota_prefs_set', { prefs: next })
   }
 
-  // SILENT-09/SILENT-25: consulta ao abrir a seção — sempre, mesmo com a
-  // verificação automática desligada (a preferência só governa o checador
-  // em segundo plano). Falha de rede já chega como `latest: null` no `Ok`
-  // (tratada abaixo); só a rejeição do próprio `invoke` (erro de backend)
-  // cai no `catch`.
-  useEffect(() => {
-    if (section !== 'updates') return
-    let cancelled = false
-    setUpdateState({ status: 'loading' })
-    invoke<UpdateStatusResult>('update_status').then(
+  // SILENT-32: a mesma consulta serve à abertura da seção e ao botão
+  // "Buscar atualizações" — um caminho só, para os dois não divergirem.
+  // `isCancelled` existe porque o efeito precisa descartar a resposta ao
+  // desmontar; o botão passa um cancelamento que nunca dispara.
+  const fetchUpdateStatus = useCallback((isCancelled: () => boolean) => {
+    return invoke<UpdateStatusResult>('update_status').then(
       (result) => {
-        if (cancelled) return
+        if (isCancelled()) return
         lastKnownVersionRef.current = result.current
         setUpdateState(
           result.latest === null
@@ -208,14 +206,35 @@ export default function SettingsShell() {
         )
       },
       () => {
-        if (cancelled) return
+        if (isCancelled()) return
         setUpdateState({ status: 'unavailable', current: lastKnownVersionRef.current })
       },
     )
+  }, [])
+
+  // SILENT-09/SILENT-25: consulta ao abrir a seção — sempre, mesmo com a
+  // verificação automática desligada (a preferência só governa o checador
+  // em segundo plano). Falha de rede já chega como `latest: null` no `Ok`
+  // (tratada abaixo); só a rejeição do próprio `invoke` (erro de backend)
+  // cai no `catch`.
+  useEffect(() => {
+    if (section !== 'updates') return
+    let cancelled = false
+    setUpdateState({ status: 'loading' })
+    void fetchUpdateStatus(() => cancelled)
     return () => {
       cancelled = true
     }
-  }, [section])
+  }, [section, fetchUpdateStatus])
+
+  // SILENT-33/34: a busca sob demanda não volta para `loading` — a versão
+  // instalada continua em tela durante a consulta, e só o botão sinaliza o
+  // andamento.
+  const handleCheck = () => {
+    if (checkingUpdate) return
+    setCheckingUpdate(true)
+    void fetchUpdateStatus(() => false).finally(() => setCheckingUpdate(false))
+  }
 
   // SILENT-02/13: confirmação explícita baixa e aplica a atualização;
   // "Reiniciar agora" só existe depois de aplicada com sucesso.
@@ -415,7 +434,9 @@ export default function SettingsShell() {
             <UpdateSettings
               state={updateState}
               autoCheckEnabled={autoCheckEnabled}
+              checking={checkingUpdate}
               onToggleAutoCheck={handleToggleAutoCheck}
+              onCheck={handleCheck}
               onApply={handleApply}
               onRestart={handleRestart}
             />
