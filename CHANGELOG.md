@@ -1,11 +1,32 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.11] - 2026-08-16
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.10] - 2026-08-16
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Add terminal tab functionality to App component
+
+- Implemented a new terminal tab system allowing users to create, close, and switch between multiple terminal tabs.
+- Updated the App state management to handle terminal tabs, ensuring terminals are preserved when switching tabs.
+- Enhanced tests for terminal tab interactions, verifying the creation of new tabs, terminal persistence, and closing behavior.
+- Refactored related components to support the new tabbed interface, improving user experience and application structure.
+
+- Implement terminal-chrome features and enhance styling
+
+- Added functionality for maximizing terminal panes, ensuring they overlay the header and tab bar correctly.
+- Updated the App component to reflect changes in terminal pane styling, including z-index and positioning adjustments for maximized states.
+- Enhanced CSS variables for terminal-chrome, improving the visual distinction of terminal windows.
+- Introduced new tests for terminal-chrome interactions, verifying the behavior of maximized terminals.
+- Refactored related components to support the new terminal-chrome design, enhancing user experience.
 
 ## [0.1.9] - 2026-08-16
 
