@@ -1,6 +1,12 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.14] - 2026-08-16
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.13] - 2026-08-16
 
 ### Outros
@@ -13,6 +19,13 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 - Removed the portable update logic and associated functions, streamlining the update process.
 - Introduced a new function to retrieve the latest schema version from migrations, enhancing database management.
 - Updated tests to align with the new update mechanism and ensure consistency in schema version checks.
+
+- Enhance QuotaIndicator and refactor quota handling
+
+- Increased the size of the QuotaIndicator icon for better visibility.
+- Updated the styling of the icon to center it and match the new dimensions.
+- Refactored the quota decoding logic to improve clarity and maintainability, introducing a new `plan_label` function to derive plan labels from the rate limit tier.
+- Adjusted the credential reading function to return both the token and tier, streamlining the credential management process.
 
 ## [0.1.12] - 2026-08-16
 
