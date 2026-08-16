@@ -94,13 +94,17 @@ pub fn focus_main(app: &AppHandle) -> tauri::Result<()> {
 /// Invólucro fino chamado pelo frontend para abrir/focar o board — mesmo
 /// padrão de tradução de erro para `String` usado em `commands/projects.rs`
 /// e `commands/update.rs`.
+///
+/// `async` é obrigatório pelo mesmo motivo de `commands::settings::settings_open`:
+/// comando síncrono roda na thread principal, e `WebviewWindowBuilder::build()`
+/// bloqueia esperando o event loop — de dentro do event loop isso trava o app.
 #[tauri::command]
-pub fn kanban_open(app: AppHandle) -> Result<(), String> {
+pub async fn kanban_open(app: AppHandle) -> Result<(), String> {
     open(&app).map_err(|e| e.to_string())
 }
 
 /// Invólucro fino chamado pelo botão "voltar aos terminais" (task futura).
 #[tauri::command]
-pub fn kanban_focus_main(app: AppHandle) -> Result<(), String> {
+pub async fn kanban_focus_main(app: AppHandle) -> Result<(), String> {
     focus_main(&app).map_err(|e| e.to_string())
 }

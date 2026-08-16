@@ -90,14 +90,21 @@ pub fn focus_main(app: &AppHandle) -> tauri::Result<()> {
 /// Invólucro fino chamado pelo botão "Configurações" da toolbar principal —
 /// mesmo padrão de tradução de erro para `String` usado em
 /// `commands::kanban::kanban_open`.
+///
+/// `async` é obrigatório, não estilo: um `#[tauri::command]` síncrono roda na
+/// **thread principal**, e `WebviewWindowBuilder::build()` (como `set_focus`)
+/// despacha a criação para o event loop e bloqueia esperando a resposta —
+/// esperar o event loop de dentro dele trava o processo inteiro. O sintoma era
+/// a janela nascer em `about:blank` (branca) e o X não fechar, porque nenhum
+/// evento de janela voltava a ser processado.
 #[tauri::command]
-pub fn settings_open(app: AppHandle) -> Result<(), String> {
+pub async fn settings_open(app: AppHandle) -> Result<(), String> {
     open(&app).map_err(|e| e.to_string())
 }
 
 /// Invólucro fino para "voltar aos terminais" a partir de Configurações
-/// (task futura desta feature).
+/// (task futura desta feature). `async` pelo mesmo motivo de `settings_open`.
 #[tauri::command]
-pub fn settings_focus_main(app: AppHandle) -> Result<(), String> {
+pub async fn settings_focus_main(app: AppHandle) -> Result<(), String> {
     focus_main(&app).map_err(|e| e.to_string())
 }
