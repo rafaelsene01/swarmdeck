@@ -43,9 +43,15 @@ export interface QuotaIndicatorProps {
 
 type FetchState = { status: 'loading' } | { status: 'ready'; snapshot: QuotaSnapshot }
 
-const SIZE = 26
+const SIZE = 30
 const STROKE = 2.5
 const GAP = 1.5
+/**
+ * Disco da marca no centro (QUOTA-27). 14px deixa ~1,5px de folga até o
+ * arco interno (raio livre = 8,5px) — o glifo encostava no anel a 26px.
+ */
+const ICON_DISC = 14
+const ICON_GLYPH = 12
 
 /** QUOTA-28: a busca se repete a cada 5 min — mesmo piso do cache do backend. */
 const POLL_MS = 5 * 60 * 1000
@@ -192,6 +198,14 @@ export default function QuotaIndicator({
         .quota-indicator__icon {
           position: absolute;
           display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: ${ICON_DISC}px;
+          height: ${ICON_DISC}px;
+          border-radius: 50%;
+          /* Glifo branco sobre o disco da marca — o ícone monocromático
+             herda esta cor via currentColor. */
+          color: #fff;
         }
         .quota-indicator__popover {
           position: absolute;
@@ -325,8 +339,11 @@ export default function QuotaIndicator({
             )
           })}
         </svg>
-        <span className="quota-indicator__icon">
-          <ProviderIcon id={defaultProviderId} size={SIZE / 2} />
+        <span
+          className="quota-indicator__icon"
+          style={{ background: providerMeta(defaultProviderId).color }}
+        >
+          <ProviderIcon id={defaultProviderId} size={ICON_GLYPH} monochrome />
         </span>
       </button>
 

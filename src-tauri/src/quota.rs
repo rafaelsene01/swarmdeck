@@ -41,14 +41,43 @@ pub struct ClaudeQuota {
 
 /// Decodifica o corpo JSON da resposta de uso. Pura — nenhum I/O.
 ///
-/// `tier` é o valor de `rateLimitTier` já extraído do corpo pelo chamador
-/// (a busca em T5); ausente vira o rótulo de fallback `"Assinatura"`.
+/// `tier` é o `rateLimitTier`/`subscriptionType` lido do arquivo de
+/// credencial pelo chamador — o corpo da resposta de uso não traz plano.
 pub fn decode_usage(body: &Value, tier: Option<&str>) -> ClaudeQuota {
     ClaudeQuota {
         five_hour: decode_window(body.get("five_hour")),
         seven_day: decode_window(body.get("seven_day")),
-        plan_label: tier.unwrap_or("Assinatura").to_string(),
+        plan_label: plan_label(tier),
     }
+}
+
+/// Rótulo do plano a partir do tier da credencial (`pro`, `max_20x`,
+/// `default_max_5x`...). Casamento por substring porque o campo já apareceu
+/// com prefixo (`default_`) — contrato privado. Sem casamento, o rótulo
+/// genérico.
+fn plan_label(tier: Option<&str>) -> String {
+    let Some(raw) = tier else {
+        return "Assinatura".to_string();
+    };
+    let tier = raw.to_ascii_lowercase();
+    let label = if tier.contains("max_20x") || tier.contains("max20x") {
+        "Max 20x"
+    } else if tier.contains("max_5x") || tier.contains("max5x") {
+        "Max 5x"
+    } else if tier.contains("max") {
+        "Max"
+    } else if tier.contains("pro") {
+        "Pro"
+    } else if tier.contains("team") {
+        "Team"
+    } else if tier.contains("enterprise") {
+        "Enterprise"
+    } else if tier.contains("free") {
+        "Free"
+    } else {
+        "Assinatura"
+    };
+    label.to_string()
 }
 
 fn decode_window(value: Option<&Value>) -> ClaudeWindow {
@@ -59,10 +88,14 @@ fn decode_window(value: Option<&Value>) -> ClaudeWindow {
         };
     };
 
+    // `utilization` vem em porcentagem `0..=100` (verificado contra
+    // `JuanjoFuchs/ccburn`, `util_normalized = float(utilization) / 100.0`,
+    // em 2026-08-16). Fora da faixa vira janela sem dado — nunca clamp.
     let used_fraction = value
         .get("utilization")
         .and_then(Value::as_f64)
-        .filter(|f| (0.0..=1.0).contains(f));
+        .filter(|f| (0.0..=100.0).contains(f))
+        .map(|f| f / 100.0);
 
     let resets_at = value
         .get("resets_at")
@@ -74,11 +107,6 @@ fn decode_window(value: Option<&Value>) -> ClaudeWindow {
         used_fraction,
         resets_at,
     }
-}
-
-fn decode_from_body(body: &Value) -> ClaudeQuota {
-    let tier = body.get("rateLimitTier").and_then(Value::as_str);
-    decode_usage(body, tier)
 }
 
 /// Token OAuth extraído do arquivo de credencial do Claude Code. `Debug`
@@ -123,12 +151,22 @@ pub enum HttpOutcome {
 
 const MAX_CREDENTIAL_BYTES: u64 = 64 * 1024;
 
-/// Lê o token de `~/.claude/.credentials.json`. `None` quando o arquivo não
-/// existe, excede 64 KB (QUOTA-24 — a leitura é abortada pelo tamanho do
-/// metadata, o conteúdo nunca chega a ser lido), não é JSON válido, ou não
-/// tem `claudeAiOauth.accessToken` não vazio (QUOTA-20). Aberto somente
-/// para leitura (QUOTA-18): `File::open` nunca habilita escrita.
-fn read_credential_token(path: &Path) -> Option<AccessToken> {
+/// Credencial do Claude Code: token e plano assinado. O tier fica no
+/// arquivo (`claudeAiOauth.rateLimitTier`, ou `subscriptionType` nas
+/// versões que gravam só esse), nunca na resposta de uso.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Credential {
+    token: AccessToken,
+    tier: Option<String>,
+}
+
+/// Lê a credencial de `~/.claude/.credentials.json`. `None` quando o
+/// arquivo não existe, excede 64 KB (QUOTA-24 — a leitura é abortada pelo
+/// tamanho do metadata, o conteúdo nunca chega a ser lido), não é JSON
+/// válido, ou não tem `claudeAiOauth.accessToken` não vazio (QUOTA-20).
+/// Aberto somente para leitura (QUOTA-18): `File::open` nunca habilita
+/// escrita.
+fn read_credential(path: &Path) -> Option<Credential> {
     let metadata = std::fs::metadata(path).ok()?;
     if metadata.len() > MAX_CREDENTIAL_BYTES {
         return None;
@@ -139,11 +177,22 @@ fn read_credential_token(path: &Path) -> Option<AccessToken> {
     file.read_to_end(&mut buf).ok()?;
 
     let value: Value = serde_json::from_slice(&buf).ok()?;
-    let token = value.get("claudeAiOauth")?.get("accessToken")?.as_str()?;
+    let oauth = value.get("claudeAiOauth")?;
+    let token = oauth.get("accessToken")?.as_str()?;
     if token.is_empty() {
         return None;
     }
-    Some(AccessToken(token.to_string()))
+    let tier = oauth
+        .get("rateLimitTier")
+        .or_else(|| oauth.get("subscriptionType"))
+        .and_then(Value::as_str)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string);
+
+    Some(Credential {
+        token: AccessToken(token.to_string()),
+        tier,
+    })
 }
 
 fn credential_path() -> Option<PathBuf> {
@@ -160,23 +209,24 @@ fn retry_at_from(retry_after_secs: Option<u64>, now_ms: i64) -> i64 {
 /// aqui — o guard de preferência desligada é responsabilidade do comando
 /// (T8, QUOTA-17).
 async fn fetch_with<R, H, HFut, N>(
-    read_token: R,
+    read_credential: R,
     http: H,
     now: N,
 ) -> Result<ClaudeQuota, QuotaError>
 where
-    R: Fn() -> Option<AccessToken>,
+    R: Fn() -> Option<Credential>,
     H: Fn(AccessToken) -> HFut,
     HFut: Future<Output = Result<HttpOutcome, ()>>,
     N: Fn() -> i64,
 {
-    let Some(token) = read_token() else {
+    let Some(credential) = read_credential() else {
         return Err(QuotaError::NoCredential);
     };
-    let token_str = token.as_str().to_string();
+    let token_str = credential.token.as_str().to_string();
+    let tier = credential.tier;
 
-    match http(token).await.map_err(|_| QuotaError::Offline)? {
-        HttpOutcome::Success(body) => Ok(decode_from_body(&body)),
+    match http(credential.token).await.map_err(|_| QuotaError::Offline)? {
+        HttpOutcome::Success(body) => Ok(decode_usage(&body, tier.as_deref())),
         HttpOutcome::RateLimited { retry_after_secs } => Err(QuotaError::RateLimited {
             retry_at_epoch_ms: retry_at_from(retry_after_secs, now()),
         }),
@@ -184,15 +234,16 @@ where
             // Releitura única (QUOTA-21): token igual encerra sem 2ª
             // requisição; token novo tenta de novo, e essa segunda
             // resposta é final (sem 3ª tentativa).
-            let Some(retry_token) = read_token() else {
+            let Some(retry) = read_credential() else {
                 return Err(QuotaError::Unauthorized);
             };
-            if retry_token.as_str() == token_str {
+            if retry.token.as_str() == token_str {
                 return Err(QuotaError::Unauthorized);
             }
+            let retry_tier = retry.tier;
 
-            match http(retry_token).await.map_err(|_| QuotaError::Offline)? {
-                HttpOutcome::Success(body) => Ok(decode_from_body(&body)),
+            match http(retry.token).await.map_err(|_| QuotaError::Offline)? {
+                HttpOutcome::Success(body) => Ok(decode_usage(&body, retry_tier.as_deref())),
                 HttpOutcome::RateLimited { retry_after_secs } => Err(QuotaError::RateLimited {
                     retry_at_epoch_ms: retry_at_from(retry_after_secs, now()),
                 }),
@@ -242,8 +293,8 @@ fn real_now_ms() -> i64 {
         .unwrap_or(0)
 }
 
-fn real_read_token() -> Option<AccessToken> {
-    read_credential_token(&credential_path()?)
+fn real_read_credential() -> Option<Credential> {
+    read_credential(&credential_path()?)
 }
 
 /// Piso de cache: uma leitura com menos de 5 minutos é servida sem nova
@@ -279,12 +330,12 @@ impl QuotaCache {
 async fn fetch_cached_with<R, H, HFut, N>(
     cache: &QuotaCache,
     force: bool,
-    read_token: R,
+    read_credential: R,
     http: H,
     now: N,
 ) -> Result<(ClaudeQuota, i64), QuotaError>
 where
-    R: Fn() -> Option<AccessToken>,
+    R: Fn() -> Option<Credential>,
     H: Fn(AccessToken) -> HFut,
     HFut: Future<Output = Result<HttpOutcome, ()>>,
     N: Fn() -> i64,
@@ -300,7 +351,7 @@ where
         }
     }
 
-    let result = fetch_with(read_token, http, || now_ms).await;
+    let result = fetch_with(read_credential, http, || now_ms).await;
 
     if let Ok(quota) = &result {
         let mut cached = cache.last.lock().expect("quota cache mutex poisoned");
@@ -316,7 +367,7 @@ where
 /// Versão de produção: caminho real, `reqwest` real, relógio real, cache
 /// de `state`.
 pub async fn fetch(state: &QuotaCache, force: bool) -> Result<(ClaudeQuota, i64), QuotaError> {
-    fetch_cached_with(state, force, real_read_token, real_http, real_now_ms).await
+    fetch_cached_with(state, force, real_read_credential, real_http, real_now_ms).await
 }
 
 #[cfg(test)]
@@ -327,8 +378,8 @@ mod tests {
     #[test]
     fn corpo_normal_produz_as_duas_janelas_com_fracao_e_reset_corretos() {
         let body = json!({
-            "five_hour": { "utilization": 0.18, "resets_at": "2026-08-15T18:00:00Z" },
-            "seven_day": { "utilization": 0.08, "resets_at": "2026-08-20T00:00:00Z" },
+            "five_hour": { "utilization": 18, "resets_at": "2026-08-15T18:00:00Z" },
+            "seven_day": { "utilization": 8, "resets_at": "2026-08-20T00:00:00Z" },
         });
 
         let quota = decode_usage(&body, Some("pro"));
@@ -347,13 +398,13 @@ mod tests {
                 resets_at: Some("2026-08-20T00:00:00Z".to_string()),
             }
         );
-        assert_eq!(quota.plan_label, "pro");
+        assert_eq!(quota.plan_label, "Pro");
     }
 
     #[test]
-    fn utilization_fora_de_0_a_1_produz_janela_sem_dado() {
+    fn utilization_fora_de_0_a_100_produz_janela_sem_dado() {
         let body = json!({
-            "five_hour": { "utilization": 1.5, "resets_at": "2026-08-15T18:00:00Z" },
+            "five_hour": { "utilization": 150, "resets_at": "2026-08-15T18:00:00Z" },
         });
 
         let quota = decode_usage(&body, None);
@@ -362,9 +413,46 @@ mod tests {
     }
 
     #[test]
+    fn tier_da_credencial_vira_rotulo_do_plano() {
+        assert_eq!(plan_label(Some("default_max_20x")), "Max 20x");
+        assert_eq!(plan_label(Some("max_5x")), "Max 5x");
+        assert_eq!(plan_label(Some("Max")), "Max");
+        assert_eq!(plan_label(Some("pro")), "Pro");
+        assert_eq!(plan_label(Some("outro_plano")), "Assinatura");
+    }
+
+    #[test]
+    fn tier_sai_do_arquivo_de_credencial_nao_do_corpo_da_resposta() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join(".credentials.json");
+        std::fs::write(
+            &path,
+            r#"{"claudeAiOauth":{"accessToken":"t","rateLimitTier":"default_max_20x"}}"#,
+        )
+        .expect("escrever credencial");
+
+        assert_eq!(
+            read_credential(&path).and_then(|c| c.tier).as_deref(),
+            Some("default_max_20x")
+        );
+
+        // Versões que gravam só `subscriptionType` também servem.
+        std::fs::write(
+            &path,
+            r#"{"claudeAiOauth":{"accessToken":"t","subscriptionType":"pro"}}"#,
+        )
+        .expect("escrever credencial");
+
+        assert_eq!(
+            read_credential(&path).and_then(|c| c.tier).as_deref(),
+            Some("pro")
+        );
+    }
+
+    #[test]
     fn seven_day_ausente_produz_janela_sem_dado_sem_panic() {
         let body = json!({
-            "five_hour": { "utilization": 0.5, "resets_at": "2026-08-15T18:00:00Z" },
+            "five_hour": { "utilization": 50, "resets_at": "2026-08-15T18:00:00Z" },
         });
 
         let quota = decode_usage(&body, None);
@@ -381,7 +469,7 @@ mod tests {
     #[test]
     fn resets_at_invalido_preserva_fracao_e_zera_reset() {
         let body = json!({
-            "five_hour": { "utilization": 0.42, "resets_at": "not-a-date" },
+            "five_hour": { "utilization": 42, "resets_at": "not-a-date" },
         });
 
         let quota = decode_usage(&body, None);
@@ -423,7 +511,7 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("nao-existe.json");
 
-        assert_eq!(read_credential_token(&path), None);
+        assert_eq!(read_credential(&path), None);
     }
 
     #[test]
@@ -432,7 +520,7 @@ mod tests {
         let path = dir.path().join(".credentials.json");
         std::fs::write(&path, r#"{"outraChave": true}"#).expect("escrever arquivo");
 
-        assert_eq!(read_credential_token(&path), None);
+        assert_eq!(read_credential(&path), None);
     }
 
     #[tokio::test]
@@ -441,7 +529,7 @@ mod tests {
         let path = dir.path().join(".credentials.json");
         std::fs::write(&path, vec![b' '; 65 * 1024]).expect("escrever arquivo grande");
 
-        let result = fetch_with(|| read_credential_token(&path), panicking_http, || 0).await;
+        let result = fetch_with(|| read_credential(&path), panicking_http, || 0).await;
 
         assert_eq!(result, Err(QuotaError::NoCredential));
     }
@@ -454,7 +542,7 @@ mod tests {
         let calls_clone = calls.clone();
 
         let result = fetch_with(
-            || read_credential_token(&path),
+            || read_credential(&path),
             move |_token| {
                 calls_clone.fetch_add(1, Ordering::SeqCst);
                 async { Ok(HttpOutcome::Unauthorized) }
@@ -476,7 +564,7 @@ mod tests {
         let path_clone = path.clone();
 
         let result = fetch_with(
-            move || read_credential_token(&path_clone),
+            move || read_credential(&path_clone),
             move |token| {
                 let n = calls_clone.fetch_add(1, Ordering::SeqCst);
                 let path = dir.path().join(".credentials.json");
@@ -508,7 +596,7 @@ mod tests {
         let path = write_credential(&dir, "token");
 
         let result = fetch_with(
-            || read_credential_token(&path),
+            || read_credential(&path),
             |_token| async {
                 Ok(HttpOutcome::RateLimited {
                     retry_after_secs: Some(10),
@@ -532,7 +620,7 @@ mod tests {
         let path = write_credential(&dir, "token");
 
         let result = fetch_with(
-            || read_credential_token(&path),
+            || read_credential(&path),
             |_token| async { Err(()) },
             || 0,
         )
@@ -581,7 +669,7 @@ mod tests {
         fetch_cached_with(
             &cache,
             false,
-            || read_credential_token(&path),
+            || read_credential(&path),
             counting_success_http(calls.clone()),
             || 0,
         )
@@ -591,7 +679,7 @@ mod tests {
         fetch_cached_with(
             &cache,
             false,
-            || read_credential_token(&path),
+            || read_credential(&path),
             counting_success_http(calls.clone()),
             || 60_000,
         )
@@ -611,7 +699,7 @@ mod tests {
         fetch_cached_with(
             &cache,
             false,
-            || read_credential_token(&path),
+            || read_credential(&path),
             counting_success_http(calls.clone()),
             || 0,
         )
@@ -621,7 +709,7 @@ mod tests {
         fetch_cached_with(
             &cache,
             false,
-            || read_credential_token(&path),
+            || read_credential(&path),
             counting_success_http(calls.clone()),
             || 6 * 60_000,
         )
@@ -641,7 +729,7 @@ mod tests {
         fetch_cached_with(
             &cache,
             false,
-            || read_credential_token(&path),
+            || read_credential(&path),
             counting_success_http(calls.clone()),
             || 0,
         )
@@ -651,7 +739,7 @@ mod tests {
         fetch_cached_with(
             &cache,
             true,
-            || read_credential_token(&path),
+            || read_credential(&path),
             counting_success_http(calls.clone()),
             || 60_000,
         )
