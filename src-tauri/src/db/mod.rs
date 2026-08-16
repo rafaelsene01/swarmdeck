@@ -35,6 +35,15 @@ const MIGRATIONS: &[(i64, &str)] = &[
     (7, include_str!("migrations/007_quota_providers.sql")),
 ];
 
+/// Versão que um banco recém-migrado alcança — a última de `MIGRATIONS`.
+///
+/// Existe para que teste nenhum precise repetir esse número à mão: cada
+/// migração nova quebrava os testes que o tinham hardcoded, um a um, sem
+/// nada de errado no código.
+pub fn latest_schema_version() -> i64 {
+    MIGRATIONS.last().map(|(version, _)| *version).unwrap_or(0)
+}
+
 /// Conexão com o banco do app, já migrada.
 pub struct Db {
     conn: Connection,

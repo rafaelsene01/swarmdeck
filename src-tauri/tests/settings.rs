@@ -4,7 +4,7 @@
 //! `tests/db.rs`: uma migração só está validada contra o banco de verdade.
 //! Por isso também não são paralelizáveis — ver `.specs/codebase/TESTING.md`.
 
-use swarmdeck_lib::db::{auto_check, is_version_skipped, skip_version, Db};
+use swarmdeck_lib::db::{auto_check, is_version_skipped, latest_schema_version, skip_version, Db};
 
 fn temp_db_path() -> (tempfile::TempDir, std::path::PathBuf) {
     let dir = tempfile::tempdir().expect("criar diretório temporário");
@@ -55,12 +55,12 @@ fn migracao_de_settings_e_idempotente() {
 
     {
         let db = Db::open(&path).expect("primeira abertura");
-        assert_eq!(db.schema_version().unwrap(), 6);
+        assert_eq!(db.schema_version().unwrap(), latest_schema_version());
     }
 
     // Segunda abertura sobre o mesmo arquivo: não deve reaplicar nada.
     let db = Db::open(&path).expect("segunda abertura");
-    assert_eq!(db.schema_version().unwrap(), 6);
+    assert_eq!(db.schema_version().unwrap(), latest_schema_version());
 
     let linhas: i64 = db
         .conn()

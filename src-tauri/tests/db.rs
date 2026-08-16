@@ -4,7 +4,7 @@
 //! foi validada em memória não está validada. Por isso também não são
 //! paralelizáveis — ver `.specs/codebase/TESTING.md`.
 
-use swarmdeck_lib::db::Db;
+use swarmdeck_lib::db::{latest_schema_version, Db};
 
 fn temp_db_path() -> (tempfile::TempDir, std::path::PathBuf) {
     let dir = tempfile::tempdir().expect("criar diretório temporário");
@@ -20,7 +20,7 @@ fn aplica_migracoes_em_banco_novo() {
 
     assert_eq!(
         db.schema_version().expect("ler versão"),
-        6,
+        latest_schema_version(),
         "banco novo deve chegar na versão mais recente"
     );
     assert!(path.exists(), "o arquivo do banco deve ter sido criado");
@@ -32,12 +32,12 @@ fn migracao_e_idempotente() {
 
     {
         let db = Db::open(&path).expect("primeira abertura");
-        assert_eq!(db.schema_version().unwrap(), 6);
+        assert_eq!(db.schema_version().unwrap(), latest_schema_version());
     }
 
     // Segunda abertura sobre o mesmo arquivo: não deve reaplicar nada.
     let db = Db::open(&path).expect("segunda abertura");
-    assert_eq!(db.schema_version().unwrap(), 6);
+    assert_eq!(db.schema_version().unwrap(), latest_schema_version());
 
     let aplicadas: i64 = db
         .conn()
@@ -45,7 +45,8 @@ fn migracao_e_idempotente() {
         .expect("contar migrações");
 
     assert_eq!(
-        aplicadas, 6,
+        aplicadas,
+        latest_schema_version(),
         "reabrir o banco não pode registrar as mesmas migrações de novo"
     );
 }

@@ -1,4 +1,4 @@
-// SPEC: silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-12, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34)
+// SPEC: silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-12, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-36)
 
 export type UpdateState =
   /** `current` pode chegar vazio no primeiro quadro, antes de `getVersion()`
@@ -145,9 +145,15 @@ export default function UpdateSettings({
 
       <p className="update-settings__explainer">
         A verificação automática roda ao abrir o SwarmDeck e a cada hora, sem baixar nada sozinha.
-        Quando há uma versão nova, você decide quando baixar e aplicar — a troca do executável
-        acontece na hora da confirmação, sem instalador, e vale assim que o app reiniciar.
+        Quando há uma versão nova, você decide quando baixar e aplicar — o instalador roda em modo
+        passivo, sem perguntar nada, e a versão nova vale assim que o app reiniciar.
       </p>
+      {state.status === 'ready' && state.mode === 'portable' && (
+        <p className="update-settings__explainer">
+          Esta é a versão portátil: o instalador criaria uma segunda cópia em vez de atualizar esta
+          pasta. Para atualizar, baixe o zip portátil da release nova.
+        </p>
+      )}
     </div>
   )
 }

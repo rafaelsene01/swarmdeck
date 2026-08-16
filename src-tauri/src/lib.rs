@@ -84,7 +84,7 @@ pub fn run() {
                 if let (Some(exe_dir), Some(exe_name)) =
                     (exe.parent(), exe.file_name().and_then(|n| n.to_str()))
                 {
-                    if let Err(err) = update::swap::cleanup_stale_old(exe_dir, exe_name) {
+                    if let Err(err) = update::cleanup_stale_old(exe_dir, exe_name) {
                         eprintln!("swarmdeck: falha ao limpar .old remanescente: {err}");
                     }
                 }
@@ -92,10 +92,11 @@ pub fn run() {
 
             Ok(())
         })
-        // SPEC: silent-update (SILENT-08)
-        // Regista o plugin oficial de update — fora do Windows, é por onde
-        // `apply::run` aplica a atualização (`UpdaterExt`/`Update::install`);
-        // no Windows a troca de arquivo não depende dele.
+        // SPEC: silent-update (SILENT-08, SILENT-36)
+        // Regista o plugin oficial de update — é por onde `apply::run`
+        // aplica a atualização em TODA plataforma (`UpdaterExt`/
+        // `Update::install`) desde que a troca de executável no lugar foi
+        // aposentada (AD-008).
         .plugin(tauri_plugin_updater::Builder::new().build())
         // SPEC: multi-terminal (TERM-10, TERM-11)
         // Regista o plugin oficial de diálogo; o `NewTerminalDialog` (T15)

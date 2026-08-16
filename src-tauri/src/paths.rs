@@ -101,19 +101,6 @@ pub fn db_path(app: &AppHandle) -> Result<PathBuf, PathError> {
     })
 }
 
-/// `true` quando `dir` aceita escrita. Usado pelo update portátil antes de
-/// baixar qualquer coisa, para reprovar pasta somente-leitura cedo.
-pub fn is_writable(dir: &Path) -> bool {
-    let probe = dir.join(".swarmdeck-write-check");
-    match fs::write(&probe, b"") {
-        Ok(()) => {
-            let _ = fs::remove_file(&probe);
-            true
-        }
-        Err(_) => false,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -176,56 +163,5 @@ mod tests {
             expected_dir.is_dir(),
             "resolve_db_path deve criar o diretório de dados"
         );
-    }
-
-    #[test]
-    fn is_writable_reprova_diretorio_somente_leitura() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path();
-
-        deny_write(path);
-        let result = is_writable(path);
-        allow_write(path);
-
-        assert!(
-            !result,
-            "diretório somente-leitura deveria reprovar is_writable"
-        );
-    }
-
-    #[cfg(unix)]
-    fn deny_write(path: &Path) {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(path).unwrap().permissions();
-        perms.set_mode(0o555);
-        fs::set_permissions(path, perms).unwrap();
-    }
-
-    #[cfg(unix)]
-    fn allow_write(path: &Path) {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(path).unwrap().permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(path, perms).unwrap();
-    }
-
-    #[cfg(windows)]
-    fn deny_write(path: &Path) {
-        let status = std::process::Command::new("icacls")
-            .arg(path)
-            .arg("/deny")
-            .arg("*S-1-1-0:(OI)(CI)W")
-            .status()
-            .expect("falha ao invocar icacls");
-        assert!(status.success(), "icacls /deny falhou");
-    }
-
-    #[cfg(windows)]
-    fn allow_write(path: &Path) {
-        let _ = std::process::Command::new("icacls")
-            .arg(path)
-            .arg("/remove:d")
-            .arg("*S-1-1-0")
-            .status();
     }
 }

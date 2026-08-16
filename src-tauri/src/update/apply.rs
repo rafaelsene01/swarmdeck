@@ -1,19 +1,21 @@
-// SPEC: silent-update (SILENT-02, SILENT-03, SILENT-06, SILENT-08, SILENT-14, SILENT-15, SILENT-16, SILENT-17, SILENT-21, SILENT-24, SILENT-27, SILENT-28)
+// SPEC: silent-update (SILENT-02, SILENT-03, SILENT-08, SILENT-14, SILENT-15, SILENT-16, SILENT-17, SILENT-27, SILENT-28, SILENT-36)
 
 //! Checagem automática em segundo plano (`check_only`, T6): consulta e
-//! avisa, nunca baixa. Download confirmado (`run`/`run_with`, T7): a única
-//! porta de download do módulo (SILENT-03) — resolve a entrada de
-//! plataforma, reprova pasta não gravável antes de baixar (SILENT-24),
-//! baixa, troca via `swap::apply_swap` (verifica assinatura antes de tocar
-//! arquivo) e grava `DisplayVersion` no flavor instalado.
+//! avisa, nunca baixa. Aplicação confirmada (`run`): delega ao
+//! `tauri-plugin-updater` em toda plataforma (SILENT-36) — ele baixa o
+//! instalador da chave `{os}-{arch}` do manifesto, confere a assinatura
+//! minisign e roda a instalação no modo configurado em `tauri.conf.json`
+//! (`windows.installMode: "passive"`).
 //!
 //! Aposentados em T6: `PendingUpdate`, `handle_close`, `check_and_download`,
 //! `check_and_download_with` — o download em segundo plano e a instalação
 //! no fechamento da janela `main` saem do crate (AD-005).
+//!
+//! Aposentada em 16/08/2026 (SILENT-36): a troca de executável no lugar
+//! (`swap::apply_swap`, o `run`/`run_with` exclusivos do Windows e a
+//! reprovação de pasta não gravável). Ver `spec.md`, AD-008.
 
 use std::future::Future;
-#[cfg(windows)]
-use std::path::Path;
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -21,9 +23,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use thiserror::Error;
 
 use crate::db::{auto_check, Db};
-#[cfg(windows)]
-use crate::paths::{self, Flavor};
-use crate::update::{manifest, swap};
+use crate::update::manifest;
 
 const CHECK_INTERVAL: Duration = Duration::from_secs(3600);
 
@@ -125,12 +125,8 @@ pub enum ApplyError {
     Manifest(#[from] manifest::UpdateError),
     #[error("atualização não disponível para esta instalação")]
     PlatformUnavailable,
-    #[error("pasta {0} não é gravável")]
-    NotWritable(std::path::PathBuf),
     #[error("falha ao baixar o artefato de atualização: {0}")]
     Download(String),
-    #[error("{0}")]
-    Swap(#[from] swap::PortableUpdateError),
     #[error("já existe uma atualização em andamento")]
     AlreadyApplying,
 }
@@ -140,55 +136,12 @@ pub enum ApplyError {
 /// tempo é ignorado, não enfileirado.
 pub type Applying = Mutex<bool>;
 
-/// Única porta de download do módulo (SILENT-03): resolve a entrada de
-/// plataforma do manifesto, reprova pasta não gravável antes de baixar
-/// qualquer byte (SILENT-24), baixa, troca via `swap::apply_swap` e grava
-/// `DisplayVersion` no flavor instalado (SILENT-18). No Windows, os dois
-/// flavors passam por aqui (SILENT-05); fora do Windows, delega ao
-/// `tauri-plugin-updater` (SILENT-08) — `Update::install` nunca roda no
-/// caminho Windows.
-#[cfg(windows)]
-pub async fn run(app: &AppHandle) -> Result<String, ApplyError> {
-    let applying = app.state::<Applying>();
-    let exe = std::env::current_exe().map_err(ApplyError::CurrentExe)?;
-    let exe_dir = exe.parent().ok_or(ApplyError::NoExePath)?.to_path_buf();
-    let exe_name = exe
-        .file_name()
-        .and_then(|n| n.to_str())
-        .ok_or(ApplyError::NoExePath)?
-        .to_string();
-    let flavor = paths::flavor(&exe_dir);
-    let key = super::check::target_key(flavor);
-    let endpoint_url = super::check::endpoint(app);
-    let public_key = super::check::pubkey(app);
-
-    run_with(
-        &applying,
-        &exe_dir,
-        &exe_name,
-        &key,
-        &public_key,
-        flavor,
-        || manifest::fetch(&endpoint_url),
-        |url| async move {
-            let response = reqwest::get(&url).await.map_err(|e| e.to_string())?;
-            response
-                .bytes()
-                .await
-                .map(|b| b.to_vec())
-                .map_err(|e| e.to_string())
-        },
-        |version| swap::set_registry_display_version(swap::UNINSTALL_KEY, version),
-    )
-    .await
-}
-
-/// Fora do Windows, delega ao `tauri-plugin-updater` (SILENT-08): a troca
-/// de arquivo é exclusiva do Windows (`spec.md`, Out of Scope). `Update`
-/// não tem construtor público e `tauri::test::mock_builder` quebra neste
-/// binário de teste — por isso este caminho não é testável isoladamente,
-/// mesmo padrão já documentado para o resto do módulo antes desta feature.
-#[cfg(not(windows))]
+/// Delega ao `tauri-plugin-updater` (SILENT-08, SILENT-36) — o mesmo
+/// caminho em toda plataforma desde que a troca de executável no lugar foi
+/// aposentada. `Update` não tem construtor público e
+/// `tauri::test::mock_builder` quebra neste binário de teste — por isso
+/// este caminho não é testável isoladamente, mesmo padrão já documentado
+/// para o resto do módulo antes desta feature.
 pub async fn run(app: &AppHandle) -> Result<String, ApplyError> {
     use tauri_plugin_updater::UpdaterExt;
 
@@ -219,77 +172,6 @@ pub async fn run(app: &AppHandle) -> Result<String, ApplyError> {
             .install(bytes)
             .map_err(|err| ApplyError::Download(err.to_string()))?;
         Ok(version)
-    }
-    .await;
-
-    *applying.lock().expect("applying mutex poisoned") = false;
-    result
-}
-
-/// Núcleo testável de `run`: manifesto, download e o mutex `Applying`
-/// entram por parâmetro/closure — mesmo padrão do resto do módulo. A
-/// verificação de assinatura e a troca de arquivo em si rodam de verdade
-/// via `swap::apply_swap` (já testado em `swap.rs`), não injetadas.
-///
-/// `#[cfg(windows)]` porque o único chamador de produção é o `run` do
-/// caminho Windows — sem o cfg, um build/clippy de lib (sem `cfg(test)`,
-/// como `cargo clippy --all-targets` roda em CI no Linux) vê esta função
-/// sem chamador e falha em `-D dead-code` (mesmo padrão de
-/// `swap::set_registry_display_version`, também `cfg(windows)`).
-#[cfg(windows)]
-#[allow(clippy::too_many_arguments)]
-async fn run_with<Fetch, FetchFut, Download, DownloadFut>(
-    applying: &Applying,
-    exe_dir: &Path,
-    exe_name: &str,
-    key: &str,
-    public_key: &str,
-    flavor: Flavor,
-    fetch_manifest: Fetch,
-    download: Download,
-    set_registry: impl FnOnce(&str) -> std::io::Result<()>,
-) -> Result<String, ApplyError>
-where
-    Fetch: FnOnce() -> FetchFut,
-    FetchFut: Future<Output = Result<manifest::Manifest, manifest::UpdateError>>,
-    Download: FnOnce(String) -> DownloadFut,
-    DownloadFut: Future<Output = Result<Vec<u8>, String>>,
-{
-    {
-        let mut guard = applying.lock().expect("applying mutex poisoned");
-        if *guard {
-            return Err(ApplyError::AlreadyApplying);
-        }
-        *guard = true;
-    }
-
-    let result: Result<String, ApplyError> = async {
-        let manifest = fetch_manifest().await?;
-        let entry = manifest
-            .platforms
-            .get(key)
-            .cloned()
-            .ok_or(ApplyError::PlatformUnavailable)?;
-
-        if !paths::is_writable(exe_dir) {
-            return Err(ApplyError::NotWritable(exe_dir.to_path_buf()));
-        }
-
-        let bytes = download(entry.url.clone())
-            .await
-            .map_err(ApplyError::Download)?;
-
-        swap::apply_swap(exe_dir, exe_name, &bytes, &entry.signature, public_key)?;
-
-        // SILENT-18/19: só no flavor instalado; falha aqui é cosmética e
-        // não invalida a troca (o binário novo já está no lugar).
-        if flavor == Flavor::Installed {
-            if let Err(err) = set_registry(&manifest.version) {
-                eprintln!("swarmdeck: falha ao atualizar DisplayVersion do registro: {err}");
-            }
-        }
-
-        Ok(manifest.version)
     }
     .await;
 
@@ -404,257 +286,5 @@ mod tests {
         .await;
 
         assert_eq!(*ciclos.lock().unwrap(), 2);
-    }
-
-    // T7: apply::run / run_with — módulo inteiro é cfg(windows) porque
-    // `run_with` só existe nesse cfg (ver comentário na definição).
-    #[cfg(windows)]
-    mod run_tests {
-        use super::*;
-
-        use crate::update::manifest::{Manifest, PlatformEntry};
-        use std::collections::HashMap;
-        use std::fs;
-
-        // Mesmo par chave pública/assinatura reais de minisign de `swap.rs` —
-        // vetor de teste "pre-hashed mode" do próprio `rust-minisign-verify`.
-        const PUBLIC_KEY: &str = "RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3";
-        const DATA: &[u8] = b"test";
-        const SIGNATURE: &str = "untrusted comment: signature from minisign secret key\nRUQf6LRCGA9i559r3g7V1qNyJDApGip8MfqcadIgT9CuhV3EMhHoN1mGTkUidF/z7SrlQgXdy8ofjb7bNJJylDOocrCo8KLzZwo=\ntrusted comment: timestamp:1556193335\tfile:test\ny/rUw2y8/hOUYjZU71eHp/Wo1KZ40fGy2VJEDl34XMJM+TX48Ss/17u3IvIfbVR1FkZZSNCisQbuQY+bHwhEBg==\n";
-
-        fn manifest_with_entry(version: &str, key: &str, url: &str, signature: &str) -> Manifest {
-            let mut platforms = HashMap::new();
-            platforms.insert(
-                key.to_string(),
-                PlatformEntry {
-                    url: url.to_string(),
-                    signature: signature.to_string(),
-                },
-            );
-            Manifest {
-                version: version.to_string(),
-                notes: String::new(),
-                platforms,
-            }
-        }
-
-        fn nunca_baixa(
-            _url: String,
-        ) -> std::pin::Pin<Box<dyn Future<Output = Result<Vec<u8>, String>>>> {
-            panic!("download não deveria ser chamado")
-        }
-
-        fn nunca_grava_registro(_version: &str) -> std::io::Result<()> {
-            panic!("set_registry não deveria ser chamado")
-        }
-
-        #[cfg(windows)]
-        fn deny_write(path: &std::path::Path) {
-            let status = std::process::Command::new("icacls")
-                .arg(path)
-                .arg("/deny")
-                .arg("*S-1-1-0:(OI)(CI)W")
-                .status()
-                .expect("falha ao invocar icacls");
-            assert!(status.success(), "icacls /deny falhou");
-        }
-
-        #[cfg(windows)]
-        fn allow_write(path: &std::path::Path) {
-            let _ = std::process::Command::new("icacls")
-                .arg(path)
-                .arg("/remove:d")
-                .arg("*S-1-1-0")
-                .status();
-        }
-
-        // 1. pasta não gravável -> Err antes do fake de download ser acionado.
-        #[tokio::test]
-        async fn pasta_nao_gravavel_reprova_antes_do_download() {
-            let exe_dir = tempfile::tempdir().unwrap();
-            fs::write(exe_dir.path().join("app.exe"), b"antigo").unwrap();
-            deny_write(exe_dir.path());
-            let applying: Applying = Mutex::new(false);
-            let m = manifest_with_entry("0.2.0", "chave", "https://exemplo/app.exe", SIGNATURE);
-
-            let result = run_with(
-                &applying,
-                exe_dir.path(),
-                "app.exe",
-                "chave",
-                PUBLIC_KEY,
-                Flavor::Portable,
-                || async { Ok(m) },
-                nunca_baixa,
-                nunca_grava_registro,
-            )
-            .await;
-
-            allow_write(exe_dir.path());
-
-            assert!(matches!(result, Err(ApplyError::NotWritable(_))));
-        }
-
-        // 2. manifesto sem entrada para a chave de plataforma -> Err, sem baixar.
-        #[tokio::test]
-        async fn chave_de_plataforma_ausente_devolve_platform_unavailable_sem_baixar() {
-            let exe_dir = tempfile::tempdir().unwrap();
-            let applying: Applying = Mutex::new(false);
-            let m = manifest_with_entry("0.2.0", "outra-chave", "url", SIGNATURE);
-
-            let result = run_with(
-                &applying,
-                exe_dir.path(),
-                "app.exe",
-                "chave",
-                PUBLIC_KEY,
-                Flavor::Portable,
-                || async { Ok(m) },
-                nunca_baixa,
-                nunca_grava_registro,
-            )
-            .await;
-
-            assert!(matches!(result, Err(ApplyError::PlatformUnavailable)));
-        }
-
-        // 3. caminho feliz: baixa, aplica a troca, devolve a versão aplicada.
-        #[tokio::test]
-        async fn caminho_feliz_baixa_aplica_a_troca_e_devolve_a_versao() {
-            let exe_dir = tempfile::tempdir().unwrap();
-            let exe_path = exe_dir.path().join("app.exe");
-            fs::write(&exe_path, b"conteudo antigo").unwrap();
-            let applying: Applying = Mutex::new(false);
-            let m = manifest_with_entry("0.2.0", "chave", "https://exemplo/app.exe", SIGNATURE);
-
-            let result = run_with(
-                &applying,
-                exe_dir.path(),
-                "app.exe",
-                "chave",
-                PUBLIC_KEY,
-                Flavor::Portable,
-                || async { Ok(m) },
-                |_url| async { Ok(DATA.to_vec()) },
-                nunca_grava_registro,
-            )
-            .await;
-
-            assert_eq!(result.unwrap(), "0.2.0");
-            assert_eq!(fs::read(&exe_path).unwrap(), DATA);
-        }
-
-        // 4. segunda chamada com Applying já true -> retorna sem baixar.
-        #[tokio::test]
-        async fn segunda_chamada_com_applying_true_nao_baixa() {
-            let applying: Applying = Mutex::new(true);
-
-            let result = run_with(
-                &applying,
-                Path::new("."),
-                "app.exe",
-                "chave",
-                PUBLIC_KEY,
-                Flavor::Portable,
-                || async { panic!("fetch_manifest não deveria ser chamado") },
-                nunca_baixa,
-                nunca_grava_registro,
-            )
-            .await;
-
-            assert!(matches!(result, Err(ApplyError::AlreadyApplying)));
-        }
-
-        // 5. flavor instalado -> gravador de registro é acionado.
-        #[tokio::test]
-        async fn flavor_instalado_aciona_o_gravador_de_registro() {
-            let exe_dir = tempfile::tempdir().unwrap();
-            fs::write(exe_dir.path().join("app.exe"), b"conteudo antigo").unwrap();
-            let applying: Applying = Mutex::new(false);
-            let m = manifest_with_entry("0.2.0", "chave", "url", SIGNATURE);
-            let chamado = Mutex::new(false);
-
-            let result = run_with(
-                &applying,
-                exe_dir.path(),
-                "app.exe",
-                "chave",
-                PUBLIC_KEY,
-                Flavor::Installed,
-                || async { Ok(m) },
-                |_url| async { Ok(DATA.to_vec()) },
-                |v| {
-                    *chamado.lock().unwrap() = true;
-                    assert_eq!(v, "0.2.0");
-                    Ok(())
-                },
-            )
-            .await;
-
-            assert!(result.is_ok());
-            assert!(
-                *chamado.lock().unwrap(),
-                "set_registry deveria ser chamado no flavor instalado"
-            );
-        }
-
-        // 7. SILENT-19: falha em set_registry é só logada — a troca segue
-        // reportada como aplicada com sucesso, com a versão certa.
-        #[tokio::test]
-        async fn falha_no_registro_nao_invalida_a_troca_ja_aplicada() {
-            let exe_dir = tempfile::tempdir().unwrap();
-            let exe_path = exe_dir.path().join("app.exe");
-            fs::write(&exe_path, b"conteudo antigo").unwrap();
-            let applying: Applying = Mutex::new(false);
-            let m = manifest_with_entry("0.2.0", "chave", "url", SIGNATURE);
-
-            let result = run_with(
-                &applying,
-                exe_dir.path(),
-                "app.exe",
-                "chave",
-                PUBLIC_KEY,
-                Flavor::Installed,
-                || async { Ok(m) },
-                |_url| async { Ok(DATA.to_vec()) },
-                |_v| Err(std::io::Error::other("reg add falhou (simulado)")),
-            )
-            .await;
-
-            assert_eq!(
-                result.unwrap(),
-                "0.2.0",
-                "falha no registro não deveria virar Err nem mudar a versão reportada"
-            );
-            assert_eq!(
-                fs::read(&exe_path).unwrap(),
-                DATA,
-                "a troca de arquivo já tinha sido aplicada"
-            );
-        }
-
-        // 6. flavor portátil -> gravador de registro NÃO é acionado.
-        #[tokio::test]
-        async fn flavor_portatil_nao_aciona_o_gravador_de_registro() {
-            let exe_dir = tempfile::tempdir().unwrap();
-            fs::write(exe_dir.path().join("app.exe"), b"conteudo antigo").unwrap();
-            let applying: Applying = Mutex::new(false);
-            let m = manifest_with_entry("0.2.0", "chave", "url", SIGNATURE);
-
-            let result = run_with(
-                &applying,
-                exe_dir.path(),
-                "app.exe",
-                "chave",
-                PUBLIC_KEY,
-                Flavor::Portable,
-                || async { Ok(m) },
-                |_url| async { Ok(DATA.to_vec()) },
-                nunca_grava_registro,
-            )
-            .await;
-
-            assert!(result.is_ok());
-        }
     }
 }

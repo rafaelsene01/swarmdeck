@@ -1,4 +1,4 @@
-// SPEC: silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-25)
+// SPEC: silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-25, SILENT-36)
 
 //! Status de atualização: versão instalada e versão mais recente
 //! publicada, exibidas mesmo quando são iguais (SILENT-09, SILENT-10,
@@ -99,7 +99,7 @@ where
         Flavor::Installed => "installed",
         Flavor::Portable => "portable",
     };
-    let key = target_key(flavor);
+    let key = target_key();
 
     if !auto_check_enabled {
         return Ok(UpdateStatus {
@@ -156,22 +156,15 @@ where
     })
 }
 
-/// Chave do manifesto que representa o `flavor` atual. No Windows, os dois
-/// flavors convergem para `{os}-{arch}-silent` — a troca de arquivo vale
-/// para os dois (SILENT-05). Fora do Windows, o formato antigo se mantém:
-/// `{os}-{arch}` para instalado, `{os}-{arch}-portable` para portátil —
-/// caminho que continua no `tauri-plugin-updater` (SILENT-08).
-pub(crate) fn target_key(flavor: Flavor) -> String {
-    let os = std::env::consts::OS;
-    let arch = std::env::consts::ARCH;
-    if os == "windows" {
-        format!("{os}-{arch}-silent")
-    } else {
-        match flavor {
-            Flavor::Portable => format!("{os}-{arch}-portable"),
-            Flavor::Installed => format!("{os}-{arch}"),
-        }
-    }
+/// Chave do manifesto que decide se existe build para esta máquina.
+///
+/// É exatamente a chave que o `tauri-plugin-updater` resolve — `{os}-{arch}`
+/// —, porque é ele quem baixa e instala em toda plataforma desde SILENT-36.
+/// Não depende mais do `Flavor`: a chave `-silent` (troca de executável no
+/// lugar) e a `-portable` foram aposentadas junto com o mecanismo próprio.
+/// O flavor continua vivo, mas só para exibir "Instalado"/"Portátil".
+pub(crate) fn target_key() -> String {
+    format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH)
 }
 
 /// Lê o endpoint do manifesto de `tauri.conf.json` (`plugins.updater.endpoints[0]`).
@@ -183,22 +176,6 @@ pub(crate) fn endpoint(app: &AppHandle) -> String {
         .and_then(|v| v.get("endpoints"))
         .and_then(|v| v.as_array())
         .and_then(|a| a.first())
-        .and_then(|v| v.as_str())
-        .unwrap_or_default()
-        .to_string()
-}
-
-/// Lê a chave pública minisign de `tauri.conf.json` (`plugins.updater.pubkey`)
-/// — usada por `apply::run` (T7) para verificar a assinatura do artefato
-/// baixado antes de trocar o executável. `cfg(windows)` pelo mesmo motivo de
-/// `apply::run_with`: único chamador de produção é o `run` do Windows.
-#[cfg(windows)]
-pub(crate) fn pubkey(app: &AppHandle) -> String {
-    app.config()
-        .plugins
-        .0
-        .get("updater")
-        .and_then(|v| v.get("pubkey"))
         .and_then(|v| v.as_str())
         .unwrap_or_default()
         .to_string()
@@ -259,7 +236,7 @@ mod tests {
     // 2. versão remota igual à instalada -> has_update:false E latest:Some(versão).
     #[tokio::test]
     async fn versao_remota_igual_a_instalada_reporta_latest_sem_atualizacao() {
-        let key = target_key(Flavor::Installed);
+        let key = target_key();
         let m = manifest("0.1.0", &[(&key, "url", "sig")]);
 
         let result = status_with(
@@ -279,7 +256,7 @@ mod tests {
     // 3. versão remota menor que a instalada -> has_update:false, latest preenchido.
     #[tokio::test]
     async fn versao_remota_menor_que_a_instalada_nao_e_atualizacao() {
-        let key = target_key(Flavor::Installed);
+        let key = target_key();
         let m = manifest("0.1.0", &[(&key, "url", "sig")]);
 
         let result = status_with(
@@ -296,10 +273,12 @@ mod tests {
         assert_eq!(result.latest, Some("0.1.0".to_string()));
     }
 
-    // 4. versão remota maior, não pulada -> has_update:true, platform_key termina em -silent no Windows.
+    // 4. versão remota maior, não pulada -> has_update:true, e a
+    // platform_key é a `{os}-{arch}` que o tauri-plugin-updater resolve —
+    // sem sufixo de flavor (SILENT-36).
     #[tokio::test]
     async fn versao_remota_maior_e_nao_pulada_devolve_has_update_true() {
-        let key = target_key(Flavor::Installed);
+        let key = target_key();
         let m = manifest("0.2.0", &[(&key, "https://exemplo/app.exe", "assinatura")]);
 
         let result = status_with(
@@ -314,14 +293,36 @@ mod tests {
 
         assert!(result.has_update);
         assert_eq!(result.latest, Some("0.2.0".to_string()));
-        #[cfg(windows)]
-        assert!(result.platform_key.ends_with("-silent"));
+        assert_eq!(
+            result.platform_key,
+            format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH)
+        );
+    }
+
+    // SILENT-36: o mesmo par de flavors resolve a MESMA chave — o instalador
+    // do plugin é o único caminho, e ele não distingue portátil de instalado.
+    #[tokio::test]
+    async fn portatil_e_instalado_resolvem_a_mesma_chave_de_plataforma() {
+        let key = target_key();
+        assert!(!key.ends_with("-silent"));
+        assert!(!key.ends_with("-portable"));
+
+        let mut keys = Vec::new();
+        for flavor in [Flavor::Installed, Flavor::Portable] {
+            let m = manifest("0.2.0", &[(&key, "url", "sig")]);
+            let result = status_with(true, "0.1.0", flavor, || async { Ok(m) }, never_skipped)
+                .await
+                .unwrap();
+            keys.push(result.platform_key);
+        }
+
+        assert_eq!(keys[0], keys[1]);
     }
 
     // 5. versão remota maior, mas pulada -> has_update:false, latest preenchido.
     #[tokio::test]
     async fn versao_remota_maior_mas_pulada_nao_e_atualizacao() {
-        let key = target_key(Flavor::Installed);
+        let key = target_key();
         let m = manifest("0.2.0", &[(&key, "url", "sig")]);
 
         let result = status_with(
@@ -358,7 +359,7 @@ mod tests {
     // 7. flavor escolhido bate com o modo — no Windows os dois convergem para -silent.
     #[tokio::test]
     async fn flavor_escolhe_a_entrada_certa_do_manifesto() {
-        let key = target_key(Flavor::Installed);
+        let key = target_key();
         let m = manifest("0.2.0", &[(&key, "url-silencioso", "sig-silencioso")]);
         let m_clone = m.clone();
 
@@ -432,7 +433,7 @@ mod tests {
     // 10. is_skipped falhando propaga Err (falha de banco, distinta de falha de rede).
     #[tokio::test]
     async fn falha_ao_consultar_skipped_versions_propaga_err() {
-        let key = target_key(Flavor::Installed);
+        let key = target_key();
         let m = manifest("0.2.0", &[(&key, "url", "sig")]);
 
         let result = status_with(
