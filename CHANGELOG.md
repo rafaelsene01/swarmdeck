@@ -1,11 +1,25 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.12] - 2026-08-16
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.11] - 2026-08-16
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Enhance terminal functionality and update header components
+
+- Added inline renaming feature for terminal tabs, allowing users to rename tabs directly.
+- Implemented cloning and resetting of terminals, with appropriate state management to limit the number of terminals per tab.
+- Updated the header component to remove unused elements and adjust the layout, improving the overall user interface.
+- Enhanced quota indicator functionality to include a list of providers and their statuses, with tests to verify the new behavior.
+- Refactored related components and tests to ensure consistency and reliability across the application.
 
 ## [0.1.10] - 2026-08-16
 
