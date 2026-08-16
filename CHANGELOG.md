@@ -1,11 +1,27 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.8] - 2026-08-15
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Add test for handling registry failure in silent update process
+
+Introduce a new test case to verify that a failure in setting the registry does not invalidate an already applied update. The test ensures that the version reported remains correct and that the file swap has been successfully applied, even when the registry operation fails. Additionally, clean up unused code in check.rs and update module documentation in mod.rs to reflect the silent update feature.
+
+- Refactor update module for Windows compatibility and enhance documentation
+
+Add conditional compilation for Windows in the `apply.rs` and `check.rs` files to prevent dead code warnings during non-Windows builds. Update documentation to clarify the purpose of the `pubkey` function and the `run_with` function's Windows-specific context. This change ensures that the code remains clean and maintainable across different platforms.
+
 ## [0.1.7] - 2026-08-15
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Implement silent update functionality in the release workflow and UpdateSettings component. Add support for uploading signed raw executables and updating the latest.json manifest for silent updates. Refactor UpdateSettings to handle new update states and improve user feedback during the update process. Enhance SettingsShell to manage update status and apply updates with user confirmation. Update tests to cover new silent update scenarios and ensure proper functionality.
 
 ## [0.1.6] - 2026-08-15
 
