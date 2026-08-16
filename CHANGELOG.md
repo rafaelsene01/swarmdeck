@@ -1,11 +1,30 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.13] - 2026-08-16
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Refactor update mechanism and remove legacy code
+
+- Updated the update workflow to reflect changes in the Tauri updater plugin, ensuring it handles updates across all platforms uniformly since SILENT-36.
+- Removed the portable update logic and associated functions, streamlining the update process.
+- Introduced a new function to retrieve the latest schema version from migrations, enhancing database management.
+- Updated tests to align with the new update mechanism and ensure consistency in schema version checks.
+
 ## [0.1.12] - 2026-08-16
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Add rustls as a direct dependency and implement crypto provider installation
+
+- Added `rustls` as a direct dependency in `Cargo.toml` to ensure proper cryptographic provider installation.
+- Implemented `install_crypto_provider` function in `lib.rs` to set the default crypto provider for `reqwest`, preventing panic during HTTP client construction.
+- Updated tests in `manifest.rs` to verify that the HTTP client can be built without panic when the crypto provider is installed.
 
 ## [0.1.11] - 2026-08-16
 
