@@ -1,7 +1,10 @@
 // SPEC: silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-12, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34)
 
 export type UpdateState =
-  | { status: 'loading' }
+  /** `current` pode chegar vazio no primeiro quadro, antes de `getVersion()`
+   * resolver — a linha da versão só some nesse instante, nunca por causa da
+   * consulta de rede (SILENT-33). */
+  | { status: 'loading'; current: string }
   | { status: 'ready'; current: string; latest: string; hasUpdate: boolean; mode: 'installed' | 'portable' }
   | { status: 'unavailable'; current: string }
   | { status: 'applying'; current: string; latest: string }
@@ -50,39 +53,33 @@ export default function UpdateSettings({
   // SILENT-32/33: a busca sob demanda vale enquanto a tela está mostrando
   // versão — some só durante a própria troca (`applying`) e depois dela
   // (`applied`), quando o número em tela já é o da versão recém-aplicada e
-  // reconsultar não decide mais nada.
-  const canCheck = state.status === 'ready' || state.status === 'unavailable' || state.status === 'error'
+  // reconsultar não decide mais nada. `loading` entra aqui porque a consulta
+  // de abertura pode demorar (ou falhar) e o botão é justamente a saída.
+  const canCheck = state.status !== 'applying' && state.status !== 'applied'
+  const busy = checking || state.status === 'loading'
 
   return (
     <div className="update-settings">
       <h2 className="update-settings__title">Atualizações</h2>
 
-      {state.status === 'loading' && (
-        <p className="update-settings__message" role="status">
-          Verificando…
-        </p>
-      )}
-
-      {state.status !== 'loading' && (
-        <dl className="update-settings__info">
+      <dl className="update-settings__info">
+        <div className="update-settings__info-row">
+          <dt>Versão instalada</dt>
+          <dd>
+            {state.status === 'applied' ? state.version : state.current || '—'}
+          </dd>
+        </div>
+        {state.status === 'ready' && (
           <div className="update-settings__info-row">
-            <dt>Versão instalada</dt>
-            <dd>
-              {state.status === 'applied' ? state.version : state.current}
-            </dd>
+            <dt>Modo</dt>
+            <dd>{MODE_LABEL[state.mode]}</dd>
           </div>
-          {state.status === 'ready' && (
-            <div className="update-settings__info-row">
-              <dt>Modo</dt>
-              <dd>{MODE_LABEL[state.mode]}</dd>
-            </div>
-          )}
-        </dl>
-      )}
+        )}
+      </dl>
 
       {canCheck && (
-        <button type="button" className="update-settings__check-now" onClick={onCheck} disabled={checking}>
-          {checking ? 'Verificando…' : 'Buscar atualizações'}
+        <button type="button" className="update-settings__check-now" onClick={onCheck} disabled={busy}>
+          {busy ? 'Verificando…' : 'Buscar atualizações'}
         </button>
       )}
 

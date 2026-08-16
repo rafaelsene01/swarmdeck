@@ -109,6 +109,15 @@ describe('UpdateSettings', () => {
     expect(screen.queryByRole('button', { name: 'Buscar atualizações' })).not.toBeInTheDocument()
   })
 
+  // SILENT-33: a consulta de rede não pode mais esconder a versão instalada —
+  // era isso que deixava a seção presa em "Verificando…" sem mostrar nada.
+  it('estado "loading" já mostra a versão instalada e o botão de buscar, desabilitado', () => {
+    renderSettings({ status: 'loading', current: '0.3.1' })
+
+    expect(screen.getByText('0.3.1')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Verificando…' })).toBeDisabled()
+  })
+
   it('o texto explicativo não menciona mais instalação no fechamento do app', () => {
     renderSettings({ status: 'ready', current: '0.3.1', latest: '0.3.1', hasUpdate: false, mode: 'installed' })
 

@@ -6,9 +6,15 @@
 //! `fetch` é o único ponto de rede do módulo.
 
 use std::collections::HashMap;
+use std::time::Duration;
 
 use serde_json::Value;
 use thiserror::Error;
+
+/// Teto de espera da consulta. Sem ele o GET fica pendurado enquanto o
+/// socket não fechar: a seção "Atualizações" trava em "Verificando…" para
+/// sempre e o checador de hora em hora nunca completa o ciclo.
+const FETCH_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Error)]
 pub enum UpdateError {
@@ -76,7 +82,14 @@ pub fn parse_manifest(raw: &str) -> Result<Manifest, UpdateError> {
 /// Único ponto de rede do módulo: GET do endpoint configurado, parse via
 /// [`parse_manifest`].
 pub async fn fetch(endpoint: &str) -> Result<Manifest, UpdateError> {
-    let body = reqwest::get(endpoint)
+    let client = reqwest::Client::builder()
+        .timeout(FETCH_TIMEOUT)
+        .build()
+        .map_err(|err| UpdateError::Network(err.to_string()))?;
+
+    let body = client
+        .get(endpoint)
+        .send()
         .await
         .map_err(|err| UpdateError::Network(err.to_string()))?
         .text()

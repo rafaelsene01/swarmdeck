@@ -19,6 +19,10 @@ vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: () => ({ close: closeMock }),
 }))
 
+vi.mock('@tauri-apps/api/app', () => ({
+  getVersion: () => Promise.resolve('0.1.9'),
+}))
+
 describe('SettingsShell — fechar a janela (SET-03/04/05)', () => {
   beforeEach(() => {
     closeMock.mockClear()

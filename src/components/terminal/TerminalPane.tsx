@@ -55,6 +55,28 @@ export default function TerminalPane({ cwd, shell, agent, onSessionId }: Termina
     let terminalId: string | null = null
     let disposed = false
 
+    /**
+     * Reajusta xterm ao tamanho atual do container e repassa as dimensões
+     * ao ConPTY.
+     *
+     * O `pty_resize` precisa acontecer também logo depois de `pty_spawn`
+     * resolver: a sessão nasce em 24x80 fixo (`manager::default_size`) e o
+     * único disparo do `ResizeObserver` num painel que nunca muda de tamanho
+     * é o inicial — que chega antes de `terminalId` existir e era descartado,
+     * deixando o shell quebrando linha em 80 colunas dentro de um painel do
+     * tamanho da janela.
+     *
+     * Container de tamanho zero (aba inativa, painel minimizado) é ignorado:
+     * `fit()` ali produziria dimensões degeneradas e mandaria o PTY para elas.
+     */
+    const syncSize = () => {
+      if (disposed) return
+      if (container.clientWidth === 0 || container.clientHeight === 0) return
+      fitAddon.fit()
+      if (!terminalId) return
+      void invoke('pty_resize', { id: terminalId, rows: terminal.rows, cols: terminal.cols })
+    }
+
     // Teclado ligado antes do primeiro byte do processo.
     const dataDisposable = terminal.onData((data) => {
       if (!terminalId) return
@@ -78,6 +100,7 @@ export default function TerminalPane({ cwd, shell, agent, onSessionId }: Termina
         }
         terminalId = id
         onSessionId?.(id)
+        syncSize()
       })
       .catch((error) => {
         terminal.write(`\r\nfalha ao iniciar o terminal: ${String(error)}\r\n`)
@@ -86,16 +109,7 @@ export default function TerminalPane({ cwd, shell, agent, onSessionId }: Termina
     let resizeTimer: ReturnType<typeof setTimeout> | undefined
     const resizeObserver = new ResizeObserver(() => {
       if (resizeTimer) clearTimeout(resizeTimer)
-      resizeTimer = setTimeout(() => {
-        fitAddon.fit()
-        if (terminalId) {
-          void invoke('pty_resize', {
-            id: terminalId,
-            rows: terminal.rows,
-            cols: terminal.cols,
-          })
-        }
-      }, RESIZE_DEBOUNCE_MS)
+      resizeTimer = setTimeout(syncSize, RESIZE_DEBOUNCE_MS)
     })
     resizeObserver.observe(container)
 

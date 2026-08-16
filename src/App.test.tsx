@@ -233,6 +233,69 @@ describe('App - shell-chrome empty state', () => {
   })
 })
 
+describe('App - terminal-tabs (TAB-01..TAB-05)', () => {
+  it('"nova aba" cria uma aba vazia e a torna ativa; a aba anterior guarda seus terminais (TAB-01, TAB-03)', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    fireEvent.click(screen.getByRole('button', { name: '+ Create Terminal' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
+    await createTerminalViaDialog()
+    const paneOfTab1 = screen.getByTestId('terminal-pane-stub')
+
+    fireEvent.click(screen.getByLabelText('nova aba'))
+
+    // A aba 2 (vazia) é a visível; a aba 1 continua montada — MESMO nó de
+    // painel, nunca desmontado — só fora de vista. É isso que preserva o PTY.
+    expect(screen.getByText('No Terminals Active')).toBeVisible()
+    expect(screen.getByTestId('terminal-pane-stub')).toBe(paneOfTab1)
+    expect(paneOfTab1).not.toBeVisible()
+
+    fireEvent.click(screen.getByRole('tab', { name: /Aba 1/ }))
+    expect(screen.getByText('No Terminals Active')).not.toBeVisible()
+    expect(screen.getByTestId('terminal-pane-stub')).toBeVisible()
+  })
+
+  it('fechar a aba ativa ativa a vizinha e desmonta os painéis dela (TAB-02, TAB-04)', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    fireEvent.click(screen.getByLabelText('nova aba'))
+    fireEvent.click(screen.getByRole('button', { name: '+ Create Terminal' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
+    await createTerminalViaDialog()
+    expect(screen.getByTestId('terminal-pane-stub')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText('fechar Aba 2'))
+
+    expect(screen.queryByTestId('terminal-pane-stub')).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Aba 1/ })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('a última aba não pode ser fechada (TAB-04)', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    expect(screen.queryByLabelText('fechar Aba 1')).not.toBeInTheDocument()
+  })
+
+  it('o teto de 4 terminais vale por aba: a aba nova nasce com "new terminal" liberado (TAB-05)', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    for (let i = 0; i < 4; i += 1) {
+      fireEvent.click(screen.getByLabelText('new terminal'))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
+      await createTerminalViaDialog()
+    }
+    expect(screen.getByLabelText('new terminal')).toBeDisabled()
+
+    fireEvent.click(screen.getByLabelText('nova aba'))
+
+    expect(screen.getByLabelText('new terminal')).toBeEnabled()
+  })
+})
+
 describe('App - quota-indicator prefs wiring (QUOTA-11)', () => {
   it('busca quota_prefs_get uma vez na montagem e o resultado desce para o Header', async () => {
     invokeMock.mockImplementation((command: string) => {

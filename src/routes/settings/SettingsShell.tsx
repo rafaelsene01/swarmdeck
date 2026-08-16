@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { getVersion } from '@tauri-apps/api/app'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { CircleDot, Download, FolderOpen, SlidersHorizontal, Users, X } from 'lucide-react'
 import AgentPanel, { type AgentDescriptor } from './AgentPanel'
@@ -91,7 +92,7 @@ export default function SettingsShell() {
   // `update_auto_check_get`/`update_auto_check_set` — o `true` aqui é só o
   // valor inicial até a resposta chegar.
   const [autoCheckEnabled, setAutoCheckEnabled] = useState(true)
-  const [updateState, setUpdateState] = useState<UpdateState>({ status: 'loading' })
+  const [updateState, setUpdateState] = useState<UpdateState>({ status: 'loading', current: '' })
   // SILENT-34: só a consulta acionada pelo botão, não a da abertura da seção.
   const [checkingUpdate, setCheckingUpdate] = useState(false)
   // Preserva a última versão instalada conhecida através de uma falha de
@@ -126,6 +127,16 @@ export default function SettingsShell() {
           taskCount: 0,
         })),
       )
+    })
+
+    // SILENT-33: a versão instalada não depende da rede — `getVersion()` lê o
+    // `package_info` do próprio app. Buscada no mount para que a seção
+    // "Atualizações" já abra com o número em tela, em vez de esconder tudo
+    // atrás do "Verificando…" da consulta ao manifesto.
+    void getVersion().then((version) => {
+      if (cancelled) return
+      lastKnownVersionRef.current = version
+      setUpdateState((prev) => (prev.status === 'loading' ? { status: 'loading', current: version } : prev))
     })
 
     return () => {
@@ -220,7 +231,7 @@ export default function SettingsShell() {
   useEffect(() => {
     if (section !== 'updates') return
     let cancelled = false
-    setUpdateState({ status: 'loading' })
+    setUpdateState({ status: 'loading', current: lastKnownVersionRef.current })
     void fetchUpdateStatus(() => cancelled)
     return () => {
       cancelled = true

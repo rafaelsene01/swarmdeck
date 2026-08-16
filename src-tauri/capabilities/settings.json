@@ -3,5 +3,5 @@
   "identifier": "settings",
   "description": "Capability da janela de Configurações do SwarmDeck.",
   "windows": ["settings"],
-  "permissions": ["core:window:allow-close"]
+  "permissions": ["core:window:allow-close", "core:app:allow-version"]
 }

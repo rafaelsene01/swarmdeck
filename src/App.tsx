@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11)
 
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -21,8 +21,20 @@ interface AgentCatalogEntry extends AgentDescriptor {
   installed: boolean
 }
 
-/** Limite do v1 — ver `spec.md` → "Fora de escopo" (mais de 4 terminais). */
+/** Teto de terminais **por aba** — o grid 2×2 de `GridLayout` não vai além
+ * disso. Mais que 4 terminais abertos ao mesmo tempo cabe agora em outra aba
+ * (TAB-01), não em mais células. */
 const MAX_TERMINALS = 4
+
+/** Um conjunto de terminais visível de cada vez (TAB-01). As abas inativas
+ * continuam montadas — só saem de vista —, então o PTY e o scrollback de cada
+ * terminal sobrevivem à troca de aba, mesma garantia que `mode: 'minimized'`
+ * já dava dentro de uma aba (TERM-08). */
+interface TerminalTab {
+  id: string
+  name: string
+  terminals: TerminalState[]
+}
 
 function createTerminalId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -40,6 +52,12 @@ function defaultTerminal(): TerminalState {
   return { id: createTerminalId(), cwd: '.', fracW: 1, fracH: 1, mode: 'normal' }
 }
 
+/** SPEC: terminal-tabs (TAB-03) — aba nova nasce vazia, no mesmo estado em
+ * que o app abre (EMPTY-03). */
+function createTab(name: string): TerminalTab {
+  return { id: createTerminalId(), name, terminals: [] }
+}
+
 /** Redistribui a largura igualmente ao adicionar/remover um terminal —
  * mesma ideia de piso justo que `GridLayout` aplica ao arrasto (T8), só que
  * disparada por criação/fechamento em vez de arrasto de divisória. */
@@ -51,7 +69,13 @@ function evenWidths(terminals: TerminalState[]): TerminalState[] {
 export default function App() {
   // SPEC: shell-chrome (EMPTY-03) — boots with zero terminals so EmptyState
   // is reachable on fresh launch, not just after closing the last terminal.
-  const [terminals, setTerminals] = useState<TerminalState[]>(() => [])
+  // SPEC: terminal-tabs (TAB-01) — os terminais passam a morar dentro de uma
+  // aba; o app abre com uma aba vazia, que é o mesmo estado inicial de antes.
+  const [tabs, setTabs] = useState<TerminalTab[]>(() => [createTab('Aba 1')])
+  /** `''` significa "a primeira aba" — evita ter que ler `tabs[0]` num
+   * inicializador de `useState`, e é o mesmo caminho de queda usado quando a
+   * aba ativa é fechada (TAB-02). */
+  const [activeTabId, setActiveTabId] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
 
   // SPEC: agent-selection (AGT-01, AGT-03, AGT-04)
@@ -80,6 +104,40 @@ export default function App() {
   // (spec 03, Assumptions: "fica visível até o app fechar"), por isso um
   // `useState` simples em vez de guardar a versão em si (não usada aqui).
   const [hasUpdateAvailable, setHasUpdateAvailable] = useState(false)
+
+  // SPEC: terminal-tabs (TAB-02) — `activeTabId` vazio (boot) ou apontando
+  // para uma aba já fechada cai na primeira; `tabs` nunca fica vazio, mas o
+  // último `??` mantém o tipo honesto sem `!`.
+  const activeTab =
+    tabs.find((tab) => tab.id === activeTabId) ?? tabs[0] ?? createTab('Aba 1')
+  const terminals = activeTab.terminals
+
+  /** Aplica `fn` só à aba ativa — todo handler de terminal passa por aqui,
+   * para que nenhum deles precise saber que existem abas. */
+  const setActiveTerminals = (fn: (prev: TerminalState[]) => TerminalState[]) => {
+    setTabs((prev) =>
+      prev.map((tab) => (tab.id === activeTab.id ? { ...tab, terminals: fn(tab.terminals) } : tab)),
+    )
+  }
+
+  // SPEC: terminal-tabs (TAB-03)
+  const handleCreateTab = () => {
+    const tab = createTab(`Aba ${tabs.length + 1}`)
+    setTabs((prev) => [...prev, tab])
+    setActiveTabId(tab.id)
+  }
+
+  // SPEC: terminal-tabs (TAB-04) — fechar a aba desmonta seus `TerminalPane`,
+  // e é a limpeza do próprio painel que chama `pty_kill`. A última aba nunca
+  // fecha: sem aba não há onde criar terminal.
+  const handleCloseTab = (id: string) => {
+    if (tabs.length === 1) return
+    const index = tabs.findIndex((tab) => tab.id === id)
+    const remaining = tabs.filter((tab) => tab.id !== id)
+    const next = remaining[Math.min(index, remaining.length - 1)]
+    setTabs(remaining)
+    if (id === activeTab.id && next) setActiveTabId(next.id)
+  }
 
   // SPEC: quota-indicator (QUOTA-11)
   // A janela de Configurações é um `WebviewWindow` separado (SET-01) — uma
@@ -158,13 +216,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [terminals.length, dialogOpen])
 
-  const panes: Pane[] = terminals.map((t) => ({
-    id: t.id,
-    fracW: t.fracW,
-    fracH: t.fracH,
-    mode: t.mode,
-  }))
-
   // `GridLayout` (T8) só relê a prop `panes` quando a contagem muda — troca
   // de `mode` (maximizar/minimizar/restaurar) com a mesma contagem fica
   // presa no snapshot interno do componente (`localPanes`), e `GridLayout`
@@ -176,22 +227,24 @@ export default function App() {
   // e aplicado como estilo inline no wrapper de cada painel — independente
   // do que o cálculo (potencialmente obsoleto) de `GridLayout` decida fazer
   // com o próprio `<div>` da célula.
-  const maximizedId = terminals.find((t) => t.mode === 'maximized')?.id
-
   const handleResize = (id: string, fracW: number) => {
-    setTerminals((prev) => prev.map((t) => (t.id === id ? { ...t, fracW } : t)))
+    setActiveTerminals((prev) => prev.map((t) => (t.id === id ? { ...t, fracW } : t)))
   }
 
   const handleMaximize = (id: string, currentMode: TerminalState['mode']) => {
-    setTerminals((prev) => (currentMode === 'maximized' ? restore(prev, id) : maximize(prev, id)))
+    setActiveTerminals((prev) =>
+      currentMode === 'maximized' ? restore(prev, id) : maximize(prev, id),
+    )
   }
 
   const handleMinimize = (id: string, currentMode: TerminalState['mode']) => {
-    setTerminals((prev) => (currentMode === 'minimized' ? restore(prev, id) : minimize(prev, id)))
+    setActiveTerminals((prev) =>
+      currentMode === 'minimized' ? restore(prev, id) : minimize(prev, id),
+    )
   }
 
   const handleCloseTerminal = (id: string) => {
-    setTerminals((prev) => evenWidths(close(prev, id)))
+    setActiveTerminals((prev) => evenWidths(close(prev, id)))
     setAgentByTerminalId((prev) => {
       const { [id]: _removed, ...rest } = prev
       return rest
@@ -209,9 +262,80 @@ export default function App() {
   // arrancava sem `agent`, caindo sempre no shell puro.
   const handleCreate = (cwd: string, agentId: string | null) => {
     const terminal = { ...defaultTerminal(), cwd: cwd.trim() || '.' }
-    setTerminals((prev) => evenWidths([...prev, terminal]))
+    setActiveTerminals((prev) => evenWidths([...prev, terminal]))
     setAgentByTerminalId((prev) => ({ ...prev, [terminal.id]: agentId }))
     setDialogOpen(false)
+  }
+
+  /** Conteúdo de uma aba. Toda aba é renderizada em todo quadro — a inativa
+   * só recebe `display: none` — porque desmontar `TerminalPane` mataria o PTY
+   * (a limpeza do efeito chama `pty_kill`). Ver TAB-01. */
+  const renderTab = (tab: TerminalTab) => {
+    const panes: Pane[] = tab.terminals.map((t) => ({
+      id: t.id,
+      fracW: t.fracW,
+      fracH: t.fracH,
+      mode: t.mode,
+    }))
+    const maximizedId = tab.terminals.find((t) => t.mode === 'maximized')?.id
+
+    return (
+      <div
+        key={tab.id}
+        className="app-tab-panel"
+        style={{ display: tab.id === activeTab.id ? 'block' : 'none' }}
+      >
+        {tab.terminals.length === 0 ? (
+          <EmptyState onCreateTerminal={() => setDialogOpen(true)} />
+        ) : (
+          <GridLayout
+            panes={panes}
+            onResize={handleResize}
+            renderPane={(pane) => {
+              const terminal = tab.terminals.find((t) => t.id === pane.id)
+              if (!terminal) return null
+              const index = tab.terminals.findIndex((t) => t.id === pane.id) + 1
+              const isMaximized = terminal.mode === 'maximized'
+              const isMinimized = terminal.mode === 'minimized'
+              const hiddenByMaximize = maximizedId !== undefined && !isMaximized
+
+              return (
+                <div
+                  className="app-pane"
+                  style={{
+                    position: isMaximized ? 'fixed' : undefined,
+                    inset: isMaximized ? 0 : undefined,
+                    zIndex: isMaximized ? 20 : undefined,
+                    display: hiddenByMaximize ? 'none' : undefined,
+                    maxHeight: isMinimized ? '2rem' : undefined,
+                    overflow: isMinimized ? 'hidden' : undefined,
+                  }}
+                >
+                  <TerminalHeader
+                    index={index}
+                    id={sessionIdByTerminalId[terminal.id]}
+                    title={null}
+                    hasActiveProcess
+                    onMaximize={() => handleMaximize(terminal.id, terminal.mode)}
+                    onMinimize={() => handleMinimize(terminal.id, terminal.mode)}
+                    onClose={() => handleCloseTerminal(terminal.id)}
+                  />
+                  <div className="app-pane__body">
+                    <TerminalPane
+                      cwd={terminal.cwd}
+                      agent={agentByTerminalId[terminal.id] ?? undefined}
+                      onSessionId={(sessionId) =>
+                        setSessionIdByTerminalId((prev) => ({ ...prev, [terminal.id]: sessionId }))
+                      }
+                    />
+                  </div>
+                </div>
+              )
+            }}
+          />
+        )}
+      </div>
+    )
   }
 
   return (
@@ -221,6 +345,33 @@ export default function App() {
           `styles.css` (fora dos arquivos permitidos a esta task). */}
       <style>{`
         .app-grid-area { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+        /* Cada aba preenche a área inteira; a inativa recebe display:none
+           inline. Absoluto para que as abas se sobreponham em vez de empilhar
+           — só uma está visível de cada vez. */
+        .app-tab-panel { position: absolute; inset: 0; }
+        .app-tabbar {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+          padding: 0.25rem 0.5rem;
+          border-bottom: 1px solid var(--muted);
+          flex: 0 0 auto;
+          overflow-x: auto;
+        }
+        .app-tabbar__tab { display: inline-flex; align-items: center; border-radius: 4px; }
+        .app-tabbar__tab[data-active='true'] { background: rgba(245, 183, 0, 0.18); }
+        .app-tabbar button {
+          background: transparent;
+          border: none;
+          color: var(--fg);
+          padding: 0.25rem 0.5rem;
+          cursor: pointer;
+          font: inherit;
+          white-space: nowrap;
+        }
+        .app-tabbar__count { margin-left: 0.35rem; opacity: 0.6; font-size: 0.8em; }
+        .app-tabbar__close { padding: 0.25rem 0.35rem; opacity: 0.6; }
+        .app-tabbar__close:hover { opacity: 1; }
         /* grid-layout__cell (T8) só define position relative|fixed via
            inline style — nenhum CSS em styles.css posiciona seus filhos.
            app-pane como bloco de altura 100% empurraria a divisória (T8,
@@ -278,57 +429,43 @@ export default function App() {
         quotaPrefs={quotaPrefs}
       />
 
-      <div className="app-grid-area">
-        {terminals.length === 0 ? (
-          <EmptyState onCreateTerminal={() => setDialogOpen(true)} />
-        ) : (
-        <GridLayout
-          panes={panes}
-          onResize={handleResize}
-          renderPane={(pane) => {
-            const terminal = terminals.find((t) => t.id === pane.id)
-            if (!terminal) return null
-            const index = terminals.findIndex((t) => t.id === pane.id) + 1
-            const isMaximized = terminal.mode === 'maximized'
-            const isMinimized = terminal.mode === 'minimized'
-            const hiddenByMaximize = maximizedId !== undefined && !isMaximized
-
-            return (
-              <div
-                className="app-pane"
-                style={{
-                  position: isMaximized ? 'fixed' : undefined,
-                  inset: isMaximized ? 0 : undefined,
-                  zIndex: isMaximized ? 20 : undefined,
-                  display: hiddenByMaximize ? 'none' : undefined,
-                  maxHeight: isMinimized ? '2rem' : undefined,
-                  overflow: isMinimized ? 'hidden' : undefined,
-                }}
+      {/* SPEC: terminal-tabs (TAB-01, TAB-03, TAB-04) */}
+      <div className="app-tabbar" role="tablist" aria-label="Abas de terminais">
+        {tabs.map((tab) => (
+          <span
+            key={tab.id}
+            className="app-tabbar__tab"
+            data-active={tab.id === activeTab.id ? 'true' : undefined}
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab.id === activeTab.id}
+              onClick={() => setActiveTabId(tab.id)}
+            >
+              {tab.name}
+              {tab.terminals.length > 0 && (
+                <span className="app-tabbar__count">{tab.terminals.length}</span>
+              )}
+            </button>
+            {tabs.length > 1 && (
+              <button
+                type="button"
+                className="app-tabbar__close"
+                aria-label={`fechar ${tab.name}`}
+                onClick={() => handleCloseTab(tab.id)}
               >
-                <TerminalHeader
-                  index={index}
-                  id={sessionIdByTerminalId[terminal.id]}
-                  title={null}
-                  hasActiveProcess
-                  onMaximize={() => handleMaximize(terminal.id, terminal.mode)}
-                  onMinimize={() => handleMinimize(terminal.id, terminal.mode)}
-                  onClose={() => handleCloseTerminal(terminal.id)}
-                />
-                <div className="app-pane__body">
-                  <TerminalPane
-                    cwd={terminal.cwd}
-                    agent={agentByTerminalId[terminal.id] ?? undefined}
-                    onSessionId={(sessionId) =>
-                      setSessionIdByTerminalId((prev) => ({ ...prev, [terminal.id]: sessionId }))
-                    }
-                  />
-                </div>
-              </div>
-            )
-          }}
-        />
-        )}
+                ×
+              </button>
+            )}
+          </span>
+        ))}
+        <button type="button" className="app-tabbar__new" aria-label="nova aba" onClick={handleCreateTab}>
+          +
+        </button>
       </div>
+
+      <div className="app-grid-area">{tabs.map(renderTab)}</div>
 
       {dialogOpen && (
         <div className="app-dialog-backdrop">
