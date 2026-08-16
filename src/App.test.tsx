@@ -233,6 +233,30 @@ describe('App - shell-chrome empty state', () => {
   })
 })
 
+describe('App - terminal-chrome (CHROME-03)', () => {
+  it('maximizar tira o painel do grid e o põe sobre o header e a barra de abas', async () => {
+    const { container } = render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    fireEvent.click(screen.getByRole('button', { name: '+ Create Terminal' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
+    await createTerminalViaDialog()
+
+    const pane = container.querySelector<HTMLElement>('.app-pane')
+    expect(pane?.style.position).toBe('')
+
+    fireEvent.click(screen.getByLabelText('maximizar terminal'))
+
+    const maximized = container.querySelector<HTMLElement>('.app-pane')
+    expect(maximized?.style.position).toBe('fixed')
+    expect(maximized?.style.inset).toBe('0')
+    // Header e barra de abas não declaram z-index, então qualquer valor
+    // positivo já os cobre; abaixo de 1000 mantém o diálogo por cima.
+    expect(Number(maximized?.style.zIndex)).toBeGreaterThan(0)
+    expect(Number(maximized?.style.zIndex)).toBeLessThan(1000)
+  })
+})
+
 describe('App - terminal-tabs (TAB-01..TAB-05)', () => {
   it('"nova aba" cria uma aba vazia e a torna ativa; a aba anterior guarda seus terminais (TAB-01, TAB-03)', async () => {
     render(<App />)

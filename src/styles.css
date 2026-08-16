@@ -4,6 +4,19 @@
   --accent: #f5b700;
   --muted: #8a8a92;
 
+  /* SPEC: terminal-chrome (CHROME-01, CHROME-02)
+     Superfícies da "janela" de terminal. `--surface` é o cromo (barra de
+     título), `--surface-2` o fundo da área de texto; os dois ficam acima de
+     `--bg` para que o cartão se destaque do fundo do app sem depender só de
+     sombra. */
+  --surface: #131318;
+  --surface-2: #0a0a0c;
+  --border: #26262d;
+  --danger: #f87171;
+  --radius: 10px;
+  /* Respiro entre cartões de terminal e entre eles e a borda da área. */
+  --gap: 8px;
+
   color-scheme: dark;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
 }

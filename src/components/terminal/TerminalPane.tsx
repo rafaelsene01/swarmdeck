@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-06)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-06), terminal-chrome (CHROME-01)
 
 import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
@@ -46,7 +46,14 @@ export default function TerminalPane({ cwd, shell, agent, onSessionId }: Termina
     const container = containerRef.current
     if (!container) return
 
-    const terminal = new Terminal({ convertEol: true, cursorBlink: true })
+    // SPEC: terminal-chrome (CHROME-01) — o xterm.js pinta o próprio fundo
+    // (#000 por padrão); sem alinhar com `--surface-2` fica uma moldura de
+    // tom diferente ao redor da área de texto dentro do cartão.
+    const terminal = new Terminal({
+      convertEol: true,
+      cursorBlink: true,
+      theme: { background: '#0a0a0c', foreground: '#e8e8ea', cursor: '#f5b700' },
+    })
     const fitAddon = new FitAddon()
     terminal.loadAddon(fitAddon)
     terminal.open(container)

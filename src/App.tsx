@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11)
 
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -303,11 +303,19 @@ export default function App() {
                 <div
                   className="app-pane"
                   style={{
+                    // SPEC: terminal-chrome (CHROME-03) — maximizado sai do
+                    // grid e cobre a janela inteira, header e barra de abas
+                    // incluídos: `fixed` tira do fluxo e o z-index passa por
+                    // cima dos dois (que não têm z-index próprio), ficando
+                    // ainda abaixo do backdrop de diálogo (1000). Sem cantos
+                    // arredondados nem sombra: não é mais um cartão.
                     position: isMaximized ? 'fixed' : undefined,
                     inset: isMaximized ? 0 : undefined,
-                    zIndex: isMaximized ? 20 : undefined,
+                    zIndex: isMaximized ? 100 : undefined,
+                    borderRadius: isMaximized ? 0 : undefined,
+                    boxShadow: isMaximized ? 'none' : undefined,
                     display: hiddenByMaximize ? 'none' : undefined,
-                    maxHeight: isMinimized ? '2rem' : undefined,
+                    maxHeight: isMinimized ? '34px' : undefined,
                     overflow: isMinimized ? 'hidden' : undefined,
                   }}
                 >
@@ -347,8 +355,11 @@ export default function App() {
         .app-grid-area { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; }
         /* Cada aba preenche a área inteira; a inativa recebe display:none
            inline. Absoluto para que as abas se sobreponham em vez de empilhar
-           — só uma está visível de cada vez. */
-        .app-tab-panel { position: absolute; inset: 0; }
+           — só uma está visível de cada vez. O padding aqui (e não em
+           .app-grid-area) é o que afasta os cartões da borda da janela:
+           filho absoluto se posiciona pela *padding box* do ancestral, então
+           padding no ancestral seria ignorado. */
+        .app-tab-panel { position: absolute; inset: 0; padding: var(--gap); }
         .app-tabbar {
           display: flex;
           align-items: center;
@@ -377,15 +388,105 @@ export default function App() {
            app-pane como bloco de altura 100% empurraria a divisória (T8,
            irmã seguinte no mesmo elemento da célula) para fora da área
            visível em fluxo normal; absoluto preenchendo a célula evita
-           isso e deixa espaço para a tira de arrasto. */
-        .grid-layout__cell { overflow: hidden; }
-        .app-pane { position: absolute; inset: 0; display: flex; flex-direction: column; }
-        .app-pane__body { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }
+           isso e deixa espaço para a tira de arrasto. overflow visible
+           porque a divisória mora na calha do grid, fora da célula — quem
+           recorta o conteúdo é o próprio cartão. */
+        .grid-layout__cell { overflow: visible; }
+
+        /* SPEC: terminal-chrome (CHROME-01) — cada terminal é uma "janela":
+           cartão com barra de título, borda e cantos arredondados, separado
+           dos vizinhos pela calha do grid. */
+        .app-pane {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: var(--radius);
+          overflow: hidden;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.28);
+        }
+        .app-pane__body {
+          flex: 1 1 auto;
+          min-height: 0;
+          position: relative;
+          overflow: hidden;
+          background: var(--surface-2);
+          padding: var(--gap);
+        }
+
+        /* SPEC: terminal-chrome (CHROME-02) — barra de título da janela. */
+        .terminal-header {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          flex: 0 0 auto;
+          height: 34px;
+          padding: 0 0.3rem 0 0.4rem;
+          background: var(--surface);
+          border-bottom: 1px solid var(--border);
+          color: var(--muted);
+          font-size: 11px;
+          user-select: none;
+        }
+        .terminal-header__grip { flex: 0 0 auto; opacity: 0.45; }
+        .terminal-header__title,
+        .terminal-header__title-input {
+          flex: 1 1 auto;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          font-weight: 600;
+          color: #d7d7dd;
+        }
+        .terminal-header__title-input {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid var(--border);
+          border-radius: 4px;
+          padding: 0.15rem 0.35rem;
+          font: inherit;
+          font-weight: 600;
+          outline: none;
+        }
+        .terminal-header__title-input:focus { border-color: var(--accent); }
+        .terminal-header__actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+        .terminal-header__actions button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 24px;
+          height: 24px;
+          padding: 0;
+          border: 1px solid transparent;
+          border-radius: 5px;
+          background: rgba(255, 255, 255, 0.04);
+          color: var(--muted);
+          cursor: pointer;
+        }
+        .terminal-header__actions button:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: var(--border);
+          color: var(--fg);
+        }
+        .terminal-header__actions button:focus-visible {
+          outline: 2px solid var(--accent);
+          outline-offset: 1px;
+        }
+        .terminal-header__close:hover {
+          background: rgba(248, 113, 113, 0.18) !important;
+          border-color: rgba(248, 113, 113, 0.4) !important;
+          color: var(--danger) !important;
+        }
+
         .grid-layout__divider {
           position: absolute;
           top: 0;
-          right: -4px;
-          width: 8px;
+          right: calc(var(--gap) * -1);
+          width: var(--gap);
           height: 100%;
           cursor: col-resize;
           z-index: 5;

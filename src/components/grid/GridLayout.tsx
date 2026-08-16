@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-03, TERM-04)
+// SPEC: multi-terminal (TERM-03, TERM-04), terminal-chrome (CHROME-01, CHROME-03)
 
 import { useCallback, useRef, useState, type ReactNode } from 'react'
 
@@ -113,6 +113,9 @@ export default function GridLayout({ panes, onResize, renderPane }: GridLayoutPr
         display: 'grid',
         gridTemplateColumns: `repeat(${columns}, 1fr)`,
         gridTemplateRows: `repeat(${rows}, 1fr)`,
+        // Respiro entre os cartões de terminal; a divisória de arrasto (8px,
+        // posicionada em `right: -4px`) mora exatamente nessa calha.
+        gap: 'var(--gap, 8px)',
         width: '100%',
         height: '100%',
       }}
@@ -135,10 +138,14 @@ export default function GridLayout({ panes, onResize, renderPane }: GridLayoutPr
             style={{
               position: isMaximized ? 'fixed' : 'relative',
               inset: isMaximized ? 0 : undefined,
-              zIndex: isMaximized ? 10 : undefined,
+              // 100 para passar por cima do header e da barra de abas (nenhum
+              // dos dois tem z-index próprio) e continuar abaixo do backdrop
+              // de diálogo (1000). Altura de recolhido = altura da barra de
+              // título de `.terminal-header`.
+              zIndex: isMaximized ? 100 : undefined,
               display: hiddenByMaximize ? 'none' : undefined,
-              minHeight: isMinimized ? '2rem' : undefined,
-              maxHeight: isMinimized ? '2rem' : undefined,
+              minHeight: isMinimized ? '34px' : undefined,
+              maxHeight: isMinimized ? '34px' : undefined,
               overflow: isMinimized ? 'hidden' : undefined,
             }}
           >

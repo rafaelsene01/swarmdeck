@@ -1,7 +1,8 @@
-// SPEC: multi-terminal (TERM-05, TERM-06), terminal-statuses (STAT-01, STAT-06)
+// SPEC: multi-terminal (TERM-05, TERM-06), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02)
 
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { GripVertical, Maximize2, Minus, X } from 'lucide-react'
 import StatusBadge from './StatusBadge'
 import ActivityLog, { type ActivityEntry, sortByMostRecent } from './ActivityLog'
 
@@ -111,7 +112,10 @@ export default function TerminalHeader({
 
   return (
     <header className="terminal-header" title={latestActivity}>
-      <span className="terminal-header__index">#{index}</span>
+      {/* Alça de arrasto — puramente visual hoje (o arrasto mora na divisória
+          do grid), mas é ela que dá ao cabeçalho a leitura de "barra de
+          título de janela". Decorativa: fora da ordem de leitura. */}
+      <GripVertical className="terminal-header__grip" size={14} aria-hidden="true" />
       {isEditingTitle ? (
         <input
           className="terminal-header__title-input"
@@ -136,7 +140,7 @@ export default function TerminalHeader({
           onDoubleClick={startEditingTitle}
           title="duplo-clique para renomear"
         >
-          {displayTitle ?? 'sem título'}
+          {displayTitle ?? `Terminal ${index}`}
         </span>
       )}
       {agent && (
@@ -152,14 +156,19 @@ export default function TerminalHeader({
         </details>
       )}
       <div className="terminal-header__actions">
-        <button type="button" onClick={onMinimize} aria-label="minimizar terminal">
-          _
-        </button>
         <button type="button" onClick={onMaximize} aria-label="maximizar terminal">
-          □
+          <Maximize2 size={13} aria-hidden="true" />
         </button>
-        <button type="button" onClick={handleClose} aria-label="fechar terminal">
-          ×
+        <button type="button" onClick={onMinimize} aria-label="minimizar terminal">
+          <Minus size={13} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="terminal-header__close"
+          onClick={handleClose}
+          aria-label="fechar terminal"
+        >
+          <X size={13} aria-hidden="true" />
         </button>
       </div>
     </header>

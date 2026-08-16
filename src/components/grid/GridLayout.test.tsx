@@ -1,7 +1,8 @@
-// SPEC: multi-terminal (TERM-03, TERM-04)
+// SPEC: multi-terminal (TERM-03, TERM-04), terminal-chrome (CHROME-01)
 
 import { describe, expect, it } from 'vitest'
-import { applyDrag, gridTemplate, MIN_FRAC, type Pane } from './GridLayout'
+import { render } from '@testing-library/react'
+import GridLayout, { applyDrag, gridTemplate, MIN_FRAC, type Pane } from './GridLayout'
 
 describe('gridTemplate', () => {
   it('dispõe 2 painéis em 2 colunas de largura igual', () => {
@@ -14,6 +15,22 @@ describe('gridTemplate', () => {
 
   it('dispõe 4 painéis em grid 2x2', () => {
     expect(gridTemplate(4)).toEqual({ columns: 2, rows: 2 })
+  })
+})
+
+describe('GridLayout — calha entre cartões (CHROME-01)', () => {
+  it('separa as células com a calha de 8px em vez de encostá-las', () => {
+    const { container } = render(
+      <GridLayout
+        panes={[
+          { id: 'a', fracW: 0.5, fracH: 1 },
+          { id: 'b', fracW: 0.5, fracH: 1 },
+        ]}
+      />,
+    )
+
+    const grid = container.querySelector<HTMLElement>('.grid-layout')
+    expect(grid?.style.gap).toBe('var(--gap, 8px)')
   })
 })
 
