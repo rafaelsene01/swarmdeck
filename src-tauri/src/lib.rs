@@ -19,8 +19,25 @@ pub mod update;
 use db::Db;
 use terminal::TerminalManager;
 
+// SPEC: silent-update (SILENT-35), quota-indicator (QUOTA-13)
+/// Instala o provedor de cripto do rustls como padrão do processo.
+///
+/// `reqwest` é compilado com `rustls-no-provider` (ver Cargo.toml): sem esta
+/// chamada, `reqwest::Client::builder().build()` **panica** em vez de
+/// devolver `Err`. Dentro de um `#[tauri::command] async`, esse panic mata a
+/// task e a promise do IPC nunca resolve — a UI fica presa em "Verificando…"
+/// (busca de atualização) e o anel de cota nunca sai de "carregando".
+///
+/// Idempotente: `install_default` devolve `Err` se já houver um provedor
+/// instalado, e é exatamente esse o estado desejado — daí o `let _`.
+fn install_crypto_provider() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    install_crypto_provider();
+
     tauri::Builder::default()
         .setup(|app| {
             // SPEC: release-distribution (REL-16, REL-17)

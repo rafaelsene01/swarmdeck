@@ -1,4 +1,4 @@
-// SPEC: silent-update (SILENT-01, SILENT-21)
+// SPEC: silent-update (SILENT-01, SILENT-21, SILENT-35)
 
 //! Manifesto de atualização (`latest.json`): um único caminho HTTP,
 //! consumido tanto pela exibição de versão quanto pela decisão de
@@ -102,6 +102,31 @@ pub async fn fetch(endpoint: &str) -> Result<Manifest, UpdateError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Regressão do bug "fica preso em Verificando…": sem o provedor de
+    /// cripto instalado (`lib.rs::install_crypto_provider`),
+    /// `Client::builder().build()` panica e a promise do IPC nunca resolve.
+    /// Este teste não usa rede: só prova que construir o cliente não panica.
+    #[test]
+    fn construir_o_cliente_http_nao_panica_com_o_provedor_instalado() {
+        crate::install_crypto_provider();
+
+        reqwest::Client::builder()
+            .timeout(FETCH_TIMEOUT)
+            .build()
+            .expect("cliente HTTP deve ser construível");
+    }
+
+    /// Mesma prova para o cliente da busca de cota, que constrói o dele em
+    /// `quota::real_http` — os dois quebravam pela mesma causa.
+    #[test]
+    fn cliente_padrao_tambem_e_construivel() {
+        crate::install_crypto_provider();
+
+        reqwest::Client::builder()
+            .build()
+            .expect("cliente HTTP padrão deve ser construível");
+    }
 
     const FIXTURE: &str = r#"{
         "version": "0.2.0",

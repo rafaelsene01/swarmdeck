@@ -3412,6 +3412,7 @@ dependencies = [
  "portable-pty",
  "reqwest",
  "rusqlite",
+ "rustls",
  "semver",
  "serde",
  "serde_json",

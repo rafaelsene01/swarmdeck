@@ -64,10 +64,18 @@ tokio = { version = "1", features = ["macros", "rt", "time"] }
 # está no Cargo.lock como dependência transitiva de tauri-plugin-updater,
 # então promovê-la a direta não adiciona crate nem tempo de compilação.
 # `rustls-no-provider` (não `rustls`, que puxaria aws-lc-rs — crate nova,
-# ausente do lock) casa com o provedor de cripto (ring) que
-# tauri-plugin-updater já instala via sua própria feature `rustls-tls`.
-# Versão e feature set confirmados no Cargo.lock em 15/08/2026.
+# ausente do lock) usa o `ring`, provedor de cripto que já está no lock via
+# tauri-plugin-updater. Quem **instala** esse provedor como padrão do
+# processo é `lib.rs::run` — nenhuma dependência faz isso sozinha, e sem a
+# instalação `Client::builder().build()` PANICA ("No rustls crypto provider
+# is configured"), derrubando a task do comando sem nunca resolver a promise
+# do IPC. Ver `rustls` abaixo.
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls-no-provider"] }
+
+# Só pelo `install_default()` do provedor `ring` chamado em `lib.rs::run`.
+# rustls 0.23 e ring 0.17 já estavam no Cargo.lock (via tauri-plugin-updater),
+# então promovê-los a diretos não adiciona crate nem tempo de compilação.
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
 
 # SPEC: quota-indicator (QUOTA-25)
 # Validação de `resets_at` em src/quota.rs (edge case QUOTA-25: data
