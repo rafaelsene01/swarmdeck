@@ -1,6 +1,12 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.9] - 2026-08-16
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.8] - 2026-08-15
 
 ### Outros
@@ -14,6 +20,10 @@ Introduce a new test case to verify that a failure in setting the registry does 
 - Refactor update module for Windows compatibility and enhance documentation
 
 Add conditional compilation for Windows in the `apply.rs` and `check.rs` files to prevent dead code warnings during non-Windows builds. Update documentation to clarify the purpose of the `pubkey` function and the `run_with` function's Windows-specific context. This change ensures that the code remains clean and maintainable across different platforms.
+
+- Refactor kanban and settings commands to be asynchronous
+
+Update the `kanban_open`, `kanban_focus_main`, `settings_open`, and `settings_focus_main` functions to be asynchronous. This change is necessary to prevent blocking the main thread during window operations, ensuring smoother application performance and avoiding issues with window rendering and event processing.
 
 ## [0.1.7] - 2026-08-15
 
