@@ -1,11 +1,24 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.10] - 2026-08-16
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.9] - 2026-08-16
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Enhance silent update functionality in UpdateSettings and SettingsShell components
+
+- Updated UpdateSettings to include a "Check for updates" button that triggers manual update checks, improving user interaction during the update process.
+- Added handling for different update states, including loading and error states, to provide better feedback to users.
+- Refactored SettingsShell to manage the state of the update check and ensure that the UI reflects the current update status without unnecessary loading indicators.
+- Updated tests to cover new scenarios related to the silent update feature, ensuring robustness and reliability.
 
 ## [0.1.8] - 2026-08-15
 
