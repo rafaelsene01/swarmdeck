@@ -1,13 +1,10 @@
 // SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11), release-distribution (REL-51), quota-indicator (QUOTA-01, QUOTA-12)
 
 import {
-  Hexagon,
   LayoutGrid,
   Plus,
   History,
   Camera,
-  Search,
-  Users,
   Play,
   Copy,
   Columns2,
@@ -21,7 +18,12 @@ export interface HeaderProps {
   atMaxTerminals: boolean
   hasUpdateAvailable?: boolean
   /** `undefined`/`null` = preferências ainda não carregadas, mesmo efeito que `enabled: false` (QUOTA-12). */
-  quotaPrefs?: { enabled: boolean; window: QuotaIndicatorProps['window'] } | null
+  quotaPrefs?: {
+    enabled: boolean
+    window: QuotaIndicatorProps['window']
+    /** QUOTA-26: lista ordenada do popover. Ausente = só o Claude. */
+    providers?: { id: string; enabled: boolean }[]
+  } | null
 }
 
 /**
@@ -52,16 +54,6 @@ export default function Header({
           flex: 0 0 auto;
         }
         .shell-header__group { display: flex; align-items: center; gap: 0.5rem; }
-        .shell-header__logo { position: relative; color: var(--accent); display: flex; }
-        .shell-header__logo-dot {
-          position: absolute;
-          top: -2px;
-          right: -2px;
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background: var(--accent);
-        }
         .shell-header__settings { position: relative; }
         .shell-header__update-dot {
           position: absolute;
@@ -91,29 +83,9 @@ export default function Header({
           border: 1px solid var(--muted);
           color: var(--muted);
         }
-        .shell-header__search {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.35rem;
-          background: transparent;
-          border: 1px solid var(--muted);
-          color: var(--muted);
-          border-radius: 4px;
-          padding: 0.3rem 0.5rem;
-        }
-        .shell-header__search input {
-          background: transparent;
-          border: none;
-          color: var(--muted);
-          outline: none;
-        }
       `}</style>
 
       <div className="shell-header__group">
-        <span className="shell-header__logo" aria-label="SwarmDeck">
-          <Hexagon size={20} />
-          <span className="shell-header__logo-dot" />
-        </span>
         <button type="button" disabled aria-label="layout">
           <LayoutGrid size={18} />
         </button>
@@ -134,19 +106,6 @@ export default function Header({
       </div>
 
       <div className="shell-header__group">
-        <span className="shell-header__search">
-          <Search size={14} />
-          <input
-            type="text"
-            placeholder="Search"
-            aria-label="search"
-            disabled
-            readOnly
-          />
-        </span>
-        <button type="button" disabled aria-label="agents">
-          <Users size={18} />
-        </button>
         <button type="button" disabled className="shell-header__run" aria-label="run">
           <Play size={14} />
           RUN
@@ -157,7 +116,13 @@ export default function Header({
         <button type="button" disabled aria-label="split">
           <Columns2 size={18} />
         </button>
-        {quotaPrefs?.enabled && <QuotaIndicator window={quotaPrefs.window} />}
+        {quotaPrefs?.enabled && (
+          <QuotaIndicator
+            window={quotaPrefs.window}
+            providerIds={quotaPrefs.providers?.filter((p) => p.enabled).map((p) => p.id)}
+            onOpenSettings={onOpenSettings}
+          />
+        )}
         <button
           type="button"
           onClick={onOpenSettings}

@@ -13,7 +13,17 @@ import UpdateSettings, { type UpdateState } from '../../components/settings/Upda
 
 type SectionId = 'general' | 'agents' | 'projects' | 'statuses' | 'updates'
 
-const DEFAULT_QUOTA_PREFS: QuotaPrefs = { enabled: true, window: 'both' }
+// QUOTA-26: mesma semente da migração 007 — se `quota_prefs_get` falhar, a
+// seção ainda abre com a lista de provedores de fábrica.
+const DEFAULT_QUOTA_PREFS: QuotaPrefs = {
+  enabled: true,
+  window: 'both',
+  providers: [
+    { id: 'claude-code', enabled: true },
+    { id: 'codex-cli', enabled: true },
+    { id: 'opencode', enabled: true },
+  ],
+}
 
 // SET-07: ícone por seção — nenhuma escolha específica foi pedida, reaproveita
 // `lucide-react` (já instalado, mesmo padrão de `Header.tsx`).

@@ -2,7 +2,7 @@
 
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import QuotaIndicator, { type QuotaSnapshot } from './QuotaIndicator'
+import QuotaIndicator, { ringColor, type QuotaSnapshot } from './QuotaIndicator'
 
 // `vi.mock` é hoisted para o topo do arquivo pelo transform do Vitest — mesmo
 // padrão de `NewTerminalDialog.test.tsx`.
@@ -213,5 +213,80 @@ describe('QuotaIndicator', () => {
     expect(tooltip).toHaveTextContent('42%')
     expect(tooltip).not.toHaveTextContent('42% ·')
     expect(tooltip).not.toHaveTextContent('reseta em')
+  })
+
+  // QUOTA-26: o popover lista os provedores marcados, na ordem recebida.
+  it('popover lista os provedores na ordem de providerIds', async () => {
+    invokeMock.mockResolvedValue(okSnapshot())
+    render(
+      <QuotaIndicator window="both" providerIds={['claude-code', 'codex-cli', 'opencode']} />,
+    )
+    await waitFor(() => expect(invokeMock).toHaveBeenCalled())
+
+    fireEvent.mouseEnter(screen.getByLabelText('quota'))
+    const tooltip = await screen.findByRole('tooltip')
+
+    expect(
+      [...tooltip.querySelectorAll('[data-provider]')].map((el) => el.getAttribute('data-provider')),
+    ).toEqual(['claude-code', 'codex-cli', 'opencode'])
+    // Só o Claude tem cota: os demais mostram o selo, nunca uma barra em 0%.
+    expect(tooltip).toHaveTextContent('sem sessão')
+    expect(tooltip).toHaveTextContent('sem cota')
+    expect(tooltip.querySelectorAll('[data-window]')).toHaveLength(2)
+  })
+
+  // QUOTA-27: o centro do anel leva o glifo do provedor padrão.
+  it('o ícone central é o do primeiro provedor da lista', async () => {
+    invokeMock.mockResolvedValue(okSnapshot())
+    const { container } = render(
+      <QuotaIndicator window="both" providerIds={['claude-code', 'codex-cli']} />,
+    )
+
+    expect(
+      container.querySelector('.quota-indicator__icon [data-provider-icon]'),
+    ).toHaveAttribute('data-provider-icon', 'claude-code')
+  })
+
+  // QUOTA-29: a cor do anel acompanha o consumo — 0% verde, 100% vermelho.
+  it('ringColor vai do verde ao vermelho conforme o consumo', () => {
+    expect(ringColor(0)).toBe('hsl(140 72% 52%)')
+    expect(ringColor(0.5)).toBe('hsl(70 72% 52%)')
+    expect(ringColor(1)).toBe('hsl(0 72% 52%)')
+    // Fora de 0..1 é grampeado, nunca produz matiz negativa.
+    expect(ringColor(1.4)).toBe('hsl(0 72% 52%)')
+    expect(ringColor(-0.2)).toBe('hsl(140 72% 52%)')
+  })
+
+  // QUOTA-30: clicar no anel abre Configurações.
+  it('clicar no anel chama onOpenSettings', async () => {
+    invokeMock.mockResolvedValue(okSnapshot())
+    const onOpenSettings = vi.fn()
+    render(<QuotaIndicator window="both" onOpenSettings={onOpenSettings} />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalled())
+
+    fireEvent.click(screen.getByLabelText('quota'))
+
+    expect(onOpenSettings).toHaveBeenCalledTimes(1)
+  })
+
+  // QUOTA-28: a busca se repete a cada 5 minutos, com `force: true` — sem
+  // isso o tick cairia exatamente no piso de cache do backend.
+  it('refaz a busca a cada 5 minutos', async () => {
+    vi.useFakeTimers()
+    try {
+      invokeMock.mockResolvedValue(okSnapshot())
+      render(<QuotaIndicator window="both" />)
+      expect(invokeMock).toHaveBeenCalledTimes(1)
+      expect(invokeMock).toHaveBeenLastCalledWith('quota_claude', { force: false })
+
+      await vi.advanceTimersByTimeAsync(5 * 60_000)
+      expect(invokeMock).toHaveBeenCalledTimes(2)
+      expect(invokeMock).toHaveBeenLastCalledWith('quota_claude', { force: true })
+
+      await vi.advanceTimersByTimeAsync(5 * 60_000)
+      expect(invokeMock).toHaveBeenCalledTimes(3)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

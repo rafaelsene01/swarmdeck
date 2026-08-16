@@ -11,6 +11,7 @@ use std::sync::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 
+use crate::agents::catalog::CATALOG;
 use crate::db::quota_prefs::{self, QuotaPrefs};
 use crate::db::Db;
 use crate::quota::{self, ClaudeQuota, QuotaCache, QuotaError};
@@ -31,6 +32,21 @@ fn set_validated(db: &Db, prefs: &QuotaPrefs) -> Result<(), String> {
     if !VALID_WINDOWS.contains(&prefs.window.as_str()) {
         return Err(format!("janela de cota inválida: {}", prefs.window));
     }
+
+    // QUOTA-26: a lista do popover só aceita ids do catálogo de agentes e
+    // nenhum repetido — a ordem do vetor é a ordem de exibição, então um id
+    // duplicado renderizaria a mesma linha duas vezes.
+    let mut seen = Vec::with_capacity(prefs.providers.len());
+    for provider in &prefs.providers {
+        if !CATALOG.iter().any(|agent| agent.id == provider.id) {
+            return Err(format!("provedor de cota desconhecido: {}", provider.id));
+        }
+        if seen.contains(&provider.id.as_str()) {
+            return Err(format!("provedor de cota duplicado: {}", provider.id));
+        }
+        seen.push(provider.id.as_str());
+    }
+
     quota_prefs::set(db.conn(), prefs).map_err(|e| e.to_string())
 }
 
@@ -180,6 +196,7 @@ mod tests {
             &QuotaPrefs {
                 enabled: true,
                 window: "monthly".to_string(),
+                providers: quota_prefs::default_providers(),
             },
         );
 
@@ -199,10 +216,53 @@ mod tests {
         let prefs = QuotaPrefs {
             enabled: false,
             window: "weekly".to_string(),
+            providers: quota_prefs::default_providers(),
         };
         set_validated(&db, &prefs).unwrap();
 
         assert_eq!(quota_prefs::get(db.conn()).unwrap(), prefs);
+    }
+
+    // QUOTA-26: id fora do catálogo e id repetido são rejeitados sem gravar.
+    #[test]
+    fn provedor_desconhecido_ou_duplicado_e_rejeitado_sem_gravar() {
+        use crate::db::quota_prefs::QuotaProvider;
+
+        let (_dir, mutex) = temp_db();
+        let db = mutex.lock().unwrap();
+        let before = quota_prefs::get(db.conn()).unwrap();
+
+        let with = |providers: Vec<QuotaProvider>| QuotaPrefs {
+            enabled: true,
+            window: "both".to_string(),
+            providers,
+        };
+
+        assert!(set_validated(
+            &db,
+            &with(vec![QuotaProvider {
+                id: "nao-existe".to_string(),
+                enabled: true
+            }])
+        )
+        .is_err());
+
+        assert!(set_validated(
+            &db,
+            &with(vec![
+                QuotaProvider {
+                    id: "claude-code".to_string(),
+                    enabled: true
+                },
+                QuotaProvider {
+                    id: "claude-code".to_string(),
+                    enabled: false
+                },
+            ])
+        )
+        .is_err());
+
+        assert_eq!(quota_prefs::get(db.conn()).unwrap(), before);
     }
 
     #[tokio::test]

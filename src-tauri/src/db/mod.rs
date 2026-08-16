@@ -32,6 +32,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
     (4, include_str!("migrations/004_agent_prefs.sql")),
     (5, include_str!("migrations/005_terminal_picker_prefs.sql")),
     (6, include_str!("migrations/006_quota_prefs.sql")),
+    (7, include_str!("migrations/007_quota_providers.sql")),
 ];
 
 /// Conexão com o banco do app, já migrada.

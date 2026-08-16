@@ -1,8 +1,9 @@
-// SPEC: multi-terminal (TERM-05, TERM-06), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02)
+// SPEC: multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02)
 
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { GripVertical, Maximize2, Minus, X } from 'lucide-react'
+import { CopyPlus, GripVertical, Maximize2, Minus, RotateCcw, X } from 'lucide-react'
+import InlineRename from '../shell/InlineRename'
 import StatusBadge from './StatusBadge'
 import ActivityLog, { type ActivityEntry, sortByMostRecent } from './ActivityLog'
 
@@ -35,6 +36,12 @@ export interface TerminalHeaderProps {
   hasActiveProcess?: boolean
   onMaximize?: () => void
   onMinimize?: () => void
+  /** Abre outro terminal na mesma aba com o mesmo projeto e provedor. */
+  onClone?: () => void
+  /** Reabre esta sessão do zero, mantendo projeto e provedor. */
+  onReset?: () => void
+  /** `false` desabilita clonar — a aba já está no teto de 4 terminais. */
+  canClone?: boolean
   onClose?: () => void
 }
 
@@ -58,10 +65,12 @@ export default function TerminalHeader({
   hasActiveProcess = false,
   onMaximize,
   onMinimize,
+  onClone,
+  onReset,
+  canClone = true,
   onClose,
 }: TerminalHeaderProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false)
-  const [draftTitle, setDraftTitle] = useState('')
   // Sobrepõe `title` depois de um rename bem-sucedido: `App.tsx` hoje não
   // realimenta um título atualizado de volta nesta prop (gap de integração,
   // ver relatório de T16), então o header precisa lembrar sozinho do último
@@ -86,8 +95,19 @@ export default function TerminalHeader({
     onClose?.()
   }
 
+  // Reset mata a sessão atual para abrir outra no lugar — mesma perda de
+  // processo em curso que fechar, então pede a mesma confirmação.
+  const handleReset = () => {
+    if (hasActiveProcess) {
+      const confirmado = window.confirm(
+        'Reiniciar encerra o processo ativo deste terminal. Continuar?',
+      )
+      if (!confirmado) return
+    }
+    onReset?.()
+  }
+
   const startEditingTitle = () => {
-    setDraftTitle(displayTitle ?? '')
     setIsEditingTitle(true)
   }
 
@@ -95,10 +115,9 @@ export default function TerminalHeader({
     setIsEditingTitle(false)
   }
 
-  const commitEditingTitle = () => {
+  const commitEditingTitle = (trimmed: string) => {
     setIsEditingTitle(false)
-    const trimmed = draftTitle.trim()
-    if (!trimmed || trimmed === displayTitle) return
+    if (trimmed === displayTitle) return
 
     setRenamedTitle(trimmed)
     if (id) {
@@ -117,28 +136,25 @@ export default function TerminalHeader({
           título de janela". Decorativa: fora da ordem de leitura. */}
       <GripVertical className="terminal-header__grip" size={14} aria-hidden="true" />
       {isEditingTitle ? (
-        <input
-          className="terminal-header__title-input"
-          value={draftTitle}
-          autoFocus
-          aria-label="renomear terminal"
-          onChange={(event) => setDraftTitle(event.target.value)}
-          onBlur={commitEditingTitle}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault()
-              commitEditingTitle()
-            } else if (event.key === 'Escape') {
-              event.preventDefault()
-              cancelEditingTitle()
-            }
-          }}
+        <InlineRename
+          value={displayTitle ?? ''}
+          label="renomear terminal"
+          onCommit={commitEditingTitle}
+          onCancel={cancelEditingTitle}
         />
       ) : (
         <span
           className="terminal-header__title"
-          onDoubleClick={startEditingTitle}
-          title="duplo-clique para renomear"
+          role="button"
+          tabIndex={0}
+          onClick={startEditingTitle}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              startEditingTitle()
+            }
+          }}
+          title="clique para renomear"
         >
           {displayTitle ?? `Terminal ${index}`}
         </span>
@@ -161,6 +177,23 @@ export default function TerminalHeader({
         </button>
         <button type="button" onClick={onMinimize} aria-label="minimizar terminal">
           <Minus size={13} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={onClone}
+          disabled={!canClone}
+          aria-label="clonar terminal"
+          title={canClone ? 'clonar terminal' : 'a aba já tem 4 terminais'}
+        >
+          <CopyPlus size={13} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={handleReset}
+          aria-label="reiniciar terminal"
+          title="reiniciar com o mesmo projeto e provedor"
+        >
+          <RotateCcw size={13} aria-hidden="true" />
         </button>
         <button
           type="button"

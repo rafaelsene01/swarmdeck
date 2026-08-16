@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11)
 
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -6,7 +6,16 @@ import { listen } from '@tauri-apps/api/event'
 import GridLayout, { type Pane } from './components/grid/GridLayout'
 import Header from './components/shell/Header'
 import type { QuotaIndicatorProps } from './components/shell/QuotaIndicator'
+
+/** Espelha `QuotaPrefs` de `src-tauri/src/db/quota_prefs.rs` — o mesmo tipo
+ * volta de `quota_prefs_get` e do evento `quota://prefs-changed`. */
+interface QuotaPrefsPayload {
+  enabled: boolean
+  window: QuotaIndicatorProps['window']
+  providers?: { id: string; enabled: boolean }[]
+}
 import EmptyState from './components/shell/EmptyState'
+import InlineRename from './components/shell/InlineRename'
 import TerminalPane from './components/terminal/TerminalPane'
 import TerminalHeader from './components/terminal/TerminalHeader'
 import NewTerminalDialog from './components/terminal/NewTerminalDialog'
@@ -76,6 +85,8 @@ export default function App() {
    * inicializador de `useState`, e é o mesmo caminho de queda usado quando a
    * aba ativa é fechada (TAB-02). */
   const [activeTabId, setActiveTabId] = useState('')
+  /** Id da aba em renomeação inline (TAB-06); `null` = nenhuma. */
+  const [renamingTabId, setRenamingTabId] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
   // SPEC: agent-selection (AGT-01, AGT-03, AGT-04)
@@ -97,6 +108,14 @@ export default function App() {
   // chave que `terminal_set_title` grava e que o agente usa via MCP — sem
   // isto o rename manual nunca colide com a escrita do agente (TERM-06).
   const [sessionIdByTerminalId, setSessionIdByTerminalId] = useState<Record<string, string>>({})
+  // Contador de reinícios por terminal. Entra na `key` do `TerminalPane`:
+  // incrementar remonta o painel, e é a limpeza do próprio efeito que chama
+  // `pty_kill` e o mount seguinte que chama `pty_spawn` com o mesmo `cwd` e
+  // o mesmo agente — não há comando de "reiniciar sessão" no backend, nem
+  // precisa haver. A `key` mora no `TerminalPane`, não no `Pane` do grid:
+  // `GridLayout` só relê `panes` quando a contagem muda (ver comentário do
+  // `handleResize`), então trocar o id do terminal aqui sumiria com o painel.
+  const [resetNonceByTerminalId, setResetNonceByTerminalId] = useState<Record<string, number>>({})
   // SPEC: release-distribution (REL-51, REL-52)
   // `02-background-auto-update` emite `update://available` (payload
   // `{ version }`) quando acha e baixa uma versão nova em segundo plano.
@@ -145,10 +164,7 @@ export default function App() {
   // só pelo evento `quota://prefs-changed` (mesmo mecanismo de
   // `update://available` acima). `null` até a primeira leitura resolver:
   // mesmo efeito que `enabled: false` no `Header` (QUOTA-12).
-  const [quotaPrefs, setQuotaPrefs] = useState<{
-    enabled: boolean
-    window: QuotaIndicatorProps['window']
-  } | null>(null)
+  const [quotaPrefs, setQuotaPrefs] = useState<QuotaPrefsPayload | null>(null)
 
   useEffect(() => {
     const unlistenPromise = listen('update://available', () => {
@@ -163,15 +179,12 @@ export default function App() {
   useEffect(() => {
     let cancelled = false
 
-    void invoke<{ enabled: boolean; window: QuotaIndicatorProps['window'] }>(
-      'quota_prefs_get',
-    ).then((prefs) => {
+    void invoke<QuotaPrefsPayload>('quota_prefs_get').then((prefs) => {
       if (!cancelled) setQuotaPrefs(prefs)
     })
 
-    const unlistenPromise = listen<{ enabled: boolean; window: QuotaIndicatorProps['window'] }>(
-      'quota://prefs-changed',
-      (event) => setQuotaPrefs(event.payload),
+    const unlistenPromise = listen<QuotaPrefsPayload>('quota://prefs-changed', (event) =>
+      setQuotaPrefs(event.payload),
     )
 
     return () => {
@@ -243,6 +256,29 @@ export default function App() {
     )
   }
 
+  /** Clonar: outro terminal na mesma aba, mesmo projeto (`cwd`) e mesmo
+   * provedor. Respeita o teto de 4 por aba — o botão já vem desabilitado no
+   * header, esta guarda é a que vale se ele for chamado de outro caminho. */
+  const handleCloneTerminal = (id: string) => {
+    const source = terminals.find((t) => t.id === id)
+    if (!source || terminals.length >= MAX_TERMINALS) return
+
+    const clone = { ...defaultTerminal(), cwd: source.cwd }
+    setActiveTerminals((prev) => evenWidths([...prev, clone]))
+    setAgentByTerminalId((prev) => ({ ...prev, [clone.id]: prev[id] ?? null }))
+  }
+
+  /** Reiniciar: mata a sessão e abre outra no mesmo painel, com o mesmo
+   * `cwd` e o mesmo agente. O id da sessão antiga é descartado junto — o
+   * novo chega por `onSessionId` quando o `pty_spawn` do remount resolver. */
+  const handleResetTerminal = (id: string) => {
+    setResetNonceByTerminalId((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))
+    setSessionIdByTerminalId((prev) => {
+      const { [id]: _removed, ...rest } = prev
+      return rest
+    })
+  }
+
   const handleCloseTerminal = (id: string) => {
     setActiveTerminals((prev) => evenWidths(close(prev, id)))
     setAgentByTerminalId((prev) => {
@@ -250,6 +286,10 @@ export default function App() {
       return rest
     })
     setSessionIdByTerminalId((prev) => {
+      const { [id]: _removed, ...rest } = prev
+      return rest
+    })
+    setResetNonceByTerminalId((prev) => {
       const { [id]: _removed, ...rest } = prev
       return rest
     })
@@ -326,10 +366,14 @@ export default function App() {
                     hasActiveProcess
                     onMaximize={() => handleMaximize(terminal.id, terminal.mode)}
                     onMinimize={() => handleMinimize(terminal.id, terminal.mode)}
+                    onClone={() => handleCloneTerminal(terminal.id)}
+                    onReset={() => handleResetTerminal(terminal.id)}
+                    canClone={tab.terminals.length < MAX_TERMINALS}
                     onClose={() => handleCloseTerminal(terminal.id)}
                   />
                   <div className="app-pane__body">
                     <TerminalPane
+                      key={`${terminal.id}:${resetNonceByTerminalId[terminal.id] ?? 0}`}
                       cwd={terminal.cwd}
                       agent={agentByTerminalId[terminal.id] ?? undefined}
                       onSessionId={(sessionId) =>
@@ -538,17 +582,34 @@ export default function App() {
             className="app-tabbar__tab"
             data-active={tab.id === activeTab.id ? 'true' : undefined}
           >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab.id === activeTab.id}
-              onClick={() => setActiveTabId(tab.id)}
-            >
-              {tab.name}
-              {tab.terminals.length > 0 && (
-                <span className="app-tabbar__count">{tab.terminals.length}</span>
-              )}
-            </button>
+            {renamingTabId === tab.id ? (
+              <InlineRename
+                value={tab.name}
+                label="renomear aba"
+                onCommit={(name) => {
+                  setTabs((prev) => prev.map((t) => (t.id === tab.id ? { ...t, name } : t)))
+                  setRenamingTabId(null)
+                }}
+                onCancel={() => setRenamingTabId(null)}
+              />
+            ) : (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab.id === activeTab.id}
+                // TAB-06: clicar na aba já ativa entra em renomeação; clicar
+                // numa inativa só troca de aba — senão não haveria como
+                // navegar sem cair no campo de texto.
+                onClick={() =>
+                  tab.id === activeTab.id ? setRenamingTabId(tab.id) : setActiveTabId(tab.id)
+                }
+              >
+                {tab.name}
+                {tab.terminals.length > 0 && (
+                  <span className="app-tabbar__count">{tab.terminals.length}</span>
+                )}
+              </button>
+            )}
             {tabs.length > 1 && (
               <button
                 type="button"

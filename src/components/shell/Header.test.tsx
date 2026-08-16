@@ -14,7 +14,7 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: invokeMock,
 }))
 
-const INERT_LABELS = ['layout', 'history', 'camera', 'search', 'agents', 'run', 'copy', 'split']
+const INERT_LABELS = ['layout', 'history', 'camera', 'run', 'copy', 'split']
 
 function renderHeader(props: Partial<Parameters<typeof Header>[0]> = {}) {
   return render(
@@ -39,20 +39,28 @@ describe('Header', () => {
     })
   })
 
-  it('renders all eleven elements described by HDR-02 (logo + 10 icons) - the avatar slot is now QuotaIndicator (QUOTA-01)', () => {
+  // Saíram a pedido do usuário (16/08/2026): o logo genérico da esquerda
+  // (não era a marca do app), o campo de busca e o ícone de agentes ao lado
+  // dele. HDR-02 descrevia 11 elementos; agora são 7.
+  it('renders the seven remaining elements of HDR-02 - the avatar slot is now QuotaIndicator (QUOTA-01)', () => {
     renderHeader()
 
-    expect(screen.getByLabelText('SwarmDeck')).toBeInTheDocument()
     expect(screen.getByLabelText('layout')).toBeInTheDocument()
     expect(screen.getByLabelText('new terminal')).toBeInTheDocument()
     expect(screen.getByLabelText('history')).toBeInTheDocument()
     expect(screen.getByLabelText('camera')).toBeInTheDocument()
-    expect(screen.getByLabelText('search')).toBeInTheDocument()
-    expect(screen.getByLabelText('agents')).toBeInTheDocument()
     expect(screen.getByLabelText('run')).toBeInTheDocument()
     expect(screen.getByLabelText('copy')).toBeInTheDocument()
     expect(screen.getByLabelText('split')).toBeInTheDocument()
     expect(screen.getByLabelText('settings')).toBeInTheDocument()
+  })
+
+  it('no longer renders the logo, the search field or the agents icon', () => {
+    renderHeader()
+
+    expect(screen.queryByLabelText('SwarmDeck')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('search')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('agents')).not.toBeInTheDocument()
   })
 
   it('calls onCreateTerminal exactly once when the "new terminal" button is activated', () => {
@@ -85,7 +93,7 @@ describe('Header', () => {
     expect(onOpenSettings).toHaveBeenCalledTimes(1)
   })
 
-  it('renders the nine undefined-behavior icons as disabled with no click handler (HDR-09..HDR-11)', () => {
+  it('renders the undefined-behavior icons as disabled with no click handler (HDR-09..HDR-11)', () => {
     renderHeader()
 
     for (const label of INERT_LABELS) {
@@ -93,17 +101,16 @@ describe('Header', () => {
       expect(element).toBeDisabled()
       expect(element.onclick).toBeNull()
     }
-    expect(screen.getByLabelText('search')).toHaveAttribute('readonly')
   })
 
   it('renders every icon via a lucide-react SVG - one per described element (HDR-04)', () => {
     const { container } = renderHeader()
 
-    // 11 icons with quotaPrefs absent (QuotaIndicator not mounted): Hexagon,
-    // LayoutGrid, Plus, History, Camera, Search, Users, Play, Copy, Columns2, Settings.
+    // 8 icons with quotaPrefs absent (QuotaIndicator not mounted): LayoutGrid,
+    // Plus, History, Camera, Play, Copy, Columns2, Settings.
     // `.lucide` is the base class every lucide-react icon renders (createLucideIcon.mjs) -
     // proves provenance, not just SVG count (no hand-drawn inline SVG would pass this).
-    expect(container.querySelectorAll('svg.lucide')).toHaveLength(11)
+    expect(container.querySelectorAll('svg.lucide')).toHaveLength(8)
   })
 
   it('uses only --bg/--fg/--accent/--muted custom properties for color - no hex/rgb literal (HDR-03)', () => {
@@ -149,6 +156,6 @@ describe('Header', () => {
       el.getAttribute('aria-label'),
     )
 
-    expect(labels).toEqual(['search', 'agents', 'run', 'copy', 'split', 'quota', 'settings'])
+    expect(labels).toEqual(['run', 'copy', 'split', 'quota', 'settings'])
   })
 })

@@ -1,4 +1,4 @@
-// SPEC: shell-chrome (HDR-01, HDR-08, EMPTY-01..EMPTY-09), release-distribution (REL-52)
+// SPEC: shell-chrome (HDR-01, HDR-08, EMPTY-01..EMPTY-09), release-distribution (REL-52), multi-terminal (TERM-12, TERM-13), terminal-tabs (TAB-06)
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -317,6 +317,86 @@ describe('App - terminal-tabs (TAB-01..TAB-05)', () => {
     fireEvent.click(screen.getByLabelText('nova aba'))
 
     expect(screen.getByLabelText('new terminal')).toBeEnabled()
+  })
+
+  it('clonar abre outro terminal na mesma aba e desabilita ao chegar em 4', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    fireEvent.click(screen.getByLabelText('new terminal'))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
+    await createTerminalViaDialog()
+    expect(screen.getAllByTestId('terminal-pane-stub')).toHaveLength(1)
+
+    // 1 -> 2 -> 3 -> 4: sempre clonando o primeiro terminal da aba.
+    for (const expected of [2, 3, 4]) {
+      fireEvent.click(screen.getAllByLabelText('clonar terminal')[0]!)
+      await waitFor(() =>
+        expect(screen.getAllByTestId('terminal-pane-stub')).toHaveLength(expected),
+      )
+    }
+
+    for (const button of screen.getAllByLabelText('clonar terminal')) {
+      expect(button).toBeDisabled()
+    }
+  })
+
+  it('reiniciar remonta o painel sem mudar a contagem de terminais da aba', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    fireEvent.click(screen.getByLabelText('new terminal'))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
+    await createTerminalViaDialog()
+
+    const before = screen.getByTestId('terminal-pane-stub')
+    fireEvent.click(screen.getByLabelText('reiniciar terminal'))
+
+    // Mesmo painel na tela, outro nó: o remount é o que mata o PTY antigo e
+    // abre uma sessão nova com o mesmo projeto e provedor.
+    const after = screen.getByTestId('terminal-pane-stub')
+    expect(screen.getAllByTestId('terminal-pane-stub')).toHaveLength(1)
+    expect(after).not.toBe(before)
+  })
+
+  // TAB-06: clicar na aba ativa entra em renomeação inline.
+  it('clicar na aba ativa abre o campo de renomear; confirmar troca o nome', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    fireEvent.click(screen.getByRole('tab', { name: /Aba 1/ }))
+
+    const input = screen.getByLabelText('renomear aba')
+    expect(input).toHaveValue('Aba 1')
+
+    fireEvent.change(input, { target: { value: 'Deploy' } })
+    fireEvent.click(screen.getByLabelText('confirmar renomear aba'))
+
+    expect(screen.getByRole('tab', { name: /Deploy/ })).toBeInTheDocument()
+    expect(screen.queryByLabelText('renomear aba')).not.toBeInTheDocument()
+  })
+
+  it('clicar numa aba inativa troca de aba em vez de renomear', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    fireEvent.click(screen.getByLabelText('nova aba'))
+    fireEvent.click(screen.getByRole('tab', { name: /Aba 1/ }))
+
+    expect(screen.queryByLabelText('renomear aba')).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Aba 1/ })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('cancelar a renomeação da aba mantém o nome antigo', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    fireEvent.click(screen.getByRole('tab', { name: /Aba 1/ }))
+    fireEvent.change(screen.getByLabelText('renomear aba'), { target: { value: 'Lixo' } })
+    fireEvent.click(screen.getByLabelText('cancelar renomear aba'))
+
+    expect(screen.getByRole('tab', { name: /Aba 1/ })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: /Lixo/ })).not.toBeInTheDocument()
   })
 })
 
