@@ -202,7 +202,7 @@ fn normalize_mode(mode: String) -> String {
 fn normalize_span(span: String) -> String {
     match span.as_str() {
         "first" | "last" => span,
-        _ => "last".to_string(),
+        _ => DEFAULT_SPAN.to_string(),
     }
 }
 
