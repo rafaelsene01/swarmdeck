@@ -64,7 +64,7 @@ export default function LayoutMenu({ count, layout, onChange }: LayoutMenuProps)
           top: 100%;
           right: 0;
           margin-top: 0.5rem;
-          width: 15rem;
+          width: max-content;
           padding: 0.35rem;
           background: #17171a;
           color: var(--fg);
@@ -84,6 +84,7 @@ export default function LayoutMenu({ count, layout, onChange }: LayoutMenuProps)
         .layout-menu__item {
           display: flex;
           align-items: center;
+          justify-content: flex-start;
           gap: 0.5rem;
           width: 100%;
           padding: 0.4rem 0.5rem;
@@ -98,7 +99,7 @@ export default function LayoutMenu({ count, layout, onChange }: LayoutMenuProps)
         .layout-menu__item:hover { background: rgba(255, 255, 255, 0.06); }
         .layout-menu__item[data-active='true'] { border-color: var(--accent); }
         /* Variantes aninhadas sob "Horizontal" (LAYOUT-13). */
-        .layout-menu__item--nested { width: calc(100% - 1.25rem); margin-left: 1.25rem; }
+        .layout-menu__item--nested { width: auto; margin-left: 1.25rem; }
       `}</style>
 
       <button
