@@ -225,7 +225,10 @@ where
     let token_str = credential.token.as_str().to_string();
     let tier = credential.tier;
 
-    match http(credential.token).await.map_err(|_| QuotaError::Offline)? {
+    match http(credential.token)
+        .await
+        .map_err(|_| QuotaError::Offline)?
+    {
         HttpOutcome::Success(body) => Ok(decode_usage(&body, tier.as_deref())),
         HttpOutcome::RateLimited { retry_after_secs } => Err(QuotaError::RateLimited {
             retry_at_epoch_ms: retry_at_from(retry_after_secs, now()),
@@ -619,12 +622,7 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = write_credential(&dir, "token");
 
-        let result = fetch_with(
-            || read_credential(&path),
-            |_token| async { Err(()) },
-            || 0,
-        )
-        .await;
+        let result = fetch_with(|| read_credential(&path), |_token| async { Err(()) }, || 0).await;
 
         assert_eq!(result, Err(QuotaError::Offline));
     }
