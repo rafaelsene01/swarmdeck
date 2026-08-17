@@ -56,9 +56,9 @@ const ICON_GLYPH = 12
 /** QUOTA-28: a busca se repete a cada 5 min — mesmo piso do cache do backend. */
 const POLL_MS = 5 * 60 * 1000
 
-/** Ordem de desenho para `window="both"`: arco externo = semanal, interno = 5h (design.md). */
+/** Ordem de desenho para `window="both"`: arco externo = 5h, interno = semanal. */
 const KINDS_FOR: Record<QuotaIndicatorProps['window'], QuotaWindowKind[]> = {
-  both: ['weekly', 'five_hour'],
+  both: ['five_hour', 'weekly'],
   five_hour: ['five_hour'],
   weekly: ['weekly'],
 }
@@ -163,9 +163,8 @@ export default function QuotaIndicator({
   const windows = state.status === 'ready' ? state.snapshot.windows : []
   const kinds = KINDS_FOR[windowPref]
   // No popover a leitura vai da janela mais curta para a mais longa: 5h em
-  // cima, semanal embaixo. Os arcos continuam na ordem de `KINDS_FOR`
-  // (externo = semanal), que é geometria do anel, não ordem de leitura.
-  const kindsForPopover = [...kinds].reverse()
+  // cima, semanal embaixo — a mesma ordem de `KINDS_FOR` (externo = 5h).
+  const kindsForPopover = kinds
   const loading = state.status === 'loading'
   // QUOTA-27: o centro do anel leva o glifo do provedor padrão — o primeiro
   // da lista, que é o Claude na configuração de fábrica.

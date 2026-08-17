@@ -235,9 +235,9 @@ describe('QuotaIndicator', () => {
     expect(tooltip.querySelectorAll('[data-window]')).toHaveLength(2)
   })
 
-  // No popover a ordem é 5h em cima, semanal embaixo — inversa à ordem dos
-  // arcos (externo = semanal), que é geometria do anel.
-  it('popover lista a janela de 5h antes da semanal, com os arcos na ordem oposta', async () => {
+  // No popover a ordem é 5h em cima, semanal embaixo — a mesma dos arcos
+  // (externo = 5h, interno = semanal).
+  it('popover e arcos listam a janela de 5h antes da semanal', async () => {
     invokeMock.mockResolvedValue(okSnapshot())
     const { container } = render(<QuotaIndicator window="both" />)
     await waitFor(() => expect(invokeMock).toHaveBeenCalled())
@@ -250,7 +250,7 @@ describe('QuotaIndicator', () => {
     ).toEqual(['five_hour', 'weekly'])
     expect(
       [...container.querySelectorAll('[data-kind]')].map((el) => el.getAttribute('data-kind')),
-    ).toEqual(['weekly', 'five_hour'])
+    ).toEqual(['five_hour', 'weekly'])
   })
 
   // QUOTA-27: o centro do anel leva o glifo do provedor padrão.
