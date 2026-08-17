@@ -71,6 +71,8 @@ fn default_config() -> SessionConfig {
         cwd: std::env::temp_dir(),
         shell: None,
         agent: None,
+        session_id: None,
+        resume: false,
         env: Default::default(),
     }
 }
@@ -89,7 +91,7 @@ fn default_config() -> SessionConfig {
 fn sessao_com_agente_usa_a_mesma_resolucao_de_resolve_launch_command() {
     let _g = serial();
     let agent_id = "claude-code";
-    let esperado = resolve_launch_command(Some(agent_id));
+    let esperado = resolve_launch_command(Some(agent_id), None);
 
     let manager = TerminalManager::new();
     let cfg = SessionConfig {

@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-04, TERM-07, TERM-08), terminal-layout-options (LAYOUT-16, LAYOUT-19, LAYOUT-25)
+// SPEC: multi-terminal (TERM-04, TERM-07, TERM-08), terminal-layout-options (LAYOUT-16, LAYOUT-19, LAYOUT-25), session-restore (SESS-10, SESS-16)
 
 /**
  * Estado de exibição de um terminal no grid.
@@ -21,6 +21,15 @@ export interface TerminalState {
    * (LAYOUT-25 / TERM-07). Só vem preenchido em terminal restaurado do banco;
    * é o que o aviso do `App` mostra ao usuário. */
   cwdFallbackFrom?: string | null
+  /** SPEC: session-restore (SESS-10) — id da sessão do agente que este painel
+   * fixa no CLI (`claude --session-id <uuid>`). Persistido: é o ponteiro para
+   * a conversa que o boot seguinte pode retomar. */
+  agentSessionId?: string | null
+  /** SPEC: session-restore (SESS-12, SESS-13) — arrancar retomando
+   * (`--resume`) em vez de fixar uma sessão nova. **Não** é persistido: é
+   * decisão de arranque, e guardá-la faria o segundo boot herdar a escolha do
+   * primeiro sem o usuário ter dito nada. */
+  resumeSession?: boolean
 }
 
 /**
@@ -103,6 +112,9 @@ export interface LayoutEntry {
   cwd: string
   minimized: boolean
   cwdFallbackFrom?: string | null
+  /** SPEC: session-restore (SESS-10) — espelha a coluna `agent_session_id`
+   * (migração 009). `null` em terminal salvo antes da feature. */
+  agentSessionId?: string | null
 }
 
 /** Converte o estado de exibição para a forma que `layout.rs::save` grava. */
@@ -114,6 +126,9 @@ export function toLayoutEntries(terminals: TerminalState[]): LayoutEntry[] {
     fracH: t.fracH,
     cwd: t.cwd,
     minimized: t.mode === 'minimized',
+    // SESS-10: o id da sessão vai junto; `resumeSession` não — é decisão de
+    // arranque, não estado do workspace.
+    agentSessionId: t.agentSessionId ?? null,
   }))
 }
 
@@ -131,5 +146,6 @@ export function fromLayoutEntries(entries: LayoutEntry[]): TerminalState[] {
       fracH: e.fracH,
       mode: e.minimized ? 'minimized' : 'normal',
       cwdFallbackFrom: e.cwdFallbackFrom ?? null,
+      agentSessionId: e.agentSessionId ?? null,
     }))
 }

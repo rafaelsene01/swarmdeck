@@ -277,6 +277,8 @@ mod tests {
                 cwd: std::env::temp_dir(),
                 shell: None,
                 agent: None,
+                session_id: None,
+                resume: false,
                 env: Default::default(),
             })
             .expect("spawn de terminal de teste");

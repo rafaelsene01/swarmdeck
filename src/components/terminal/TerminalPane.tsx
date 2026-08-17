@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-06), terminal-chrome (CHROME-01)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-06), terminal-chrome (CHROME-01), session-restore (SESS-12, SESS-13)
 
 import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
@@ -12,6 +12,17 @@ export interface TerminalPaneProps {
   /** Shell a rodar; `undefined` deixa o backend resolver o padrão do SO. */
   shell?: string
   agent?: string
+  /**
+   * SPEC: session-restore (SESS-12, SESS-13) — id da sessão do agente que
+   * este painel fixa no CLI, e se deve retomá-la em vez de fixá-la nova.
+   *
+   * Lidas **no mount**, de propósito fora das dependências do efeito:
+   * `resetNonceByTerminalId` (TERM-13) já remonta o painel na hora certa via
+   * `key`, e colocá-las aqui criaria um segundo caminho de remonte
+   * disparando junto com o primeiro.
+   */
+  sessionId?: string | null
+  resume?: boolean
   /**
    * Reporta o id REAL da sessão (o `TerminalId` devolvido por `pty_spawn`,
    * o mesmo que o backend injeta no processo filho via `TERMINAL_ID_ENV` e
@@ -39,7 +50,14 @@ const RESIZE_DEBOUNCE_MS = 100
  * existir quando a consulta chegar. Ver design.md → "Handshake de DSR no
  * Windows".
  */
-export default function TerminalPane({ cwd, shell, agent, onSessionId }: TerminalPaneProps) {
+export default function TerminalPane({
+  cwd,
+  shell,
+  agent,
+  sessionId,
+  resume,
+  onSessionId,
+}: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -99,7 +117,14 @@ export default function TerminalPane({ cwd, shell, agent, onSessionId }: Termina
       terminal.write(new Uint8Array(bytes))
     }
 
-    invoke<string>('pty_spawn', { cwd, shell, agent, channel })
+    invoke<string>('pty_spawn', {
+      cwd,
+      shell,
+      agent,
+      sessionId: sessionId ?? null,
+      resume: resume ?? false,
+      channel,
+    })
       .then((id) => {
         if (disposed) {
           void invoke('pty_kill', { id })

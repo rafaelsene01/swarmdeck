@@ -1,4 +1,4 @@
-// SPEC: agent-selection (AGT-01, AGT-03, AGT-04)
+// SPEC: agent-selection (AGT-01, AGT-03, AGT-04), session-restore (SESS-15)
 
 //! Comandos Tauri que expõem `agents::catalog` e `agents::prefs` ao
 //! frontend.
@@ -30,6 +30,10 @@ pub struct AgentCatalogEntry {
     pub command: String,
     pub beta: bool,
     pub installed: bool,
+    /// SPEC: session-restore (SESS-15) — `true` quando o CLI aceita retomar
+    /// uma sessão fixada pelo app. É o que decide se o switch do modal de
+    /// restauração fica ativo ou travado em "nova sessão".
+    pub supports_session_resume: bool,
 }
 
 /// Invólucro fino sobre `agents::catalog::detect_installed` (T1): o
@@ -46,6 +50,7 @@ pub fn agent_catalog() -> Vec<AgentCatalogEntry> {
             command: status.agent.command.to_string(),
             beta: status.agent.beta,
             installed: status.installed,
+            supports_session_resume: status.agent.session_resume_flag.is_some(),
         })
         .collect()
 }

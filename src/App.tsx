@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17)
 
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -16,6 +16,9 @@ interface QuotaPrefsPayload {
 }
 import EmptyState from './components/shell/EmptyState'
 import InlineRename from './components/shell/InlineRename'
+import RestoreSessionDialog, {
+  type RestoreSelection,
+} from './components/shell/RestoreSessionDialog'
 import TerminalPane from './components/terminal/TerminalPane'
 import TerminalHeader from './components/terminal/TerminalHeader'
 import NewTerminalDialog from './components/terminal/NewTerminalDialog'
@@ -61,6 +64,8 @@ const REORDER_MIME = 'text/swarmdeck-terminal'
 // de instalação, que aqui vira `installedIds` para o diálogo.
 interface AgentCatalogEntry extends AgentDescriptor {
   installed: boolean
+  /** SPEC: session-restore (SESS-15) — o CLI aceita `--resume <id>`. */
+  supportsSessionResume?: boolean
 }
 
 /** Janela de espera antes de gravar o workspace (LAYOUT-21). `handleResize`
@@ -94,13 +99,31 @@ function createTerminalId(): string {
   return `terminal-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
+/** SPEC: session-restore (SESS-10) — id da **sessão do agente**, distinto do
+ * `terminal.id` (identidade de painel no grid). Precisa ser UUID: é o que o
+ * `claude --session-id` exige. Mesma fonte de `createTerminalId`, nome
+ * separado para que a distinção fique visível em quem chama. */
+function createAgentSessionId(): string {
+  return createTerminalId()
+}
+
 /** Terminal recém-criado pela UI, antes de qualquer `cwd` escolhido. Não é
  * mais o ponto de partida do app: desde LAYOUT-23 quem decide o estado
  * inicial é `terminal_workspace_get`, e sem nada salvo o app abre numa aba
  * vazia com o `EmptyState` (LAYOUT-24) — `layout::default_entry` foi removido
  * justamente porque inventava um terminal onde EMPTY-03 pede nenhum. */
 function defaultTerminal(): TerminalState {
-  return { id: createTerminalId(), cwd: '.', fracW: 1, fracH: 1, mode: 'normal' }
+  return {
+    id: createTerminalId(),
+    cwd: '.',
+    fracW: 1,
+    fracH: 1,
+    mode: 'normal',
+    // SESS-10: todo terminal nasce com sessão própria fixada pelo app — é o
+    // que torna a retomada possível no boot seguinte.
+    agentSessionId: createAgentSessionId(),
+    resumeSession: false,
+  }
 }
 
 /** SPEC: terminal-tabs (TAB-03) — aba nova nasce vazia, no mesmo estado em
@@ -138,6 +161,9 @@ export default function App() {
   // e a marcação de "não instalado" (AGT-04) nunca aconteciam de verdade.
   const [agents, setAgents] = useState<AgentDescriptor[]>([])
   const [installedIds, setInstalledIds] = useState<Set<string>>(new Set())
+  /** SPEC: session-restore (SESS-15) — ids cujo CLI aceita `--resume`; o modal
+   * usa isto para decidir se o switch fica ativo ou travado. */
+  const [resumableAgentIds, setResumableAgentIds] = useState<Set<string>>(new Set())
   const [defaultAgentId, setDefaultAgentId] = useState<string | null>(null)
   // Agente escolhido por sessão (AGT-03): sobrescreve o padrão só para o
   // terminal criado com aquela escolha, sem tocar a preferência global.
@@ -241,33 +267,69 @@ export default function App() {
   // aba vazia) gravaria por cima do workspace salvo antes da leitura chegar.
   const hydrated = useRef(false)
 
+  /** SPEC: session-restore (SESS-01) — workspace lido no boot, **segurado**
+   * até o usuário confirmar no modal. Enquanto isto não for `null` nenhum
+   * `TerminalPane` está montado: `tabs` continua sendo a aba vazia inicial, e
+   * é isso que garante que nenhum PTY sobe antes da escolha. */
+  const [pendingRestore, setPendingRestore] = useState<WorkspaceTab[] | null>(null)
+
+  /** Aplica um workspace ao estado do app. Usado pelo caminho sem modal
+   * (SESS-02) e pela confirmação do modal (SESS-06). */
+  const applyWorkspace = (saved: WorkspaceTab[], resumeByTerminalId: Record<string, boolean>) => {
+    setTabs(
+      saved.map((tab) => ({
+        id: tab.id,
+        name: tab.name,
+        terminals: fromLayoutEntries(tab.terminals).map((terminal) => {
+          const resume = resumeByTerminalId[terminal.id] === true
+          return {
+            ...terminal,
+            // SESS-16: "nova sessão" (e terminal salvo sem id) arranca com id
+            // novo; só a retomada reusa o id salvo.
+            agentSessionId: resume ? terminal.agentSessionId : createAgentSessionId(),
+            resumeSession: resume,
+          }
+        }),
+        layout: { mode: tab.layoutMode, span: tab.layoutSpan },
+      })),
+    )
+    setAgentByTerminalId(
+      Object.fromEntries(
+        saved.flatMap((tab) => tab.terminals.map((t) => [t.id, t.agentId ?? null])),
+      ),
+    )
+    hydrated.current = true
+  }
+
   useEffect(() => {
     let cancelled = false
 
     void invoke<WorkspaceTab[]>('terminal_workspace_get')
       .then((saved) => {
+        if (cancelled) return
+
         // Vetor vazio (primeira execução) mantém a aba vazia inicial com o
         // `EmptyState` — LAYOUT-24, que preserva EMPTY-03.
-        if (cancelled || !saved?.length) return
+        if (!saved?.length) {
+          hydrated.current = true
+          return
+        }
 
-        setTabs(
-          saved.map((tab) => ({
-            id: tab.id,
-            name: tab.name,
-            terminals: fromLayoutEntries(tab.terminals),
-            layout: { mode: tab.layoutMode, span: tab.layoutSpan },
-          })),
-        )
-        setAgentByTerminalId(
-          Object.fromEntries(
-            saved.flatMap((tab) => tab.terminals.map((t) => [t.id, t.agentId ?? null])),
-          ),
-        )
+        // SESS-01 / SESS-02: só há o que confirmar quando existe terminal
+        // salvo. Workspace só com abas vazias volta direto, sem modal —
+        // `hydrated` fica `false` enquanto o modal estiver aberto, o que
+        // impede o efeito de gravação de apagar o que ainda não foi decidido.
+        if (saved.some((tab) => tab.terminals.length > 0)) {
+          setPendingRestore(saved)
+          return
+        }
+
+        applyWorkspace(saved, {})
       })
       // LAYOUT-26: leitura que falha registra o erro e deixa o app abrir na
-      // aba vazia; nunca impede a abertura.
-      .catch((error) => console.error('falha ao restaurar o workspace de terminais', error))
-      .finally(() => {
+      // aba vazia; nunca impede a abertura — e sem modal.
+      .catch((error) => {
+        console.error('falha ao restaurar o workspace de terminais', error)
         if (!cancelled) hydrated.current = true
       })
 
@@ -275,6 +337,35 @@ export default function App() {
       cancelled = true
     }
   }, [])
+
+  /** SPEC: session-restore (SESS-06, SESS-16) — restaura só o marcado. */
+  const handleRestoreSelection = (selection: RestoreSelection) => {
+    const saved = pendingRestore ?? []
+    const keptTabs = new Set(selection.tabIds)
+    const keptTerminals = new Set(selection.terminalIds)
+
+    applyWorkspace(
+      saved
+        .filter((tab) => keptTabs.has(tab.id))
+        .map((tab) => ({
+          ...tab,
+          terminals: tab.terminals.filter((terminal) => keptTerminals.has(terminal.id)),
+        })),
+      selection.resumeByTerminalId,
+    )
+    setPendingRestore(null)
+  }
+
+  /** SPEC: session-restore (SESS-07, SESS-08) — "Começar do zero", o × e
+   * Escape: uma aba vazia, nenhum terminal. `hydrated` passa a `true` aqui,
+   * então o efeito de gravação substitui o workspace salvo por este estado. */
+  const handleStartFresh = () => {
+    setTabs([createTab('Aba 1')])
+    setActiveTabId('')
+    setAgentByTerminalId({})
+    hydrated.current = true
+    setPendingRestore(null)
+  }
 
   // SPEC: terminal-layout-options (LAYOUT-21, LAYOUT-22)
   // Grava o workspace inteiro 500 ms depois da última mudança de abas,
@@ -310,8 +401,15 @@ export default function App() {
 
     void invoke<AgentCatalogEntry[]>('agent_catalog').then((entries) => {
       if (cancelled) return
-      setAgents(entries.map(({ installed: _installed, ...agent }) => agent))
+      setAgents(
+        entries.map(
+          ({ installed: _installed, supportsSessionResume: _resume, ...agent }) => agent,
+        ),
+      )
       setInstalledIds(new Set(entries.filter((entry) => entry.installed).map((entry) => entry.id)))
+      setResumableAgentIds(
+        new Set(entries.filter((entry) => entry.supportsSessionResume).map((entry) => entry.id)),
+      )
     })
 
     void invoke<string | null>('agent_default').then((id) => {
@@ -402,6 +500,9 @@ export default function App() {
     const source = terminals.find((t) => t.id === id)
     if (!source || terminals.length >= MAX_TERMINALS) return
 
+    // SESS-11: `defaultTerminal` já dá um id de sessão novo ao clone. Herdar
+    // o do original apontaria os dois painéis para a mesma conversa do CLI —
+    // TERM-12 pede mesmo `cwd` e mesmo provedor, nunca a mesma conversa.
     const clone = { ...defaultTerminal(), cwd: source.cwd }
     setActiveTerminals((prev) => evenWidths([...prev, clone]))
     setAgentByTerminalId((prev) => ({ ...prev, [clone.id]: prev[id] ?? null }))
@@ -409,8 +510,19 @@ export default function App() {
 
   /** Reiniciar: mata a sessão e abre outra no mesmo painel, com o mesmo
    * `cwd` e o mesmo agente. O id da sessão antiga é descartado junto — o
-   * novo chega por `onSessionId` quando o `pty_spawn` do remount resolver. */
+   * novo chega por `onSessionId` quando o `pty_spawn` do remount resolver.
+   *
+   * SPEC: session-restore (SESS-17) — a conversa do agente também recomeça:
+   * id de sessão novo e `resumeSession: false`. Reusar o id salvo aqui
+   * devolveria o contexto que TERM-13 promete zerar. */
   const handleResetTerminal = (id: string) => {
+    setActiveTerminals((prev) =>
+      prev.map((t) =>
+        t.id === id
+          ? { ...t, agentSessionId: createAgentSessionId(), resumeSession: false }
+          : t,
+      ),
+    )
     setResetNonceByTerminalId((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))
     setSessionIdByTerminalId((prev) => {
       const { [id]: _removed, ...rest } = prev
@@ -532,6 +644,8 @@ export default function App() {
                       key={`${terminal.id}:${resetNonceByTerminalId[terminal.id] ?? 0}`}
                       cwd={terminal.cwd}
                       agent={agentByTerminalId[terminal.id] ?? undefined}
+                      sessionId={terminal.agentSessionId ?? null}
+                      resume={terminal.resumeSession ?? false}
                       onSessionId={(sessionId) =>
                         setSessionIdByTerminalId((prev) => ({ ...prev, [terminal.id]: sessionId }))
                       }
@@ -839,6 +953,28 @@ export default function App() {
       )}
 
       <div className="app-grid-area">{tabs.map(renderTab)}</div>
+
+      {/* SPEC: session-restore (SESS-01) — enquanto isto está montado nenhum
+          `TerminalPane` existe: `tabs` continua sendo a aba vazia inicial. */}
+      {pendingRestore && (
+        <div className="app-dialog-backdrop">
+          <RestoreSessionDialog
+            tabs={pendingRestore.map((tab) => ({
+              id: tab.id,
+              name: tab.name,
+              terminals: tab.terminals.map((terminal) => ({
+                id: terminal.id,
+                cwd: terminal.cwd,
+                agentId: terminal.agentId ?? null,
+                agentSessionId: terminal.agentSessionId ?? null,
+              })),
+            }))}
+            resumableAgentIds={resumableAgentIds}
+            onRestore={handleRestoreSelection}
+            onStartFresh={handleStartFresh}
+          />
+        </div>
+      )}
 
       {dialogOpen && (
         <div className="app-dialog-backdrop">

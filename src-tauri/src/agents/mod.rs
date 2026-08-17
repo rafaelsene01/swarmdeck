@@ -10,5 +10,5 @@ pub mod launch;
 pub mod prefs;
 
 pub use catalog::{catalog, detect_installed, AgentDescriptor, AgentStatus};
-pub use launch::{resolve_launch_command, LaunchResolution};
+pub use launch::{resolve_launch_command, LaunchResolution, SessionLaunch};
 pub use prefs::{default_agent, resolve_effective_default, set_default_agent, EffectiveDefault};

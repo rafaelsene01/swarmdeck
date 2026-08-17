@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-06, TERM-10, TERM-11), terminal-layout-options (LAYOUT-26)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-06, TERM-10, TERM-11), terminal-layout-options (LAYOUT-26), session-restore (SESS-12, SESS-13)
 
 //! Comandos Tauri que expõem `TerminalManager`, `picker_prefs` e
 //! `TerminalMetaService` ao frontend.
@@ -37,6 +37,11 @@ pub fn pty_spawn(
     cwd: String,
     shell: Option<String>,
     agent: Option<String>,
+    // SPEC: session-restore (SESS-12, SESS-13) — o front manda `sessionId` e
+    // `resume`; `Option<bool>` em vez de `bool` para que uma chamada antiga
+    // (sem o campo) continue significando "sessão nova".
+    session_id: Option<String>,
+    resume: Option<bool>,
     channel: Channel<Vec<u8>>,
 ) -> Result<String, String> {
     let manager = app.state::<TerminalManager>();
@@ -44,6 +49,8 @@ pub fn pty_spawn(
         cwd: cwd.into(),
         shell,
         agent,
+        session_id,
+        resume: resume.unwrap_or(false),
         env: Default::default(),
     };
     let id = manager.spawn(cfg).map_err(|e| e.to_string())?;
@@ -211,6 +218,7 @@ mod tests {
                 frac_h: 1.0,
                 cwd: cwd.to_string(),
                 agent_id: Some("claude-code".to_string()),
+                agent_session_id: Some("0195d0f0-0000-7000-8000-000000000001".to_string()),
                 title: None,
                 title_source: "agent".to_string(),
                 minimized: false,

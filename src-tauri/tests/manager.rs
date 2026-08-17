@@ -51,6 +51,8 @@ fn default_config() -> SessionConfig {
         cwd: std::env::temp_dir(),
         shell: None,
         agent: None,
+        session_id: None,
+        resume: false,
         env: Default::default(),
     }
 }

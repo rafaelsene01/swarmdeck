@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-07), terminal-layout-options (LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-27, LAYOUT-28, LAYOUT-29)
+// SPEC: multi-terminal (TERM-07), terminal-layout-options (LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-27, LAYOUT-28, LAYOUT-29), session-restore (SESS-10)
 
 //! Persistência do workspace de terminais: abas (`terminal_tabs`, migração
 //! `008`) e os terminais de cada aba (`terminal_layout`, migração `001`).
@@ -43,6 +43,11 @@ pub struct LayoutEntry {
     pub cwd: String,
     #[serde(default)]
     pub agent_id: Option<String>,
+    /// SPEC: session-restore (SESS-10) — id da sessão do agente fixada pelo
+    /// app para este terminal. `None` em linha gravada antes da feature: não
+    /// há conversa para retomar.
+    #[serde(default)]
+    pub agent_session_id: Option<String>,
     #[serde(default)]
     pub title: Option<String>,
     #[serde(default = "default_title_source")]
@@ -104,8 +109,8 @@ pub fn save(db: &Db, tabs: &[TabEntry]) -> Result<(), DbError> {
         for e in &tab.terminals {
             tx.execute(
                 "INSERT INTO terminal_layout
-                    (id, slot, frac_w, frac_h, cwd, agent_id, title, title_source, minimized, updated_at, tab_id)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                    (id, slot, frac_w, frac_h, cwd, agent_id, agent_session_id, title, title_source, minimized, updated_at, tab_id)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
                 params![
                     e.id,
                     e.slot,
@@ -113,6 +118,7 @@ pub fn save(db: &Db, tabs: &[TabEntry]) -> Result<(), DbError> {
                     e.frac_h,
                     e.cwd,
                     e.agent_id,
+                    e.agent_session_id,
                     e.title,
                     e.title_source,
                     e.minimized as i64,
@@ -161,7 +167,7 @@ pub fn restore(db: &Db, home: &Path) -> Result<Vec<TabEntry>, DbError> {
     // Os terminais são lidos por aba, então `tab_id` nulo ou órfão nunca
     // casa com nenhuma consulta e some sozinho (LAYOUT-25).
     let mut entry_stmt = conn.prepare(
-        "SELECT id, slot, frac_w, frac_h, cwd, agent_id, title, title_source, minimized, updated_at
+        "SELECT id, slot, frac_w, frac_h, cwd, agent_id, agent_session_id, title, title_source, minimized, updated_at
          FROM terminal_layout WHERE tab_id = ?1 ORDER BY slot",
     )?;
 
@@ -174,10 +180,11 @@ pub fn restore(db: &Db, home: &Path) -> Result<Vec<TabEntry>, DbError> {
                 frac_h: row.get(3)?,
                 cwd: row.get(4)?,
                 agent_id: row.get(5)?,
-                title: row.get(6)?,
-                title_source: row.get(7)?,
-                minimized: row.get::<_, i64>(8)? != 0,
-                updated_at: row.get(9)?,
+                agent_session_id: row.get(6)?,
+                title: row.get(7)?,
+                title_source: row.get(8)?,
+                minimized: row.get::<_, i64>(9)? != 0,
+                updated_at: row.get(10)?,
                 cwd_fallback_from: None,
             })
         })?;
@@ -236,6 +243,7 @@ mod tests {
             frac_h: 1.0,
             cwd: cwd.to_string(),
             agent_id: Some("claude-code".to_string()),
+            agent_session_id: Some(format!("sessao-de-{id}")),
             title: None,
             title_source: "agent".to_string(),
             minimized: false,
@@ -371,6 +379,48 @@ mod tests {
         assert_eq!(read.len(), 1);
         assert_eq!(read[0].layout_mode, "horizontal");
         assert_eq!(read[0].layout_span, "first");
+    }
+
+    // SPEC: session-restore (SESS-10) — o id de sessão do agente sobrevive ao
+    // round-trip. Sem isto não há o que retomar no boot seguinte.
+    #[test]
+    fn save_seguido_de_restore_devolve_o_agent_session_id() {
+        let db = open_db();
+        let dir = existing_dir();
+        let cwd = dir.path().to_string_lossy().into_owned();
+
+        save(&db, &[tab("tab-1", 0, "Aba 1", vec![entry("t-1", 0, &cwd)])]).expect("save");
+
+        let read = restore(&db, Path::new("/home/user")).expect("restore");
+
+        assert_eq!(
+            read[0].terminals[0].agent_session_id.as_deref(),
+            Some("sessao-de-t-1")
+        );
+    }
+
+    // SPEC: session-restore (SESS-10) — linha gravada antes da migração 009
+    // volta com `None`: não há conversa para retomar, e o modal trava o
+    // switch em "nova sessão".
+    #[test]
+    fn restore_devolve_none_para_terminal_gravado_sem_id_de_sessao() {
+        let db = open_db();
+        let dir = existing_dir();
+        let cwd = dir.path().to_string_lossy().into_owned();
+
+        save(&db, &[tab("tab-1", 0, "Aba 1", vec![])]).expect("save");
+        db.conn()
+            .execute(
+                "INSERT INTO terminal_layout
+                    (id, slot, frac_w, frac_h, cwd, title_source, minimized, updated_at, tab_id)
+                 VALUES ('antigo', 0, 1.0, 1.0, ?1, 'agent', 0, 0, 'tab-1')",
+                params![cwd],
+            )
+            .expect("inserir terminal sem a coluna de sessão");
+
+        let read = restore(&db, Path::new("/home/user")).expect("restore");
+
+        assert_eq!(read[0].terminals[0].agent_session_id, None);
     }
 
     // Edge case "terminais órfãos": terminal sem aba dona é descartado.

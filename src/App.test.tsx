@@ -54,12 +54,30 @@ vi.mock('./components/terminal/TerminalPane', async () => {
     // (`TerminalPane.tsx:102`): é o único caminho de sessão que existe, e é
     // o que LAYOUT-29 observa — todo terminal restaurado nasce de um spawn
     // novo, nunca de uma sessão recuperada.
-    default: ({ cwd, agent }: { cwd: string; agent?: string }) => {
+    default: ({
+      cwd,
+      agent,
+      sessionId,
+      resume,
+    }: {
+      cwd: string
+      agent?: string
+      sessionId?: string | null
+      resume?: boolean
+    }) => {
       useEffect(() => {
-        void invokeMock('pty_spawn', { cwd, agent })
+        void invokeMock('pty_spawn', { cwd, agent, sessionId, resume })
       }, [])
 
-      return <div data-testid="terminal-pane-stub" data-cwd={cwd} data-agent={agent} />
+      return (
+        <div
+          data-testid="terminal-pane-stub"
+          data-cwd={cwd}
+          data-agent={agent}
+          data-session-id={sessionId ?? ''}
+          data-resume={resume ? 'true' : 'false'}
+        />
+      )
     },
   }
 })
@@ -614,6 +632,14 @@ describe('App - terminal-layout-options: restaurar o workspace no boot (LAYOUT-2
     })
   }
 
+  /** SPEC: session-restore (SESS-01) — desde esta feature o boot com terminal
+   * salvo passa pelo modal de restauração. Confirmar tudo é o que reproduz o
+   * comportamento que LAYOUT-23 descrevia sozinho antes. */
+  async function confirmRestore() {
+    fireEvent.click(await screen.findByRole('button', { name: 'Restaurar selecionados' }))
+    await act(async () => {})
+  }
+
   function panelsOf(container: HTMLElement) {
     return [...container.querySelectorAll<HTMLElement>('.app-tab-panel')]
   }
@@ -628,6 +654,7 @@ describe('App - terminal-layout-options: restaurar o workspace no boot (LAYOUT-2
     mockWorkspace(SAVED)
 
     const { container } = render(<App />)
+    await confirmRestore()
     await waitFor(() => expect(screen.getByRole('tab', { name: /Deploy/ })).toBeInTheDocument())
 
     expect(screen.getByRole('tab', { name: /Docs/ })).toBeInTheDocument()
@@ -646,6 +673,7 @@ describe('App - terminal-layout-options: restaurar o workspace no boot (LAYOUT-2
     mockWorkspace(SAVED)
 
     const { container } = render(<App />)
+    await confirmRestore()
     await waitFor(() => expect(screen.getByRole('tab', { name: /Deploy/ })).toBeInTheDocument())
 
     const grids = container.querySelectorAll<HTMLElement>('.grid-layout')
@@ -671,24 +699,26 @@ describe('App - terminal-layout-options: restaurar o workspace no boot (LAYOUT-2
     expect(screen.getAllByRole('tab')).toHaveLength(1)
   })
 
-  // LAYOUT-29: cada terminal restaurado é sessão nova. O observável é o
-  // `pty_spawn` por painel montado — um por terminal salvo, com `cwd` e
-  // agente e nada mais: não existe campo de sessão nem de saída anterior no
-  // que o boot devolve, então não há o que retomar.
-  it('cada terminal restaurado nasce de um pty_spawn próprio, sem sessão anterior (LAYOUT-29)', async () => {
+  // LAYOUT-29, revisto por session-restore (SESS-12): a metade do **PTY**
+  // continua valendo — cada terminal restaurado nasce de um `pty_spawn`
+  // próprio, processo novo e scrollback zerado. O que deixou de valer é a
+  // metade da conversa do agente, que agora pode voltar (SESS-13); isso é
+  // coberto pelos testes de session-restore mais abaixo.
+  it('cada terminal restaurado nasce de um pty_spawn próprio (LAYOUT-29)', async () => {
     mockWorkspace(SAVED)
 
     render(<App />)
+    await confirmRestore()
     await waitFor(() => expect(screen.getByRole('tab', { name: /Deploy/ })).toBeInTheDocument())
 
     const spawns = invokeMock.mock.calls.filter(([command]) => command === 'pty_spawn')
-    // 5 terminais salvos → 5 sessões novas, uma por painel.
+    // 5 terminais salvos → 5 PTYs novos, um por painel.
     expect(spawns).toHaveLength(5)
     expect(spawns.map(([, args]) => args.cwd)).toEqual(['/a', '/b', '/c', '/d', '/e'])
-    // O spawn só recebe `cwd` e agente: nenhum id de sessão antiga, nenhum
-    // scrollback: o app não tem por onde retomar o processo anterior.
+    // Nada além de `cwd`, agente e a sessão do agente: nenhum scrollback,
+    // nenhum handle de processo anterior — não há por onde retomar o PTY.
     for (const [, args] of spawns) {
-      expect(Object.keys(args).sort()).toEqual(['agent', 'cwd'])
+      expect(Object.keys(args).sort()).toEqual(['agent', 'cwd', 'resume', 'sessionId'])
     }
   })
 
@@ -714,6 +744,7 @@ describe('App - terminal-layout-options: restaurar o workspace no boot (LAYOUT-2
     ])
 
     render(<App />)
+    await confirmRestore()
 
     await waitFor(() =>
       expect(
@@ -752,6 +783,7 @@ describe('App - terminal-layout-options: restaurar o workspace no boot (LAYOUT-2
     ])
 
     render(<App />)
+    await confirmRestore()
     await waitFor(() =>
       expect(screen.getByLabelText('fechar aviso de diretório')).toBeInTheDocument(),
     )
@@ -769,6 +801,7 @@ describe('App - terminal-layout-options: restaurar o workspace no boot (LAYOUT-2
     mockWorkspace(SAVED)
 
     render(<App />)
+    await confirmRestore()
     await waitFor(() => expect(screen.getByRole('tab', { name: /Deploy/ })).toBeInTheDocument())
 
     expect(screen.queryByLabelText('fechar aviso de diretório')).not.toBeInTheDocument()
@@ -829,6 +862,9 @@ describe('App - terminal-layout-options: gravar o workspace com debounce (LAYOUT
   async function bootHydrated() {
     mockBoot(Promise.resolve(SAVED))
     render(<App />)
+    // SESS-01: o modal de restauração vem antes; confirmar tudo é o que
+    // hidrata o app e liga o efeito de gravação.
+    fireEvent.click(await screen.findByRole('button', { name: 'Restaurar selecionados' }))
     await waitFor(() => expect(screen.getByRole('tab', { name: /Deploy/ })).toBeInTheDocument())
     await act(async () => {})
   }
@@ -930,6 +966,11 @@ describe('App - terminal-layout-options: gravar o workspace com debounce (LAYOUT
               fracH: 1,
               cwd: '/a',
               minimized: false,
+              // SPEC: session-restore (SESS-10, SESS-16) — o id de sessão vai
+              // no mesmo payload. O fixture do boot não traz sessão salva, e
+              // SESS-16 manda gerar uma nova nesse caso: é um UUID qualquer,
+              // não `null`.
+              agentSessionId: expect.any(String),
               agentId: 'claude-code',
             },
           ],
@@ -999,5 +1040,235 @@ describe('App - quota-indicator prefs wiring (QUOTA-11)', () => {
 
     expect(screen.queryByLabelText('quota')).not.toBeInTheDocument()
     expect(screen.getByTestId('terminal-pane-stub')).toBe(paneBefore)
+  })
+})
+
+// SPEC: session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-11, SESS-12, SESS-13, SESS-16, SESS-17)
+describe('App - session-restore: confirmar abas e sessões no boot', () => {
+  const SAVED = [
+    {
+      id: 'tab-a',
+      slot: 0,
+      name: 'Deploy',
+      layoutMode: 'horizontal',
+      layoutSpan: 'first',
+      terminals: [
+        {
+          id: 't-0',
+          slot: 0,
+          fracW: 0.5,
+          fracH: 1,
+          cwd: '/projeto',
+          minimized: false,
+          agentId: 'claude-code',
+          agentSessionId: 'sessao-salva-0',
+        },
+        {
+          id: 't-1',
+          slot: 1,
+          fracW: 0.5,
+          fracH: 1,
+          cwd: '/api',
+          minimized: false,
+          agentId: 'claude-code',
+          agentSessionId: 'sessao-salva-1',
+        },
+      ],
+    },
+  ]
+
+  function mockBoot(saved: unknown) {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === 'agent_catalog') {
+        return Promise.resolve([
+          {
+            id: 'claude-code',
+            name: 'Claude Code',
+            vendor: 'Anthropic',
+            command: 'claude',
+            beta: false,
+            installed: true,
+            supportsSessionResume: true,
+          },
+        ])
+      }
+      if (command === 'agent_default') return Promise.resolve('claude-code')
+      if (command === 'quota_prefs_get') return Promise.resolve({ enabled: false, window: 'both' })
+      if (command === 'terminal_picker_last_dir') return Promise.resolve(null)
+      if (command === 'terminal_workspace_get') {
+        return saved instanceof Error ? Promise.reject(saved) : Promise.resolve(saved)
+      }
+      return Promise.resolve(undefined)
+    })
+  }
+
+  function spawns() {
+    return invokeMock.mock.calls.filter(([command]) => command === 'pty_spawn')
+  }
+
+  function saveCalls() {
+    return invokeMock.mock.calls.filter(([command]) => command === 'terminal_workspace_set')
+  }
+
+  // SESS-01
+  it('workspace com terminal salvo abre o modal e não sobe nenhum PTY antes da escolha', async () => {
+    mockBoot(SAVED)
+
+    render(<App />)
+
+    await screen.findByRole('dialog', { name: 'restaurar sessão anterior' })
+    expect(spawns()).toHaveLength(0)
+    expect(screen.queryByTestId('terminal-pane-stub')).not.toBeInTheDocument()
+  })
+
+  // SESS-02: só abas vazias não têm o que confirmar.
+  it('workspace só com abas vazias restaura direto, sem modal', async () => {
+    mockBoot([{ ...SAVED[0], terminals: [] }])
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByRole('tab', { name: /Deploy/ })).toBeInTheDocument())
+
+    expect(
+      screen.queryByRole('dialog', { name: 'restaurar sessão anterior' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('No Terminals Active')).toBeInTheDocument()
+  })
+
+  // LAYOUT-26 preservado: falha de leitura não abre modal nenhum.
+  it('leitura que falha abre a aba vazia sem modal', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockBoot(new Error('banco corrompido'))
+
+    render(<App />)
+    await waitFor(() => expect(consoleError).toHaveBeenCalled())
+
+    expect(
+      screen.queryByRole('dialog', { name: 'restaurar sessão anterior' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('No Terminals Active')).toBeInTheDocument()
+    consoleError.mockRestore()
+  })
+
+  // SESS-06 + SESS-13: o marcado volta, retomando a sessão salva.
+  it('"Restaurar selecionados" monta os marcados retomando a sessão salva', async () => {
+    mockBoot(SAVED)
+
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Restaurar selecionados' }))
+
+    await waitFor(() => expect(screen.getAllByTestId('terminal-pane-stub')).toHaveLength(2))
+    expect(spawns().map(([, args]) => [args.cwd, args.sessionId, args.resume])).toEqual([
+      ['/projeto', 'sessao-salva-0', true],
+      ['/api', 'sessao-salva-1', true],
+    ])
+  })
+
+  // SESS-06: o desmarcado não volta — nem na tela, nem na gravação seguinte.
+  it('terminal desmarcado não é montado nem regravado', async () => {
+    mockBoot(SAVED)
+
+    render(<App />)
+    await screen.findByRole('dialog', { name: 'restaurar sessão anterior' })
+    fireEvent.click(screen.getByLabelText('restaurar terminal api'))
+    fireEvent.click(screen.getByRole('button', { name: 'Restaurar selecionados' }))
+
+    await waitFor(() => expect(screen.getAllByTestId('terminal-pane-stub')).toHaveLength(1))
+    expect(spawns().map(([, args]) => args.cwd)).toEqual(['/projeto'])
+
+    await waitFor(() => expect(saveCalls()).toHaveLength(1))
+    expect(saveCalls()[0]![1].tabs[0].terminals.map((t: { id: string }) => t.id)).toEqual(['t-0'])
+  })
+
+  // SESS-16: switch em "nova sessão" descarta o id salvo.
+  it('terminal marcado como "nova sessão" arranca com id novo e sem retomada', async () => {
+    mockBoot(SAVED)
+
+    render(<App />)
+    await screen.findByRole('dialog', { name: 'restaurar sessão anterior' })
+    fireEvent.click(screen.getByLabelText('nova sessão para projeto'))
+    fireEvent.click(screen.getByRole('button', { name: 'Restaurar selecionados' }))
+
+    await waitFor(() => expect(screen.getAllByTestId('terminal-pane-stub')).toHaveLength(2))
+    const [primeiro] = spawns()
+    expect(primeiro![1].resume).toBe(false)
+    expect(primeiro![1].sessionId).not.toBe('sessao-salva-0')
+    expect(primeiro![1].sessionId).toEqual(expect.any(String))
+  })
+
+  // SESS-07 / SESS-08
+  it('"Começar do zero" abre uma aba vazia e grava esse estado por cima do salvo', async () => {
+    mockBoot(SAVED)
+
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Começar do zero' }))
+
+    await waitFor(() => expect(screen.getByText('No Terminals Active')).toBeInTheDocument())
+    expect(spawns()).toHaveLength(0)
+    expect(screen.getAllByRole('tab')).toHaveLength(1)
+
+    await waitFor(() => expect(saveCalls()).toHaveLength(1))
+    expect(saveCalls()[0]![1].tabs).toHaveLength(1)
+    expect(saveCalls()[0]![1].tabs[0].terminals).toHaveLength(0)
+  })
+
+  // SESS-08: Escape é o mesmo gesto.
+  it('Escape no modal equivale a "Começar do zero"', async () => {
+    mockBoot(SAVED)
+
+    render(<App />)
+    await screen.findByRole('dialog', { name: 'restaurar sessão anterior' })
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    await waitFor(() => expect(screen.getByText('No Terminals Active')).toBeInTheDocument())
+    expect(spawns()).toHaveLength(0)
+  })
+
+  // SESS-11 + SESS-12: terminal criado pelo diálogo nasce com sessão própria.
+  it('terminal novo arranca fixando uma sessão nova', async () => {
+    mockBoot([])
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('No Terminals Active')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: '+ Create Terminal' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
+    await createTerminalViaDialog()
+
+    expect(spawns()).toHaveLength(1)
+    expect(spawns()[0]![1].resume).toBe(false)
+    expect(spawns()[0]![1].sessionId).toEqual(expect.any(String))
+  })
+
+  // SESS-17: reiniciar zera a conversa, não a retoma.
+  it('reiniciar o terminal troca o id de sessão e não retoma', async () => {
+    mockBoot(SAVED)
+
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Restaurar selecionados' }))
+    await waitFor(() => expect(screen.getAllByTestId('terminal-pane-stub')).toHaveLength(2))
+
+    fireEvent.click(screen.getAllByLabelText('reiniciar terminal')[0]!)
+
+    await waitFor(() => expect(spawns()).toHaveLength(3))
+    const reinicio = spawns()[2]!
+    expect(reinicio[1].cwd).toBe('/projeto')
+    expect(reinicio[1].resume).toBe(false)
+    expect(reinicio[1].sessionId).not.toBe('sessao-salva-0')
+  })
+
+  // SESS-11: clonar nunca aponta dois painéis para a mesma conversa.
+  it('clonar dá ao clone uma sessão própria', async () => {
+    mockBoot(SAVED)
+
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Restaurar selecionados' }))
+    await waitFor(() => expect(screen.getAllByTestId('terminal-pane-stub')).toHaveLength(2))
+
+    fireEvent.click(screen.getAllByLabelText('clonar terminal')[0]!)
+
+    await waitFor(() => expect(spawns()).toHaveLength(3))
+    const clone = spawns()[2]!
+    expect(clone[1].cwd).toBe('/projeto')
+    expect(clone[1].sessionId).not.toBe('sessao-salva-0')
+    expect(clone[1].resume).toBe(false)
   })
 })

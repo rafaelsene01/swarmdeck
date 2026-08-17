@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-04, TERM-08), terminal-layout-options (LAYOUT-16, LAYOUT-19, LAYOUT-25)
+// SPEC: multi-terminal (TERM-04, TERM-08), terminal-layout-options (LAYOUT-16, LAYOUT-19, LAYOUT-25), session-restore (SESS-10, SESS-16)
 
 import { describe, expect, it } from 'vitest'
 import {
@@ -8,6 +8,7 @@ import {
   minimize,
   moveTerminal,
   restore,
+  toLayoutEntries,
   type LayoutEntry,
   type TerminalState,
 } from './terminals'
@@ -104,6 +105,24 @@ describe('moveTerminal', () => {
   })
 })
 
+// SPEC: session-restore (SESS-10, SESS-16)
+describe('toLayoutEntries', () => {
+  it('grava o agentSessionId e não grava resumeSession', () => {
+    const [entry] = toLayoutEntries([
+      { id: 'a', cwd: '/a', fracW: 1, fracH: 1, mode: 'normal', agentSessionId: 's-1', resumeSession: true },
+    ])
+
+    expect(entry?.agentSessionId).toBe('s-1')
+    expect(entry).not.toHaveProperty('resumeSession')
+  })
+
+  it('terminal sem sessão grava agentSessionId nulo', () => {
+    const [entry] = toLayoutEntries([{ id: 'a', cwd: '/a', fracW: 1, fracH: 1, mode: 'normal' }])
+
+    expect(entry?.agentSessionId).toBeNull()
+  })
+})
+
 describe('fromLayoutEntries', () => {
   function entry(overrides: Partial<LayoutEntry> = {}): LayoutEntry {
     return { id: 't-0', slot: 0, fracW: 1, fracH: 1, cwd: '/home/user', minimized: false, ...overrides }
@@ -122,6 +141,20 @@ describe('fromLayoutEntries', () => {
     const [terminal] = fromLayoutEntries([entry()])
 
     expect(terminal?.cwdFallbackFrom).toBeNull()
+  })
+
+  // SPEC: session-restore (SESS-10) — sem o id de sessão na volta não há o
+  // que retomar: o switch do modal nasceria travado mesmo com sessão salva.
+  it('carrega agentSessionId do terminal restaurado', () => {
+    const [terminal] = fromLayoutEntries([entry({ agentSessionId: 'sessao-1' })])
+
+    expect(terminal?.agentSessionId).toBe('sessao-1')
+  })
+
+  it('terminal salvo antes da feature volta com agentSessionId nulo', () => {
+    const [terminal] = fromLayoutEntries([entry()])
+
+    expect(terminal?.agentSessionId).toBeNull()
   })
 
   it('ordena pelo slot, não pela ordem do vetor', () => {

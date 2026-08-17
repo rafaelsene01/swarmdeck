@@ -115,6 +115,8 @@ mod tests {
                 vendor: "Vendor",
                 command: "agenta",
                 beta: false,
+                session_new_flag: None,
+                session_resume_flag: None,
             },
             AgentDescriptor {
                 id: "agent-b",
@@ -122,6 +124,8 @@ mod tests {
                 vendor: "Vendor",
                 command: "agentb",
                 beta: false,
+                session_new_flag: None,
+                session_resume_flag: None,
             },
         ]
     }

@@ -24,6 +24,7 @@ fn entry(id: &str, slot: i64, cwd: &str) -> LayoutEntry {
         frac_h: 1.0,
         cwd: cwd.to_string(),
         agent_id: None,
+        agent_session_id: None,
         title: None,
         title_source: "agent".to_string(),
         minimized: false,

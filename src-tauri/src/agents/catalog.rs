@@ -1,4 +1,4 @@
-// SPEC: agent-selection (AGT-01, AGT-02)
+// SPEC: agent-selection (AGT-01, AGT-02), session-restore (SESS-11, SESS-12, SESS-13)
 
 //! Catálogo estático dos agentes de IA suportados e detecção de CLI no PATH.
 //!
@@ -23,6 +23,14 @@ pub struct AgentDescriptor {
     /// resolvida via `PATHEXT` no Windows).
     pub command: &'static str,
     pub beta: bool,
+    /// SPEC: session-restore (SESS-12) — flag que fixa o id da sessão no
+    /// **primeiro** lançamento daquele id. `None` = o CLI não deixa o app
+    /// escolher o id da sessão, então nenhum argumento de sessão é passado.
+    pub session_new_flag: Option<&'static str>,
+    /// SPEC: session-restore (SESS-13) — flag que retoma uma sessão já
+    /// fixada por `session_new_flag`. `None` = sem retomada possível; o
+    /// switch do modal de restauração fica travado em "nova sessão".
+    pub session_resume_flag: Option<&'static str>,
 }
 
 /// Resultado da detecção para um agente: o agente e se o comando resolveu.
@@ -35,6 +43,12 @@ pub struct AgentStatus {
 /// Catálogo estático. A ordem é a ordem de exibição (T4) — Claude Code
 /// primeiro por ser o padrão observado na instalação de referência
 /// (`spec.md`, "Agentes do catálogo").
+///
+/// SPEC: session-restore (SESS-12, SESS-13, SESS-14) — só o Claude Code
+/// declara flags de sessão. O Codex expõe `codex resume <id>` como
+/// **subcomando**, sem forma de fixar o id no primeiro lançamento; os outros
+/// três não têm flag de sessão documentada. Suportar um deles é preencher
+/// estas duas colunas, nunca escrever um `match` por id.
 pub const CATALOG: [AgentDescriptor; 5] = [
     AgentDescriptor {
         id: "claude-code",
@@ -42,6 +56,8 @@ pub const CATALOG: [AgentDescriptor; 5] = [
         vendor: "Anthropic",
         command: "claude",
         beta: false,
+        session_new_flag: Some("--session-id"),
+        session_resume_flag: Some("--resume"),
     },
     AgentDescriptor {
         id: "codex-cli",
@@ -49,6 +65,8 @@ pub const CATALOG: [AgentDescriptor; 5] = [
         vendor: "OpenAI",
         command: "codex",
         beta: false,
+        session_new_flag: None,
+        session_resume_flag: None,
     },
     AgentDescriptor {
         id: "antigravity-cli",
@@ -56,6 +74,8 @@ pub const CATALOG: [AgentDescriptor; 5] = [
         vendor: "Google",
         command: "antigravity",
         beta: false,
+        session_new_flag: None,
+        session_resume_flag: None,
     },
     AgentDescriptor {
         id: "opencode",
@@ -63,6 +83,8 @@ pub const CATALOG: [AgentDescriptor; 5] = [
         vendor: "SST",
         command: "opencode",
         beta: false,
+        session_new_flag: None,
+        session_resume_flag: None,
     },
     AgentDescriptor {
         id: "kimi-code",
@@ -70,6 +92,8 @@ pub const CATALOG: [AgentDescriptor; 5] = [
         vendor: "Moonshot AI",
         command: "kimi",
         beta: true,
+        session_new_flag: None,
+        session_resume_flag: None,
     },
 ];
 
@@ -188,6 +212,27 @@ mod tests {
             assert_eq!(
                 agent.beta, esperado_beta,
                 "flag beta errada para {}",
+                agent.id
+            );
+        }
+    }
+
+    // SPEC: session-restore (SESS-12, SESS-13, SESS-14) — só o Claude Code
+    // declara flags de sessão; qualquer outro declarando uma sem que o CLI
+    // suporte faria o terminal arrancar com argumento inválido.
+    #[test]
+    fn so_claude_code_declara_flags_de_sessao() {
+        for agent in catalog() {
+            let esperado = if agent.id == "claude-code" {
+                (Some("--session-id"), Some("--resume"))
+            } else {
+                (None, None)
+            };
+
+            assert_eq!(
+                (agent.session_new_flag, agent.session_resume_flag),
+                esperado,
+                "flags de sessão erradas para {}",
                 agent.id
             );
         }
