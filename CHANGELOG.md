@@ -1,11 +1,48 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.15] - 2026-08-17
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Refactor update process and enhance silent update functionality
+
+- Updated the update workflow to separate the download and installation steps, allowing for a smoother user experience during updates.
+- Introduced progress tracking for downloads, emitting events to update the UI accordingly.
+- Modified the UpdateSettings component to reflect changes in the update state and improve user interaction.
+- Updated tests to ensure the new download and install flow works as expected, including handling of download progress and installation confirmation.
+- Enhanced the update mechanism to ensure compatibility with the latest Tauri plugin updates.
+
+- Implement terminal layout options and enhance workspace management
+
+- Added support for terminal layout options, allowing users to customize the arrangement of terminal panes.
+- Introduced functionality to save and restore terminal workspaces, preserving layout and terminal states across sessions.
+- Updated the App component to handle workspace retrieval and saving with debounce to optimize performance.
+- Enhanced GridLayout to apply layout plans based on the active tab's configuration.
+- Refactored tests to cover new layout options and workspace management features, ensuring robust functionality.
+
+- Update normalize_span function to use DEFAULT_SPAN constant
+
+- Modified the normalize_span function to return DEFAULT_SPAN instead of a hardcoded string for unspecified spans, improving maintainability and consistency in the codebase.
+
+- Refactor terminal initialization and update GridLayout handling
+
+- Updated the default terminal initialization logic to reflect changes in workspace management, ensuring the app opens with an empty state when no previous layout is saved.
+- Enhanced comments for clarity regarding the behavior of GridLayout and terminal state management, addressing issues with mode changes and internal snapshots.
+- Improved the handling of terminal pane identities to maintain consistency during state updates.
+
 ## [0.1.14] - 2026-08-16
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Refactor HTTP request handling and streamline test code
+
+- Improved readability of the HTTP request handling by formatting the match statement.
+- Simplified the test code for credential reading by condensing the fetch_with function call into a single line.
 
 ## [0.1.13] - 2026-08-16
 
