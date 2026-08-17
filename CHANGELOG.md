@@ -1,11 +1,34 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.17] - 2026-08-17
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Refactor save function call for improved readability in terminal layout tests
+
+- Reformatted the `save` function call in the terminal layout tests to enhance code clarity and maintainability.
+- Ensured consistent formatting for better alignment with coding standards.
+
 ## [0.1.16] - 2026-08-17
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Refactor QuotaIndicator component to correct arc order and update test descriptions
+
+- Adjusted the drawing order for the `QuotaIndicator` component to reflect the correct relationship between the 5h and weekly arcs.
+- Updated test descriptions for clarity, ensuring they accurately describe the expected behavior of the popover and arc order.
+- Modified the `KINDS_FOR` mapping to align with the new order, enhancing consistency across the component's logic and tests.
+
+- Update LayoutMenu styles for improved responsiveness and alignment
+
+- Changed the width of the dropdown menu to use `max-content` for better adaptability.
+- Adjusted layout menu item styles to justify content to the start, enhancing visual alignment.
+- Modified nested item width to `auto`, allowing for more flexible layout behavior.
 
 ## [0.1.15] - 2026-08-17
 
