@@ -128,10 +128,7 @@ pub fn terminal_workspace_get(db: State<'_, Mutex<Db>>) -> Result<Vec<TabEntry>,
 
 /// Substitui o workspace salvo por completo, numa transação (LAYOUT-27).
 #[tauri::command]
-pub fn terminal_workspace_set(
-    db: State<'_, Mutex<Db>>,
-    tabs: Vec<TabEntry>,
-) -> Result<(), String> {
+pub fn terminal_workspace_set(db: State<'_, Mutex<Db>>, tabs: Vec<TabEntry>) -> Result<(), String> {
     let db = db.lock().map_err(|e| e.to_string())?;
     workspace_set(&db, &tabs)
 }

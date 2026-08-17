@@ -91,7 +91,14 @@ pub fn save(db: &Db, tabs: &[TabEntry]) -> Result<(), DbError> {
             "INSERT INTO terminal_tabs
                 (id, slot, name, layout_mode, layout_span, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![tab.id, tab.slot, tab.name, tab.layout_mode, tab.layout_span, now],
+            params![
+                tab.id,
+                tab.slot,
+                tab.name,
+                tab.layout_mode,
+                tab.layout_span,
+                now
+            ],
         )?;
 
         for e in &tab.terminals {
@@ -314,7 +321,10 @@ mod tests {
         let depois = vec![tab("tab-9", 0, "Nova", vec![entry("t-9", 0, &cwd)])];
         save(&db, &depois).expect("segundo save");
 
-        assert_eq!(restore(&db, Path::new("/home/user")).expect("restore"), depois);
+        assert_eq!(
+            restore(&db, Path::new("/home/user")).expect("restore"),
+            depois
+        );
     }
 
     // LAYOUT-27: falha no meio da gravação faz rollback — o banco fica com o
@@ -337,7 +347,10 @@ mod tests {
         ];
         assert!(save(&db, &invalido).is_err(), "id duplicado deve falhar");
 
-        assert_eq!(restore(&db, Path::new("/home/user")).expect("restore"), antes);
+        assert_eq!(
+            restore(&db, Path::new("/home/user")).expect("restore"),
+            antes
+        );
     }
 
     // LAYOUT-28: modo e variante desconhecidos caem em horizontal/first em
@@ -367,7 +380,11 @@ mod tests {
         let dir = existing_dir();
         let cwd = dir.path().to_string_lossy().into_owned();
 
-        save(&db, &[tab("tab-1", 0, "Aba 1", vec![entry("t-1", 0, &cwd)])]).expect("save");
+        save(
+            &db,
+            &[tab("tab-1", 0, "Aba 1", vec![entry("t-1", 0, &cwd)])],
+        )
+        .expect("save");
         db.conn()
             .execute(
                 "INSERT INTO terminal_layout
@@ -381,7 +398,11 @@ mod tests {
 
         assert_eq!(read.len(), 1);
         assert_eq!(
-            read[0].terminals.iter().map(|t| t.id.as_str()).collect::<Vec<_>>(),
+            read[0]
+                .terminals
+                .iter()
+                .map(|t| t.id.as_str())
+                .collect::<Vec<_>>(),
             vec!["t-1"]
         );
     }
@@ -393,7 +414,11 @@ mod tests {
         let dir = existing_dir();
         let cwd = dir.path().to_string_lossy().into_owned();
 
-        save(&db, &[tab("tab-1", 0, "Aba 1", vec![entry("t-1", 0, &cwd)])]).expect("save");
+        save(
+            &db,
+            &[tab("tab-1", 0, "Aba 1", vec![entry("t-1", 0, &cwd)])],
+        )
+        .expect("save");
         db.conn()
             .execute(
                 "INSERT INTO terminal_layout
@@ -407,7 +432,11 @@ mod tests {
 
         assert_eq!(read.len(), 1);
         assert_eq!(
-            read[0].terminals.iter().map(|t| t.id.as_str()).collect::<Vec<_>>(),
+            read[0]
+                .terminals
+                .iter()
+                .map(|t| t.id.as_str())
+                .collect::<Vec<_>>(),
             vec!["t-1"]
         );
     }
@@ -419,7 +448,11 @@ mod tests {
         let db = open_db();
         let sumido = "/diretorio/que/nao/existe";
 
-        save(&db, &[tab("tab-1", 0, "Aba 1", vec![entry("t-1", 0, sumido)])]).expect("save");
+        save(
+            &db,
+            &[tab("tab-1", 0, "Aba 1", vec![entry("t-1", 0, sumido)])],
+        )
+        .expect("save");
 
         let home = existing_dir();
         let read = restore(&db, home.path()).expect("restore");

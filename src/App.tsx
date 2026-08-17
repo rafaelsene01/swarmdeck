@@ -94,10 +94,11 @@ function createTerminalId(): string {
   return `terminal-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
-/** Mesma regra do `layout::default_entry` do backend (T11): sem layout salvo
- * para restaurar, abre com 1 terminal em `home`. Não há comando Tauri que
- * exponha `layout::restore` ao frontend ainda (ver relatório desta task) —
- * este é o ponto de partida em memória até essa ponte existir. */
+/** Terminal recém-criado pela UI, antes de qualquer `cwd` escolhido. Não é
+ * mais o ponto de partida do app: desde LAYOUT-23 quem decide o estado
+ * inicial é `terminal_workspace_get`, e sem nada salvo o app abre numa aba
+ * vazia com o `EmptyState` (LAYOUT-24) — `layout::default_entry` foi removido
+ * justamente porque inventava um terminal onde EMPTY-03 pede nenhum. */
 function defaultTerminal(): TerminalState {
   return { id: createTerminalId(), cwd: '.', fracW: 1, fracH: 1, mode: 'normal' }
 }
@@ -154,8 +155,8 @@ export default function App() {
   // `pty_kill` e o mount seguinte que chama `pty_spawn` com o mesmo `cwd` e
   // o mesmo agente — não há comando de "reiniciar sessão" no backend, nem
   // precisa haver. A `key` mora no `TerminalPane`, não no `Pane` do grid:
-  // `GridLayout` só relê `panes` quando a contagem muda (ver comentário do
-  // `handleResize`), então trocar o id do terminal aqui sumiria com o painel.
+  // trocar o id do terminal aqui mudaria a identidade do painel no grid, e
+  // com ela a `key` de reconciliação — remontando o que se queria preservar.
   const [resetNonceByTerminalId, setResetNonceByTerminalId] = useState<Record<string, number>>({})
   // SPEC: release-distribution (REL-51, REL-52)
   // `02-background-auto-update` emite `update://available` (payload
@@ -340,17 +341,14 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [terminals.length, dialogOpen])
 
-  // `GridLayout` (T8) só relê a prop `panes` quando a contagem muda — troca
-  // de `mode` (maximizar/minimizar/restaurar) com a mesma contagem fica
-  // presa no snapshot interno do componente (`localPanes`), e `GridLayout`
-  // não está na lista de arquivos que esta task pode tocar. Em vez de forçar
-  // remount (isso já foi tentado e descartado: mata e resspawna o PTY de
-  // *todos* os terminais a cada criação/troca de modo — ver DESVIO no
-  // relatório desta task), o destaque/ocultação de "maximizado"/"minimizado"
-  // é calculado aqui, a partir do estado sempre atualizado de `terminals`,
-  // e aplicado como estilo inline no wrapper de cada painel — independente
-  // do que o cálculo (potencialmente obsoleto) de `GridLayout` decida fazer
-  // com o próprio `<div>` da célula.
+  // `GridLayout` sincroniza `panes` pela sequência de ids (AD-011), então
+  // reordenar chega ao grid. Trocar só o `mode` com a mesma ordem continua
+  // preso no snapshot interno (`localPanes`), e é por isso que o
+  // destaque/ocultação de "maximizado"/"minimizado" segue calculado aqui, a
+  // partir do estado sempre atualizado de `terminals`, e aplicado como
+  // estilo inline no wrapper de cada painel. Forçar remount resolveria os
+  // dois de uma vez, mas mata e respawna o PTY de *todos* os terminais a
+  // cada troca de modo — já foi tentado e descartado.
   const handleResize = (id: string, fracW: number) => {
     setActiveTerminals((prev) => prev.map((t) => (t.id === id ? { ...t, fracW } : t)))
   }
