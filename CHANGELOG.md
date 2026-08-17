@@ -1,6 +1,12 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.16] - 2026-08-17
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.15] - 2026-08-17
 
 ### Outros
@@ -32,6 +38,14 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 - Updated the default terminal initialization logic to reflect changes in workspace management, ensuring the app opens with an empty state when no previous layout is saved.
 - Enhanced comments for clarity regarding the behavior of GridLayout and terminal state management, addressing issues with mode changes and internal snapshots.
 - Improved the handling of terminal pane identities to maintain consistency during state updates.
+
+- Implement session restore functionality and enhance terminal management
+
+- Introduced session restore capabilities, allowing users to resume previous terminal sessions with saved states.
+- Updated the TerminalPane and App components to handle session IDs and resume flags, ensuring proper initialization of terminal sessions.
+- Enhanced workspace management to support the confirmation modal for restoring sessions, improving user experience during app boot.
+- Refactored terminal state handling to include agent session IDs, facilitating seamless transitions between new and resumed sessions.
+- Updated tests to cover new session restore features and ensure robust functionality across terminal management scenarios.
 
 ## [0.1.14] - 2026-08-16
 
