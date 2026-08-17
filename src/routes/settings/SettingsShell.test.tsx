@@ -6,13 +6,20 @@ import SettingsShell from './SettingsShell'
 
 // Same `vi.hoisted` pattern as `App.test.tsx` — the `vi.mock` factories
 // below are hoisted above these imports by Vitest's transform.
-const { invokeMock, closeMock } = vi.hoisted(() => ({
+const { invokeMock, closeMock, listenMock } = vi.hoisted(() => ({
   invokeMock: vi.fn(),
   closeMock: vi.fn(),
+  // `update://download-progress` (SILENT-37): o shell assina no mount, então
+  // o mock precisa devolver a promise de `unlisten` que o cleanup consome.
+  listenMock: vi.fn(() => Promise.resolve(() => {})),
 }))
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: invokeMock,
+}))
+
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: listenMock,
 }))
 
 vi.mock('@tauri-apps/api/window', () => ({
@@ -261,7 +268,9 @@ describe('SettingsShell — seção Atualizações ligada ao fluxo confirmado (S
     expect(await screen.findByText(/Não foi possível consultar/)).toBeInTheDocument()
   })
 
-  it('confirmação chama update_apply e transiciona applying para applied', async () => {
+  // SILENT-37/38: baixar e instalar são dois cliques, e o botão "Instalar"
+  // só aparece depois de `update_download` resolver.
+  it('"Baixar" chama update_download e só então oferece "Instalar"', async () => {
     baseMock({
       update_status: () =>
         Promise.resolve({
@@ -272,7 +281,8 @@ describe('SettingsShell — seção Atualizações ligada ao fluxo confirmado (S
           mode: 'installed',
           platform_key: 'windows-x86_64-silent',
         }),
-      update_apply: () => Promise.resolve('0.2.0'),
+      update_download: () => Promise.resolve('0.2.0'),
+      update_install: () => Promise.resolve('0.2.0'),
     })
 
     render(<SettingsShell />)
@@ -280,15 +290,16 @@ describe('SettingsShell — seção Atualizações ligada ao fluxo confirmado (S
     fireEvent.click(screen.getByRole('button', { name: /Atualizações/ }))
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_status'))
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Baixar e atualizar' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Baixar' }))
 
-    expect(invokeMock).toHaveBeenCalledWith('update_apply')
-    expect(
-      await screen.findByText('Atualizado para 0.2.0. Reinicie para concluir.'),
-    ).toBeInTheDocument()
+    expect(invokeMock).toHaveBeenCalledWith('update_download')
+    expect(invokeMock).not.toHaveBeenCalledWith('update_install')
+    expect(await screen.findByRole('button', { name: 'Instalar' })).toBeInTheDocument()
   })
 
-  it('"Reiniciar agora" chama update_restart', async () => {
+  // SILENT-40: instalar NÃO reinicia — `update_restart` só sai do clique
+  // explícito em "Reabrir agora", para não derrubar terminais abertos.
+  it('"Instalar" não reinicia sozinho; "Reabrir agora" é que chama update_restart', async () => {
     baseMock({
       update_status: () =>
         Promise.resolve({
@@ -299,7 +310,8 @@ describe('SettingsShell — seção Atualizações ligada ao fluxo confirmado (S
           mode: 'installed',
           platform_key: 'windows-x86_64-silent',
         }),
-      update_apply: () => Promise.resolve('0.2.0'),
+      update_download: () => Promise.resolve('0.2.0'),
+      update_install: () => Promise.resolve('0.2.0'),
     })
 
     render(<SettingsShell />)
@@ -307,10 +319,14 @@ describe('SettingsShell — seção Atualizações ligada ao fluxo confirmado (S
     fireEvent.click(screen.getByRole('button', { name: /Atualizações/ }))
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_status'))
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Baixar e atualizar' }))
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_apply'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Baixar' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Instalar' }))
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_install'))
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Reiniciar agora' }))
+    const reopen = await screen.findByRole('button', { name: 'Reabrir agora' })
+    expect(invokeMock).not.toHaveBeenCalledWith('update_restart')
+
+    fireEvent.click(reopen)
     expect(invokeMock).toHaveBeenCalledWith('update_restart')
   })
 })

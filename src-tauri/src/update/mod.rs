@@ -1,14 +1,15 @@
-// SPEC: silent-update (SILENT-09, SILENT-36)
+// SPEC: silent-update (SILENT-09, SILENT-39)
 
 //! Atualização do SwarmDeck: manifesto lido por um caminho HTTP único
-//! (`manifest`), status com versão instalada e mais recente (`check`) e
-//! aplicação confirmada (`apply::run`, delegada ao `tauri-plugin-updater`)
-//! — ver `.specs/features/silent-update/design.md`.
+//! (`manifest`), status com versão instalada e mais recente (`check`),
+//! download confirmado com progresso (`apply::download`) e instalação
+//! (`apply::install`, troca do executável via `swap`) — ver
+//! `.specs/features/silent-update/design.md`.
 //!
-//! O módulo `swap` (troca do executável no lugar, sem instalador) foi
-//! removido em 16/08/2026 com SILENT-36; só sobrou daqui o
-//! `cleanup_stale_old` abaixo, para limpar o rastro que ele deixou nas
-//! máquinas que atualizaram pelo mecanismo antigo.
+//! O módulo `swap` voltou em 16/08/2026 (AD-009): o instalador do
+//! `tauri-plugin-updater` mata o processo para trocar o `.exe`, e fechar o
+//! app derruba os terminais abertos. `cleanup_stale_old` limpa o `.old` que
+//! a troca deixa para trás, no boot seguinte (SILENT-07).
 
 use std::fs;
 use std::path::Path;
@@ -16,6 +17,7 @@ use std::path::Path;
 pub mod apply;
 mod check;
 pub mod manifest;
+pub mod swap;
 
 pub use apply::spawn_background_checker;
 pub use check::{status, UpdateError, UpdateStatus};

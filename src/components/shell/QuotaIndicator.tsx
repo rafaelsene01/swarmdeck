@@ -162,6 +162,10 @@ export default function QuotaIndicator({
 
   const windows = state.status === 'ready' ? state.snapshot.windows : []
   const kinds = KINDS_FOR[windowPref]
+  // No popover a leitura vai da janela mais curta para a mais longa: 5h em
+  // cima, semanal embaixo. Os arcos continuam na ordem de `KINDS_FOR`
+  // (externo = semanal), que é geometria do anel, não ordem de leitura.
+  const kindsForPopover = [...kinds].reverse()
   const loading = state.status === 'loading'
   // QUOTA-27: o centro do anel leva o glifo do provedor padrão — o primeiro
   // da lista, que é o Claude na configuração de fábrica.
@@ -399,7 +403,7 @@ export default function QuotaIndicator({
                     {NO_DATA_MESSAGE[state.snapshot.state]?.(state.snapshot) ?? 'Sem dado.'}
                   </p>
                 ) : (
-                  kinds.map((kind) => {
+                  kindsForPopover.map((kind) => {
                     const entry = windows.find((w) => w.kind === kind)
                     const fraction = entry?.usedFraction ?? null
                     const percent = fraction === null ? null : Math.round(fraction * 100)

@@ -1,14 +1,18 @@
-// SPEC: silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-12, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-36)
+// SPEC: silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-12, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-41)
 
 export type UpdateState =
   /** `current` pode chegar vazio no primeiro quadro, antes de `getVersion()`
    * resolver — a linha da versão só some nesse instante, nunca por causa da
    * consulta de rede (SILENT-33). */
   | { status: 'loading'; current: string }
-  | { status: 'ready'; current: string; latest: string; hasUpdate: boolean; mode: 'installed' | 'portable' }
+  | { status: 'ready'; current: string; latest: string; hasUpdate: boolean }
   | { status: 'unavailable'; current: string }
-  | { status: 'applying'; current: string; latest: string }
-  | { status: 'applied'; version: string }
+  /** `total` é `null` quando o servidor não manda `Content-Length` — a barra
+   * vira indeterminada em vez de mentir uma porcentagem (SILENT-37). */
+  | { status: 'downloading'; current: string; latest: string; downloaded: number; total: number | null }
+  | { status: 'downloaded'; current: string; latest: string }
+  | { status: 'installing'; current: string; latest: string }
+  | { status: 'installed'; version: string }
   | { status: 'error'; current: string; message: string }
 
 export interface UpdateSettingsProps {
@@ -20,15 +24,17 @@ export interface UpdateSettingsProps {
   onToggleAutoCheck: (enabled: boolean) => void
   /** Reconsulta o manifesto sob demanda (`update_status`), SILENT-32/33. */
   onCheck: () => void
-  /** Baixa e aplica a atualização confirmada (`update_apply`). */
-  onApply: () => void
-  /** Reinicia o app depois de uma troca aplicada (`update_restart`). */
+  /** Baixa o artefato da versão nova (`update_download`), SILENT-37. */
+  onDownload: () => void
+  /** Instala o que já foi baixado (`update_install`), SILENT-39. */
+  onInstall: () => void
+  /** Reabre o app depois da troca aplicada (`update_restart`) — só por
+   * clique do usuário, nunca sozinho (SILENT-40). */
   onRestart: () => void
 }
 
-const MODE_LABEL: Record<'installed' | 'portable', string> = {
-  installed: 'Instalado',
-  portable: 'Portátil',
+function formatMb(bytes: number) {
+  return (bytes / 1024 / 1024).toFixed(1)
 }
 
 /**
@@ -37,9 +43,11 @@ const MODE_LABEL: Record<'installed' | 'portable', string> = {
  * intenções via callback, nunca chama `invoke()` diretamente.
  *
  * Mostra a versão instalada e a mais recente publicada lado a lado, mesmo
- * quando são iguais (SILENT-09..11) — nunca fica em silêncio sobre o
- * resultado da consulta. A atualização só é baixada mediante confirmação
- * explícita (`onApply`); nada acontece sozinho no fechamento do app.
+ * quando são iguais (SILENT-09..11). O fluxo confirmado tem dois cliques:
+ * "Baixar" (com barra de progresso) e depois "Instalar" (SILENT-37/38). A
+ * instalação troca o executável com o app rodando e NUNCA o reinicia — o
+ * botão "Reabrir agora" existe, mas só o usuário o aciona (SILENT-40),
+ * porque fechar o app derrubaria os terminais abertos.
  */
 export default function UpdateSettings({
   state,
@@ -47,16 +55,22 @@ export default function UpdateSettings({
   checking,
   onToggleAutoCheck,
   onCheck,
-  onApply,
+  onDownload,
+  onInstall,
   onRestart,
 }: UpdateSettingsProps) {
   // SILENT-32/33: a busca sob demanda vale enquanto a tela está mostrando
-  // versão — some só durante a própria troca (`applying`) e depois dela
-  // (`applied`), quando o número em tela já é o da versão recém-aplicada e
-  // reconsultar não decide mais nada. `loading` entra aqui porque a consulta
-  // de abertura pode demorar (ou falhar) e o botão é justamente a saída.
-  const canCheck = state.status !== 'applying' && state.status !== 'applied'
+  // versão — some durante o download/instalação e depois deles, quando o
+  // número em tela já é o da versão recém-aplicada e reconsultar não decide
+  // mais nada. `loading` entra aqui porque a consulta de abertura pode
+  // demorar (ou falhar) e o botão é justamente a saída.
+  const canCheck =
+    state.status !== 'downloading' && state.status !== 'installing' && state.status !== 'installed'
   const busy = checking || state.status === 'loading'
+  const percent =
+    state.status === 'downloading' && state.total
+      ? Math.min(100, Math.round((state.downloaded / state.total) * 100))
+      : null
 
   return (
     <div className="update-settings">
@@ -66,15 +80,9 @@ export default function UpdateSettings({
         <div className="update-settings__info-row">
           <dt>Versão instalada</dt>
           <dd>
-            {state.status === 'applied' ? state.version : state.current || '—'}
+            {state.status === 'installed' ? state.version : state.current || '—'}
           </dd>
         </div>
-        {state.status === 'ready' && (
-          <div className="update-settings__info-row">
-            <dt>Modo</dt>
-            <dd>{MODE_LABEL[state.mode]}</dd>
-          </div>
-        )}
       </dl>
 
       {canCheck && (
@@ -94,30 +102,57 @@ export default function UpdateSettings({
           <p className="update-settings__message" role="status">
             Nova versão disponível: {state.latest}
           </p>
-          <button type="button" onClick={onApply}>
-            Baixar e atualizar
+          <button type="button" onClick={onDownload}>
+            Baixar
           </button>
         </div>
       )}
 
-      {state.status === 'applying' && (
+      {state.status === 'downloading' && (
         <div className="update-settings__check">
           <p className="update-settings__message" role="status">
-            Baixando e aplicando a versão {state.latest}…
+            {percent === null
+              ? `Baixando a versão ${state.latest}… (${formatMb(state.downloaded)} MB)`
+              : `Baixando a versão ${state.latest}… ${percent}%`}
+          </p>
+          <progress
+            className="update-settings__progress"
+            aria-label={`Baixando a versão ${state.latest}`}
+            {...(state.total ? { value: state.downloaded, max: state.total } : {})}
+          />
+        </div>
+      )}
+
+      {state.status === 'downloaded' && (
+        <div className="update-settings__check">
+          <p className="update-settings__message" role="status">
+            Versão {state.latest} baixada e verificada.
+          </p>
+          <button type="button" onClick={onInstall}>
+            Instalar
+          </button>
+        </div>
+      )}
+
+      {state.status === 'installing' && (
+        <div className="update-settings__check">
+          <p className="update-settings__message" role="status">
+            Instalando a versão {state.latest}…
           </p>
           <button type="button" disabled>
-            Baixar e atualizar
+            Instalar
           </button>
         </div>
       )}
 
-      {state.status === 'applied' && (
+      {state.status === 'installed' && (
         <div className="update-settings__check">
           <p className="update-settings__message" role="status">
-            Atualizado para {state.version}. Reinicie para concluir.
+            Versão {state.version} instalada. Reabra o SwarmDeck quando quiser para começar a usá-la
+            — seus terminais continuam abertos até lá.
           </p>
           <button type="button" onClick={onRestart}>
-            Reiniciar agora
+            Reabrir agora
           </button>
         </div>
       )}
@@ -145,15 +180,9 @@ export default function UpdateSettings({
 
       <p className="update-settings__explainer">
         A verificação automática roda ao abrir o SwarmDeck e a cada hora, sem baixar nada sozinha.
-        Quando há uma versão nova, você decide quando baixar e aplicar — o instalador roda em modo
-        passivo, sem perguntar nada, e a versão nova vale assim que o app reiniciar.
+        Baixar e instalar são dois passos seus. A instalação acontece em silêncio, com o app aberto,
+        e o SwarmDeck só é fechado quando você mandar.
       </p>
-      {state.status === 'ready' && state.mode === 'portable' && (
-        <p className="update-settings__explainer">
-          Esta é a versão portátil: o instalador criaria uma segunda cópia em vez de atualizar esta
-          pasta. Para atualizar, baixe o zip portátil da release nova.
-        </p>
-      )}
     </div>
   )
 }

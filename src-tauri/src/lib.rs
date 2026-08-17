@@ -74,10 +74,13 @@ pub fn run() {
             // Checagem em segundo plano só consulta e avisa (SILENT-15,
             // SILENT-16) — nunca baixa nem instala no fechamento da janela
             // `main` (AD-005). `Applying` é o guarda de acionamento duplo
-            // (SILENT-28) de `update_apply`; `cleanup_stale_old` apaga um
-            // `.old` remanescente de uma troca anterior (SILENT-07) — erro
-            // aqui é só logado, nunca trava o boot.
+            // (SILENT-28) de `update_download`/`update_install`; `Pending`
+            // guarda os bytes baixados e conferidos entre os dois passos
+            // (SILENT-38). `cleanup_stale_old` apaga um `.old` remanescente
+            // de uma troca anterior (SILENT-07) — erro aqui é só logado,
+            // nunca trava o boot.
             app.manage(update::apply::Applying::default());
+            app.manage(update::apply::Pending::default());
             update::spawn_background_checker(app.handle().clone());
 
             if let Ok(exe) = std::env::current_exe() {
@@ -92,11 +95,12 @@ pub fn run() {
 
             Ok(())
         })
-        // SPEC: silent-update (SILENT-08, SILENT-36)
-        // Regista o plugin oficial de update — é por onde `apply::run`
-        // aplica a atualização em TODA plataforma (`UpdaterExt`/
-        // `Update::install`) desde que a troca de executável no lugar foi
-        // aposentada (AD-008).
+        // SPEC: silent-update (SILENT-08)
+        // Regista o plugin oficial de update — fora do Windows, é por onde
+        // `apply::download`/`apply::install` aplicam a atualização
+        // (`UpdaterExt`); no Windows a troca de arquivo não depende dele
+        // (AD-009), justamente porque o instalador do plugin encerra o
+        // processo para poder substituir o `.exe`.
         .plugin(tauri_plugin_updater::Builder::new().build())
         // SPEC: multi-terminal (TERM-10, TERM-11)
         // Regista o plugin oficial de diálogo; o `NewTerminalDialog` (T15)
@@ -121,7 +125,8 @@ pub fn run() {
             commands::projects::project_delete,
             // SPEC: silent-update (SILENT-09, SILENT-13, SILENT-25)
             commands::update::update_status,
-            commands::update::update_apply,
+            commands::update::update_download,
+            commands::update::update_install,
             commands::update::update_restart,
             commands::update::update_skip_version,
             commands::update::update_auto_check_get,

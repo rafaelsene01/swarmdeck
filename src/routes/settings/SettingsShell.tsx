@@ -1,7 +1,8 @@
-// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10), silent-update (SILENT-09, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34)
+// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10), silent-update (SILENT-09, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40)
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import { getVersion } from '@tauri-apps/api/app'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { CircleDot, Download, FolderOpen, SlidersHorizontal, Users, X } from 'lucide-react'
@@ -222,7 +223,6 @@ export default function SettingsShell() {
                 current: result.current,
                 latest: result.latest,
                 hasUpdate: result.has_update,
-                mode: result.mode,
               },
         )
       },
@@ -248,6 +248,25 @@ export default function SettingsShell() {
     }
   }, [section, fetchUpdateStatus])
 
+  // SILENT-37: `update_download` emite o progresso a cada ~256 KB. Só o
+  // estado `downloading` consome o evento — um evento atrasado que chegue
+  // depois do download terminar não pode reabrir a barra.
+  useEffect(() => {
+    const unlisten = listen<{ downloaded: number; total: number | null }>(
+      'update://download-progress',
+      ({ payload }) => {
+        setUpdateState((prev) =>
+          prev.status === 'downloading'
+            ? { ...prev, downloaded: payload.downloaded, total: payload.total }
+            : prev,
+        )
+      },
+    )
+    return () => {
+      void unlisten.then((off) => off())
+    }
+  }, [])
+
   // SILENT-33/34: a busca sob demanda não volta para `loading` — a versão
   // instalada continua em tela durante a consulta, e só o botão sinaliza o
   // andamento.
@@ -257,14 +276,27 @@ export default function SettingsShell() {
     void fetchUpdateStatus(() => false).finally(() => setCheckingUpdate(false))
   }
 
-  // SILENT-02/13: confirmação explícita baixa e aplica a atualização;
-  // "Reiniciar agora" só existe depois de aplicada com sucesso.
-  const handleApply = () => {
+  // SILENT-02/37: primeiro clique só baixa, com progresso. Nada em disco
+  // ainda, e o botão "Instalar" só aparece com os bytes já conferidos.
+  const handleDownload = () => {
     if (updateState.status !== 'ready' || !updateState.hasUpdate) return
     const { current, latest } = updateState
-    setUpdateState({ status: 'applying', current, latest })
-    void invoke<string>('update_apply').then(
-      (version) => setUpdateState({ status: 'applied', version }),
+    setUpdateState({ status: 'downloading', current, latest, downloaded: 0, total: null })
+    void invoke<string>('update_download').then(
+      () => setUpdateState({ status: 'downloaded', current, latest }),
+      (error: unknown) => setUpdateState({ status: 'error', current, message: String(error) }),
+    )
+  }
+
+  // SILENT-39/40: segundo clique troca o executável com o app rodando. O
+  // app NÃO é reiniciado aqui — só o botão "Reabrir agora" faz isso, para
+  // não derrubar terminais abertos sem autorização.
+  const handleInstall = () => {
+    if (updateState.status !== 'downloaded') return
+    const { current, latest } = updateState
+    setUpdateState({ status: 'installing', current, latest })
+    void invoke<string>('update_install').then(
+      (version) => setUpdateState({ status: 'installed', version }),
       (error: unknown) => setUpdateState({ status: 'error', current, message: String(error) }),
     )
   }
@@ -458,7 +490,8 @@ export default function SettingsShell() {
               checking={checkingUpdate}
               onToggleAutoCheck={handleToggleAutoCheck}
               onCheck={handleCheck}
-              onApply={handleApply}
+              onDownload={handleDownload}
+              onInstall={handleInstall}
               onRestart={handleRestart}
             />
           )}

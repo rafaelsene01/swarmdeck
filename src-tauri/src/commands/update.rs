@@ -22,14 +22,22 @@ pub async fn update_status(app: AppHandle) -> Result<UpdateStatus, String> {
     update::status(&app).await.map_err(|e| e.to_string())
 }
 
-/// Baixa e aplica a atualização confirmada, devolvendo a versão aplicada.
+/// Baixa o artefato da versão nova, emitindo `update://download-progress`
+/// (SILENT-37). Não escreve nada em disco — instalar é o passo seguinte.
 #[tauri::command]
-pub async fn update_apply(app: AppHandle) -> Result<String, String> {
-    apply::run(&app).await.map_err(|e| e.to_string())
+pub async fn update_download(app: AppHandle) -> Result<String, String> {
+    apply::download(&app).await.map_err(|e| e.to_string())
 }
 
-/// Reinicia o processo do app (SILENT-13) — chamado depois de `update_apply`
-/// ter trocado o executável.
+/// Instala o que `update_download` deixou pronto (SILENT-39). Não reinicia
+/// o app: reabrir é decisão do usuário (SILENT-40).
+#[tauri::command]
+pub async fn update_install(app: AppHandle) -> Result<String, String> {
+    apply::install(&app).await.map_err(|e| e.to_string())
+}
+
+/// Reinicia o processo do app (SILENT-13) — só por ação explícita do
+/// usuário no botão "Reabrir agora", nunca automático (SILENT-40).
 #[tauri::command]
 pub fn update_restart(app: AppHandle) {
     app.restart();
