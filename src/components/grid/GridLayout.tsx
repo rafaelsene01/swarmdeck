@@ -1,6 +1,7 @@
-// SPEC: multi-terminal (TERM-03, TERM-04), terminal-chrome (CHROME-01, CHROME-03)
+// SPEC: multi-terminal (TERM-03, TERM-04), terminal-chrome (CHROME-01, CHROME-03), terminal-layout-options (LAYOUT-07, LAYOUT-08, LAYOUT-09, LAYOUT-10, LAYOUT-11, LAYOUT-12, LAYOUT-18, LAYOUT-20)
 
 import { useCallback, useRef, useState, type ReactNode } from 'react'
+import { DEFAULT_LAYOUT, layoutPlan, type LayoutPlan, type TabLayout } from '../../state/layout'
 
 export interface Pane {
   id: string
@@ -17,8 +18,33 @@ export const MIN_FRAC = 0.15
 
 export interface GridLayoutProps {
   panes: Pane[]
+  /** Layout da aba dona destes painéis. Ausente = o horizontal de sempre. */
+  layout?: TabLayout
   onResize?: (id: string, fracW: number) => void
   renderPane?: (pane: Pane) => ReactNode
+}
+
+/**
+ * Linha (0-based) em que o painel de índice `index` cai, acumulando os spans
+ * dos anteriores. É o que permite decidir se dois vizinhos dividem a mesma
+ * linha — e portanto se cabe uma divisória entre eles.
+ */
+function rowOf(plan: LayoutPlan, index: number): number {
+  let used = 0
+  for (let i = 0; i < index; i += 1) used += plan.spans[i] ?? 1
+  return Math.floor(used / plan.columns)
+}
+
+/**
+ * A divisória só existe entre dois painéis lado a lado na mesma linha e sem
+ * span: com uma coluna só (modo vertical) não há o que redimensionar, e entre
+ * linhas diferentes a alça arrastaria painéis que nem se tocam.
+ */
+export function hasDivider(plan: LayoutPlan, index: number): boolean {
+  if (plan.columns <= 1) return false
+  if (index + 1 >= plan.spans.length) return false
+  if (plan.spans[index] !== 1 || plan.spans[index + 1] !== 1) return false
+  return rowOf(plan, index) === rowOf(plan, index + 1)
 }
 
 /**
@@ -62,16 +88,27 @@ export function applyDrag(
   })
 }
 
-export default function GridLayout({ panes, onResize, renderPane }: GridLayoutProps) {
+export default function GridLayout({
+  panes,
+  layout = DEFAULT_LAYOUT,
+  onResize,
+  renderPane,
+}: GridLayoutProps) {
   const [localPanes, setLocalPanes] = useState(panes)
   const containerRef = useRef<HTMLDivElement>(null)
   const dragState = useRef<{ draggedId: string; neighborId: string; startX: number } | null>(
     null,
   )
 
-  const effectivePanes = panes.length === localPanes.length ? localPanes : panes
+  // A sincronia é pela SEQUÊNCIA DE IDS, não pela contagem: reordenar mantém
+  // a contagem, e comparar por contagem faria o snapshot local (desatualizado)
+  // vencer — a nova ordem nunca chegaria à tela (LAYOUT-18, LAYOUT-20).
+  const paneKey = panes.map((p) => p.id).join('|')
+  const localKey = localPanes.map((p) => p.id).join('|')
+  const effectivePanes = paneKey === localKey ? localPanes : panes
   const maximizedId = effectivePanes.find((p) => p.mode === 'maximized')?.id
-  const { columns, rows } = gridTemplate(effectivePanes.length)
+  const plan = layoutPlan(effectivePanes.length, layout)
+  const { columns, rows } = plan
 
   const handlePointerMove = useCallback(
     (event: PointerEvent) => {
@@ -136,6 +173,9 @@ export default function GridLayout({ panes, onResize, renderPane }: GridLayoutPr
             className="grid-layout__cell"
             data-mode={pane.mode ?? 'normal'}
             style={{
+              // Quantas colunas esta célula ocupa, conforme o plano da aba
+              // (LAYOUT-09, LAYOUT-10).
+              gridColumn: `span ${plan.spans[index] ?? 1}`,
               position: isMaximized ? 'fixed' : 'relative',
               inset: isMaximized ? 0 : undefined,
               // 100 para passar por cima do header e da barra de abas (nenhum
@@ -150,7 +190,7 @@ export default function GridLayout({ panes, onResize, renderPane }: GridLayoutPr
             }}
           >
             {renderPane?.(pane)}
-            {!isMaximized && !isMinimized && neighbor && (
+            {!isMaximized && !isMinimized && neighbor && hasDivider(plan, index) && (
               <div
                 className="grid-layout__divider"
                 onPointerDown={startDrag(pane.id, neighbor.id)}

@@ -1,4 +1,4 @@
-// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11), release-distribution (REL-51), quota-indicator (QUOTA-01, QUOTA-12)
+// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11), release-distribution (REL-51), quota-indicator (QUOTA-01, QUOTA-12), terminal-layout-options (LAYOUT-02)
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -14,7 +14,9 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: invokeMock,
 }))
 
-const INERT_LABELS = ['layout', 'history', 'camera', 'run', 'copy', 'split']
+// `split` saiu da lista: LAYOUT-02 troca aquele botão inerte pelo menu de
+// layout, que tem comportamento de verdade.
+const INERT_LABELS = ['layout', 'history', 'camera', 'run', 'copy']
 
 function renderHeader(props: Partial<Parameters<typeof Header>[0]> = {}) {
   return render(
@@ -51,7 +53,8 @@ describe('Header', () => {
     expect(screen.getByLabelText('camera')).toBeInTheDocument()
     expect(screen.getByLabelText('run')).toBeInTheDocument()
     expect(screen.getByLabelText('copy')).toBeInTheDocument()
-    expect(screen.getByLabelText('split')).toBeInTheDocument()
+    // O sétimo elemento é o menu de layout, que substituiu o `split` (LAYOUT-02).
+    expect(screen.getByLabelText('layout options')).toBeInTheDocument()
     expect(screen.getByLabelText('settings')).toBeInTheDocument()
   })
 
@@ -156,6 +159,30 @@ describe('Header', () => {
       el.getAttribute('aria-label'),
     )
 
-    expect(labels).toEqual(['run', 'copy', 'split', 'quota', 'settings'])
+    expect(labels).toEqual(['run', 'copy', 'layout options', 'quota', 'settings'])
+  })
+
+  // SPEC: terminal-layout-options (LAYOUT-02)
+  it('substitui o botão inerte "split" pelo menu de layout, no mesmo lugar', () => {
+    renderHeader({ terminalCount: 2 })
+
+    expect(screen.queryByLabelText('split')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('layout options')).toBeEnabled()
+
+    // O botão do grupo da esquerda continua inerte — não é este.
+    expect(screen.getByLabelText('layout')).toBeDisabled()
+  })
+
+  it('põe o menu de layout como irmão imediatamente anterior ao indicador de cota', async () => {
+    const { container } = renderHeader({
+      terminalCount: 2,
+      quotaPrefs: { enabled: true, window: 'both' },
+    })
+    await waitFor(() => expect(screen.getByLabelText('quota')).toBeInTheDocument())
+
+    const quota = container.querySelector('.quota-indicator')!
+    const layoutButton = screen.getByLabelText('layout options')
+
+    expect(quota.previousElementSibling).toContainElement(layoutButton)
   })
 })

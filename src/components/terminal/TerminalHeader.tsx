@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02)
+// SPEC: multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02), terminal-layout-options (LAYOUT-17)
 
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -43,6 +43,13 @@ export interface TerminalHeaderProps {
   /** `false` desabilita clonar — a aba já está no teto de 4 terminais. */
   canClone?: boolean
   onClose?: () => void
+  /**
+   * Torna a alça a origem do arrasto de reordenação (LAYOUT-17). Sem esta
+   * prop a alça segue decorativa, fora da ordem de leitura. Quem monta o
+   * painel é que publica o id em `event.dataTransfer` — é ele que conhece o
+   * id do terminal no grid (`id` aqui é o da sessão do backend, outra coisa).
+   */
+  onDragStartReorder?: (event: React.DragEvent) => void
 }
 
 /**
@@ -69,7 +76,9 @@ export default function TerminalHeader({
   onReset,
   canClone = true,
   onClose,
+  onDragStartReorder,
 }: TerminalHeaderProps) {
+  const draggable = Boolean(onDragStartReorder)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   // Sobrepõe `title` depois de um rename bem-sucedido: `App.tsx` hoje não
   // realimenta um título atualizado de volta nesta prop (gap de integração,
@@ -131,10 +140,21 @@ export default function TerminalHeader({
 
   return (
     <header className="terminal-header" title={latestActivity}>
-      {/* Alça de arrasto — puramente visual hoje (o arrasto mora na divisória
-          do grid), mas é ela que dá ao cabeçalho a leitura de "barra de
-          título de janela". Decorativa: fora da ordem de leitura. */}
-      <GripVertical className="terminal-header__grip" size={14} aria-hidden="true" />
+      {/* Alça de arrasto. Com `onDragStartReorder` ela é a origem do arrasto
+          de reordenação (LAYOUT-17); sem a prop segue puramente visual — é
+          ela que dá ao cabeçalho a leitura de "barra de título de janela" —
+          e fora da ordem de leitura. O corpo do painel não serve como origem:
+          roubaria a seleção de texto do xterm. */}
+      <span
+        className="terminal-header__grip-handle"
+        style={{ display: 'inline-flex', cursor: draggable ? 'grab' : undefined }}
+        draggable={draggable}
+        aria-hidden={draggable ? undefined : true}
+        aria-label={draggable ? 'reordenar terminal' : undefined}
+        onDragStart={onDragStartReorder}
+      >
+        <GripVertical className="terminal-header__grip" size={14} aria-hidden="true" />
+      </span>
       {isEditingTitle ? (
         <InlineRename
           value={displayTitle ?? ''}

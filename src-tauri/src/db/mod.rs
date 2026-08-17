@@ -24,7 +24,7 @@ pub mod quota_prefs;
 ///
 /// A ordem desta lista **é** a ordem de aplicação. Migrações novas entram
 /// no fim, sempre com versão maior — nunca reordenar nem reciclar número.
-// SPEC: release-distribution (REL-34, REL-23), mcp-task-server (MCP-02, MCP-08), agent-selection (AGT-01), multi-terminal (TERM-11)
+// SPEC: release-distribution (REL-34, REL-23), mcp-task-server (MCP-02, MCP-08), agent-selection (AGT-01), multi-terminal (TERM-11), terminal-layout-options (LAYOUT-22)
 const MIGRATIONS: &[(i64, &str)] = &[
     (1, include_str!("migrations/001_terminal_layout.sql")),
     (2, include_str!("migrations/002_settings.sql")),
@@ -33,6 +33,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
     (5, include_str!("migrations/005_terminal_picker_prefs.sql")),
     (6, include_str!("migrations/006_quota_prefs.sql")),
     (7, include_str!("migrations/007_quota_providers.sql")),
+    (8, include_str!("migrations/008_terminal_workspace.sql")),
 ];
 
 /// Versão que um banco recém-migrado alcança — a última de `MIGRATIONS`.

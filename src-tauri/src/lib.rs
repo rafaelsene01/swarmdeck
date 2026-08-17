@@ -118,6 +118,9 @@ pub fn run() {
             commands::terminal::terminal_picker_set_last_dir,
             // SPEC: multi-terminal (TERM-06)
             commands::terminal::terminal_set_title,
+            // SPEC: terminal-layout-options (LAYOUT-26)
+            commands::terminal::terminal_workspace_get,
+            commands::terminal::terminal_workspace_set,
             // SPEC: projects (PROJ-01)
             commands::projects::project_list,
             commands::projects::project_create,

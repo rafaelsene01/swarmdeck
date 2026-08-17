@@ -1,6 +1,6 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26)
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import GridLayout, { type Pane } from './components/grid/GridLayout'
@@ -20,7 +20,40 @@ import TerminalPane from './components/terminal/TerminalPane'
 import TerminalHeader from './components/terminal/TerminalHeader'
 import NewTerminalDialog from './components/terminal/NewTerminalDialog'
 import type { AgentDescriptor } from './routes/settings/AgentPanel'
-import { type TerminalState, maximize, minimize, restore, close } from './state/terminals'
+import {
+  type LayoutEntry,
+  type TerminalState,
+  fromLayoutEntries,
+  maximize,
+  minimize,
+  moveTerminal,
+  restore,
+  close,
+  toLayoutEntries,
+} from './state/terminals'
+import { DEFAULT_LAYOUT, type TabLayout } from './state/layout'
+
+/** Espelha `TabEntry` de `src-tauri/src/terminal/layout.rs` — o mesmo tipo
+ * volta de `terminal_workspace_get` e é o argumento de
+ * `terminal_workspace_set`. `agentId` não faz parte do `LayoutEntry` do
+ * front (é estado à parte, `agentByTerminalId`), então entra aqui. */
+interface WorkspaceTerminal extends LayoutEntry {
+  agentId?: string | null
+}
+
+interface WorkspaceTab {
+  id: string
+  slot: number
+  name: string
+  /** Já normalizado pelo backend (LAYOUT-28), nunca um valor desconhecido. */
+  layoutMode: TabLayout['mode']
+  layoutSpan: TabLayout['span']
+  terminals: WorkspaceTerminal[]
+}
+
+/** Tipo MIME do arrasto de reordenação — próprio, para que soltar qualquer
+ * outra coisa sobre um painel não seja confundido com reordenar. */
+const REORDER_MIME = 'text/swarmdeck-terminal'
 
 // SPEC: agent-selection (AGT-01, AGT-04)
 // Forma devolvida por `agent_catalog` (T5, invólucro sobre
@@ -29,6 +62,11 @@ import { type TerminalState, maximize, minimize, restore, close } from './state/
 interface AgentCatalogEntry extends AgentDescriptor {
   installed: boolean
 }
+
+/** Janela de espera antes de gravar o workspace (LAYOUT-21). `handleResize`
+ * dispara a cada `pointermove` do arrasto de divisória; gravar em SQLite por
+ * evento de mouse seria desperdício. A última mudança da rajada vence. */
+const SAVE_DEBOUNCE_MS = 500
 
 /** Teto de terminais **por aba** — o grid 2×2 de `GridLayout` não vai além
  * disso. Mais que 4 terminais abertos ao mesmo tempo cabe agora em outra aba
@@ -43,6 +81,9 @@ interface TerminalTab {
   id: string
   name: string
   terminals: TerminalState[]
+  /** Disposição escolhida para esta aba — o escopo do modo é por aba, não
+   * global (LAYOUT-15). */
+  layout: TabLayout
 }
 
 function createTerminalId(): string {
@@ -64,7 +105,7 @@ function defaultTerminal(): TerminalState {
 /** SPEC: terminal-tabs (TAB-03) — aba nova nasce vazia, no mesmo estado em
  * que o app abre (EMPTY-03). */
 function createTab(name: string): TerminalTab {
-  return { id: createTerminalId(), name, terminals: [] }
+  return { id: createTerminalId(), name, terminals: [], layout: DEFAULT_LAYOUT }
 }
 
 /** Redistribui a largura igualmente ao adicionar/remover um terminal —
@@ -193,6 +234,76 @@ export default function App() {
     }
   }, [])
 
+  // SPEC: terminal-layout-options (LAYOUT-23, LAYOUT-24, LAYOUT-26)
+  // Guarda contra apagar o que acabou de ser lido: o efeito de gravação
+  // (T12) é inerte enquanto isto for `false`. Sem ele o primeiro render (uma
+  // aba vazia) gravaria por cima do workspace salvo antes da leitura chegar.
+  const hydrated = useRef(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    void invoke<WorkspaceTab[]>('terminal_workspace_get')
+      .then((saved) => {
+        // Vetor vazio (primeira execução) mantém a aba vazia inicial com o
+        // `EmptyState` — LAYOUT-24, que preserva EMPTY-03.
+        if (cancelled || !saved?.length) return
+
+        setTabs(
+          saved.map((tab) => ({
+            id: tab.id,
+            name: tab.name,
+            terminals: fromLayoutEntries(tab.terminals),
+            layout: { mode: tab.layoutMode, span: tab.layoutSpan },
+          })),
+        )
+        setAgentByTerminalId(
+          Object.fromEntries(
+            saved.flatMap((tab) => tab.terminals.map((t) => [t.id, t.agentId ?? null])),
+          ),
+        )
+      })
+      // LAYOUT-26: leitura que falha registra o erro e deixa o app abrir na
+      // aba vazia; nunca impede a abertura.
+      .catch((error) => console.error('falha ao restaurar o workspace de terminais', error))
+      .finally(() => {
+        if (!cancelled) hydrated.current = true
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // SPEC: terminal-layout-options (LAYOUT-21, LAYOUT-22)
+  // Grava o workspace inteiro 500 ms depois da última mudança de abas,
+  // terminais, layout ou agentes. Inerte enquanto a leitura do boot não
+  // resolveu: sem essa guarda o primeiro render (uma aba vazia) gravaria por
+  // cima do que ainda está sendo lido.
+  useEffect(() => {
+    if (!hydrated.current) return
+
+    const timer = setTimeout(() => {
+      const payload: WorkspaceTab[] = tabs.map((tab, index) => ({
+        id: tab.id,
+        slot: index,
+        name: tab.name,
+        layoutMode: tab.layout.mode,
+        layoutSpan: tab.layout.span,
+        terminals: toLayoutEntries(tab.terminals).map((entry) => ({
+          ...entry,
+          agentId: agentByTerminalId[entry.id] ?? null,
+        })),
+      }))
+
+      void invoke('terminal_workspace_set', { tabs: payload }).catch((error) =>
+        console.error('falha ao gravar o workspace de terminais', error),
+      )
+    }, SAVE_DEBOUNCE_MS)
+
+    return () => clearTimeout(timer)
+  }, [tabs, agentByTerminalId])
+
   useEffect(() => {
     let cancelled = false
 
@@ -242,6 +353,36 @@ export default function App() {
   // com o próprio `<div>` da célula.
   const handleResize = (id: string, fracW: number) => {
     setActiveTerminals((prev) => prev.map((t) => (t.id === id ? { ...t, fracW } : t)))
+  }
+
+  /** Painel sob o cursor durante um arrasto de reordenação (LAYOUT-17). */
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null)
+
+  /** SPEC: terminal-layout-options (LAYOUT-25) — o backend abre em home o
+   * terminal cujo `cwd` salvo sumiu e diz qual era. Sem este aviso a troca
+   * seria silenciosa. Um clique dispensa o aviso inteiro pelo resto da
+   * sessão; ele só reaparece na próxima restauração. */
+  const [cwdWarningDismissed, setCwdWarningDismissed] = useState(false)
+  const cwdFallbacks = tabs.flatMap((tab) =>
+    tab.terminals.flatMap((t) => (t.cwdFallbackFrom ? [{ id: t.id, from: t.cwdFallbackFrom }] : [])),
+  )
+
+  /** SPEC: terminal-layout-options (LAYOUT-15) — o modo vale só para a aba
+   * ativa; as demais mantêm o delas. */
+  const handleLayoutChange = (layout: TabLayout) => {
+    setTabs((prev) => prev.map((tab) => (tab.id === activeTab.id ? { ...tab, layout } : tab)))
+  }
+
+  /** SPEC: terminal-layout-options (LAYOUT-16, LAYOUT-19, LAYOUT-20) — solta
+   * sobre `targetId`: o arrastado assume aquela posição e o grid reaplica o
+   * plano do modo à nova ordem. Soltar sem o id (arrasto de outra origem) ou
+   * sobre si mesmo não muda nada; `moveTerminal` já trata este último. */
+  const handleReorderDrop = (targetId: string) => (event: React.DragEvent) => {
+    event.preventDefault()
+    setDropTargetId(null)
+    const draggedId = event.dataTransfer?.getData(REORDER_MIME)
+    if (!draggedId) return
+    setActiveTerminals((prev) => moveTerminal(prev, draggedId, targetId))
   }
 
   const handleMaximize = (id: string, currentMode: TerminalState['mode']) => {
@@ -330,6 +471,7 @@ export default function App() {
         ) : (
           <GridLayout
             panes={panes}
+            layout={tab.layout}
             onResize={handleResize}
             renderPane={(pane) => {
               const terminal = tab.terminals.find((t) => t.id === pane.id)
@@ -342,6 +484,18 @@ export default function App() {
               return (
                 <div
                   className="app-pane"
+                  // SPEC: terminal-layout-options (LAYOUT-17) — alvo do
+                  // arrasto de reordenação. `preventDefault` no dragover é o
+                  // que habilita o drop; sem ele o `onDrop` nunca dispara.
+                  data-drop-target={dropTargetId === terminal.id ? 'true' : undefined}
+                  onDragOver={(event) => {
+                    event.preventDefault()
+                    setDropTargetId(terminal.id)
+                  }}
+                  onDragLeave={() =>
+                    setDropTargetId((prev) => (prev === terminal.id ? null : prev))
+                  }
+                  onDrop={handleReorderDrop(terminal.id)}
                   style={{
                     // SPEC: terminal-chrome (CHROME-03) — maximizado sai do
                     // grid e cobre a janela inteira, header e barra de abas
@@ -370,6 +524,10 @@ export default function App() {
                     onReset={() => handleResetTerminal(terminal.id)}
                     canClone={tab.terminals.length < MAX_TERMINALS}
                     onClose={() => handleCloseTerminal(terminal.id)}
+                    onDragStartReorder={(event) => {
+                      event.dataTransfer.setData(REORDER_MIME, terminal.id)
+                      event.dataTransfer.effectAllowed = 'move'
+                    }}
                   />
                   <div className="app-pane__body">
                     <TerminalPane
@@ -425,6 +583,30 @@ export default function App() {
           white-space: nowrap;
         }
         .app-tabbar__count { margin-left: 0.35rem; opacity: 0.6; font-size: 0.8em; }
+        /* SPEC: terminal-layout-options (LAYOUT-25) — aviso de diretório que
+           sumiu, dispensável com um clique. */
+        .app-cwd-warning {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5rem;
+          flex: 0 0 auto;
+          padding: 0.35rem 0.6rem;
+          background: rgba(245, 183, 0, 0.12);
+          border-bottom: 1px solid var(--accent);
+          color: var(--fg);
+          font-size: 12px;
+        }
+        .app-cwd-warning p { margin: 0; }
+        .app-cwd-warning button {
+          margin-left: auto;
+          background: transparent;
+          border: none;
+          color: var(--muted);
+          cursor: pointer;
+          font: inherit;
+          line-height: 1;
+        }
+        .app-cwd-warning button:hover { color: var(--fg); }
         .app-tabbar__close { padding: 0.25rem 0.35rem; opacity: 0.6; }
         .app-tabbar__close:hover { opacity: 1; }
         /* grid-layout__cell (T8) só define position relative|fixed via
@@ -450,6 +632,12 @@ export default function App() {
           border-radius: var(--radius);
           overflow: hidden;
           box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.28);
+        }
+        /* SPEC: terminal-layout-options (LAYOUT-17) — painel sob o cursor
+           durante o arrasto de reordenação. */
+        .app-pane[data-drop-target='true'] {
+          border-color: var(--accent);
+          box-shadow: 0 0 0 1px var(--accent);
         }
         .app-pane__body {
           flex: 1 1 auto;
@@ -571,6 +759,9 @@ export default function App() {
         onOpenSettings={() => void invoke('settings_open')}
         atMaxTerminals={terminals.length >= MAX_TERMINALS}
         hasUpdateAvailable={hasUpdateAvailable}
+        terminalCount={terminals.length}
+        layout={activeTab.layout}
+        onLayoutChange={handleLayoutChange}
         quotaPrefs={quotaPrefs}
       />
 
@@ -626,6 +817,28 @@ export default function App() {
           +
         </button>
       </div>
+
+      {/* SPEC: terminal-layout-options (LAYOUT-25) — uma linha por terminal
+          que perdeu o diretório salvo. Fica logo acima da área dos painéis:
+          dentro dela as abas são absolutas e cobririam o aviso. */}
+      {cwdFallbacks.length > 0 && !cwdWarningDismissed && (
+        <div className="app-cwd-warning" role="status">
+          <div>
+            {cwdFallbacks.map((fallback) => (
+              <p key={fallback.id}>
+                O diretório {fallback.from} não existe mais. O terminal abriu em home.
+              </p>
+            ))}
+          </div>
+          <button
+            type="button"
+            aria-label="fechar aviso de diretório"
+            onClick={() => setCwdWarningDismissed(true)}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       <div className="app-grid-area">{tabs.map(renderTab)}</div>
 

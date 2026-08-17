@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-04, TERM-07, TERM-08)
+// SPEC: multi-terminal (TERM-04, TERM-07, TERM-08), terminal-layout-options (LAYOUT-16, LAYOUT-19, LAYOUT-25)
 
 /**
  * Estado de exibição de um terminal no grid.
@@ -17,6 +17,10 @@ export interface TerminalState {
   fracW: number
   fracH: number
   mode: PaneMode
+  /** Diretório salvo que sumiu: o backend caiu para home e informa qual era
+   * (LAYOUT-25 / TERM-07). Só vem preenchido em terminal restaurado do banco;
+   * é o que o aviso do `App` mostra ao usuário. */
+  cwdFallbackFrom?: string | null
 }
 
 /**
@@ -53,6 +57,39 @@ export function close(terminals: TerminalState[], id: string): TerminalState[] {
 }
 
 /**
+ * Move `fromId` para a posição que `toId` ocupa, preservando a ordem relativa
+ * dos demais (LAYOUT-16). Soltar sobre si mesmo, sobre um id inexistente ou
+ * numa lista de um devolve a lista original (LAYOUT-19).
+ *
+ * `fracW` não é redistribuída: a fração acompanha o terminal para a nova
+ * posição — quem estava com 0.7 continua com 0.7. `evenWidths` (App.tsx) só
+ * roda em criar/fechar.
+ *
+ * SPEC_DEVIATION: o design (§2) manda reinserir no índice que `toId` ocupa na
+ * lista *já sem* o arrastado. Por essa regra arrastar um painel sobre o
+ * vizinho imediato da direita não muda nada ([a,b,c] com a→b devolve
+ * [a,b,c]), o que contradiz LAYOUT-16 ("mover o terminal arrastado para a
+ * posição do alvo"). O AC é a fonte de verdade, então o índice usado é o que
+ * `toId` ocupa na lista original.
+ */
+export function moveTerminal(
+  terminals: TerminalState[],
+  fromId: string,
+  toId: string,
+): TerminalState[] {
+  if (fromId === toId) return terminals
+
+  const from = terminals.findIndex((t) => t.id === fromId)
+  const to = terminals.findIndex((t) => t.id === toId)
+  if (from === -1 || to === -1) return terminals
+
+  const next = [...terminals]
+  const [moved] = next.splice(from, 1)
+  next.splice(to, 0, moved!)
+  return next
+}
+
+/**
  * Forma persistida de um terminal — espelha `LayoutEntry` do backend
  * (`src-tauri/src/terminal/layout.rs`, T11). `cwdFallbackFrom` só vem
  * preenchido quando o `cwd` salvo não existe mais e o backend caiu para
@@ -81,7 +118,9 @@ export function toLayoutEntries(terminals: TerminalState[]): LayoutEntry[] {
 }
 
 /** Reconstrói o estado de exibição a partir do que `layout.rs::restore`
- * devolveu, respeitando a ordem de `slot`. */
+ * devolveu, respeitando a ordem de `slot`. `cwdFallbackFrom` vem junto: sem
+ * ele o app abriria em home em silêncio, e LAYOUT-25 manda informar qual
+ * diretório sumiu. */
 export function fromLayoutEntries(entries: LayoutEntry[]): TerminalState[] {
   return [...entries]
     .sort((a, b) => a.slot - b.slot)
@@ -91,5 +130,6 @@ export function fromLayoutEntries(entries: LayoutEntry[]): TerminalState[] {
       fracW: e.fracW,
       fracH: e.fracH,
       mode: e.minimized ? 'minimized' : 'normal',
+      cwdFallbackFrom: e.cwdFallbackFrom ?? null,
     }))
 }

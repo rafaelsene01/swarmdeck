@@ -19,4 +19,4 @@ src-tauri/gen/schemas/
 .specs
 graphify-out/
 .code-review-graph/
-screenshots
+print

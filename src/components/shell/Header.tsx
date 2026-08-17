@@ -1,22 +1,20 @@
-// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11), release-distribution (REL-51), quota-indicator (QUOTA-01, QUOTA-12)
+// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11), release-distribution (REL-51), quota-indicator (QUOTA-01, QUOTA-12), terminal-layout-options (LAYOUT-02)
 
-import {
-  LayoutGrid,
-  Plus,
-  History,
-  Camera,
-  Play,
-  Copy,
-  Columns2,
-  Settings,
-} from 'lucide-react'
+import { LayoutGrid, Plus, History, Camera, Play, Copy, Settings } from 'lucide-react'
 import QuotaIndicator, { type QuotaIndicatorProps } from './QuotaIndicator'
+import LayoutMenu from './LayoutMenu'
+import { DEFAULT_LAYOUT, type TabLayout } from '../../state/layout'
 
 export interface HeaderProps {
   onCreateTerminal: () => void
   onOpenSettings: () => void
   atMaxTerminals: boolean
   hasUpdateAvailable?: boolean
+  /** Terminais da aba ativa — o menu de layout fica desabilitado em 0 (LAYOUT-06). */
+  terminalCount?: number
+  /** Layout da aba ativa; ausente = o horizontal de sempre. */
+  layout?: TabLayout
+  onLayoutChange?: (layout: TabLayout) => void
   /** `undefined`/`null` = preferências ainda não carregadas, mesmo efeito que `enabled: false` (QUOTA-12). */
   quotaPrefs?: {
     enabled: boolean
@@ -37,6 +35,9 @@ export default function Header({
   onOpenSettings,
   atMaxTerminals,
   hasUpdateAvailable = false,
+  terminalCount = 0,
+  layout = DEFAULT_LAYOUT,
+  onLayoutChange,
   quotaPrefs,
 }: HeaderProps) {
   return (
@@ -113,9 +114,14 @@ export default function Header({
         <button type="button" disabled aria-label="copy">
           <Copy size={18} />
         </button>
-        <button type="button" disabled aria-label="split">
-          <Columns2 size={18} />
-        </button>
+        {/* SPEC: terminal-layout-options (LAYOUT-02) — o menu de layout ocupa
+            o lugar do antigo botão inerte `split`, imediatamente à esquerda do
+            indicador de cota. */}
+        <LayoutMenu
+          count={terminalCount}
+          layout={layout}
+          onChange={(next) => onLayoutChange?.(next)}
+        />
         {quotaPrefs?.enabled && (
           <QuotaIndicator
             window={quotaPrefs.window}

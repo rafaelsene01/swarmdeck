@@ -1,4 +1,4 @@
-// SPEC: terminal-chrome (CHROME-02), multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13)
+// SPEC: terminal-chrome (CHROME-02), multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-layout-options (LAYOUT-17)
 
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -148,5 +148,32 @@ describe('TerminalHeader — barra de título da janela (CHROME-02)', () => {
     fireEvent.click(screen.getByLabelText('confirmar renomear terminal'))
 
     expect(screen.getByText('build')).toBeInTheDocument()
+  })
+})
+
+describe('TerminalHeader — alça como origem do arrasto (LAYOUT-17)', () => {
+  const grip = (container: HTMLElement) =>
+    container.querySelector<HTMLElement>('.terminal-header__grip-handle')!
+
+  it('sem onDragStartReorder a alça segue decorativa: aria-hidden e não arrastável', () => {
+    const { container } = render(<TerminalHeader index={1} title="build" />)
+
+    expect(grip(container)).toHaveAttribute('aria-hidden', 'true')
+    expect(grip(container)).toHaveAttribute('draggable', 'false')
+    expect(screen.queryByLabelText('reordenar terminal')).not.toBeInTheDocument()
+  })
+
+  it('com a prop a alça fica arrastável e o dragstart dispara o callback', () => {
+    const onDragStartReorder = vi.fn()
+    const { container } = render(
+      <TerminalHeader index={1} title="build" onDragStartReorder={onDragStartReorder} />,
+    )
+
+    expect(grip(container)).toHaveAttribute('draggable', 'true')
+    expect(grip(container)).not.toHaveAttribute('aria-hidden')
+
+    fireEvent.dragStart(grip(container))
+
+    expect(onDragStartReorder).toHaveBeenCalledTimes(1)
   })
 })
