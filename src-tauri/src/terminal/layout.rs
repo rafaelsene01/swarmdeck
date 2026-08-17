@@ -389,7 +389,11 @@ mod tests {
         let dir = existing_dir();
         let cwd = dir.path().to_string_lossy().into_owned();
 
-        save(&db, &[tab("tab-1", 0, "Aba 1", vec![entry("t-1", 0, &cwd)])]).expect("save");
+        save(
+            &db,
+            &[tab("tab-1", 0, "Aba 1", vec![entry("t-1", 0, &cwd)])],
+        )
+        .expect("save");
 
         let read = restore(&db, Path::new("/home/user")).expect("restore");
 
