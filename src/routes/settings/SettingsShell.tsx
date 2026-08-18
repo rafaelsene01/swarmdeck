@@ -1,4 +1,4 @@
-// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10), silent-update (SILENT-09, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40)
+// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10), silent-update (SILENT-09, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-42)
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -111,6 +111,10 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
   // valor inicial até a resposta chegar.
   const [autoCheckEnabled, setAutoCheckEnabled] = useState(true)
   const [updateState, setUpdateState] = useState<UpdateState>({ status: 'loading', current: '' })
+  // SILENT-42: as notas da release acompanham a versão remota, não o passo do
+  // fluxo — guardadas fora de `updateState` para sobreviverem às transições
+  // de download e instalação sem serem repetidas em cada variante.
+  const [updateNotes, setUpdateNotes] = useState('')
   // SILENT-34: só a consulta acionada pelo botão, não a da abertura da seção.
   const [checkingUpdate, setCheckingUpdate] = useState(false)
   // Preserva a última versão instalada conhecida através de uma falha de
@@ -222,6 +226,7 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
       (result) => {
         if (isCancelled()) return
         lastKnownVersionRef.current = result.current
+        setUpdateNotes(result.notes ?? '')
         setUpdateState(
           result.latest === null
             ? { status: 'unavailable', current: result.current }
@@ -542,6 +547,7 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
           {section === 'updates' && (
             <UpdateSettings
               state={updateState}
+              notes={updateNotes}
               autoCheckEnabled={autoCheckEnabled}
               checking={checkingUpdate}
               onToggleAutoCheck={handleToggleAutoCheck}

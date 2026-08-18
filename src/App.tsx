@@ -741,6 +741,8 @@ export default function App() {
                     title={null}
                     cwd={terminal.cwd}
                     hasActiveProcess
+                    // SPEC: terminal-chrome (CHROME-04)
+                    isMaximized={isMaximized}
                     onMaximize={() => handleMaximize(terminal.id, terminal.mode)}
                     onMinimize={() => handleMinimize(terminal.id, terminal.mode)}
                     onClone={() => handleCloneTerminal(terminal.id)}

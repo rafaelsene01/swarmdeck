@@ -1,4 +1,4 @@
-// SPEC: terminal-chrome (CHROME-02), multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01)
+// SPEC: terminal-chrome (CHROME-02, CHROME-04), minimized-tray (MIN-13), multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01)
 
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -33,6 +33,35 @@ describe('TerminalHeader — barra de título da janela (CHROME-02)', () => {
       'reiniciar terminal',
       'fechar terminal',
     ])
+  })
+
+  // SPEC: terminal-chrome (CHROME-04) — maximizado, o botão vira "restaurar".
+  it('troca maximizar por restaurar enquanto o terminal está maximizado', () => {
+    const onMaximize = vi.fn()
+    const { container, rerender } = render(
+      <TerminalHeader index={1} title={null} onMaximize={onMaximize} />,
+    )
+
+    expect(screen.getByLabelText('maximizar terminal')).toBeInTheDocument()
+    expect(container.querySelector('.lucide-maximize-2')).toBeInTheDocument()
+
+    rerender(<TerminalHeader index={1} title={null} isMaximized onMaximize={onMaximize} />)
+
+    expect(screen.queryByLabelText('maximizar terminal')).not.toBeInTheDocument()
+    const restore = screen.getByLabelText('restaurar terminal')
+    expect(container.querySelector('.lucide-minimize-2')).toBeInTheDocument()
+
+    fireEvent.click(restore)
+    expect(onMaximize).toHaveBeenCalledTimes(1)
+  })
+
+  // SPEC: minimized-tray (MIN-13) — esconder o terminal é uma lua, não um traço.
+  it('usa a lua no botão de minimizar', () => {
+    const { container } = render(<TerminalHeader index={1} title={null} />)
+
+    expect(screen.getByLabelText('minimizar terminal')).toContainElement(
+      container.querySelector('.lucide-moon'),
+    )
   })
 
   // SPEC: terminal-screenshot (SHOT-01, SHOT-23) — captura direta, e o

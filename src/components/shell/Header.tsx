@@ -1,4 +1,4 @@
-// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07), release-distribution (REL-51), quota-indicator (QUOTA-01, QUOTA-12), terminal-layout-options (LAYOUT-02), minimized-tray (MIN-02, MIN-09, MIN-10)
+// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07), release-distribution (REL-51), quota-indicator (QUOTA-01, QUOTA-12), terminal-layout-options (LAYOUT-02), minimized-tray (MIN-02, MIN-09, MIN-10, MIN-11)
 
 import { Settings, SquareTerminal } from 'lucide-react'
 import QuotaIndicator, { type QuotaIndicatorProps } from './QuotaIndicator'
@@ -119,16 +119,17 @@ export default function Header({
         >
           <SquareTerminal size={18} />
         </button>
-        {/* SPEC: minimized-tray (MIN-02) — bandeja dos minimizados de todas as
-            abas; não renderiza nada quando não há nenhum. */}
+      </div>
+
+      <div className="shell-header__group">
+        {/* SPEC: minimized-tray (MIN-02, MIN-11) — bandeja dos minimizados de
+            todas as abas, no grupo direito, colada ao menu de layout; não
+            renderiza nada quando não há nenhum. */}
         <MinimizedTray
           items={minimizedTerminals}
           onRestore={(id) => onRestoreMinimized?.(id)}
           onClose={(id) => onCloseMinimized?.(id)}
         />
-      </div>
-
-      <div className="shell-header__group">
         {/* SPEC: terminal-layout-options (LAYOUT-02) — o menu de layout ocupa
             o lugar do antigo botão inerte `split`, imediatamente à esquerda do
             indicador de cota. */}

@@ -1,7 +1,7 @@
-// SPEC: minimized-tray (MIN-02, MIN-03, MIN-04, MIN-05, MIN-06, MIN-07, MIN-08)
+// SPEC: minimized-tray (MIN-02, MIN-03, MIN-04, MIN-05, MIN-06, MIN-07, MIN-08, MIN-11, MIN-12)
 
 import { useEffect, useRef, useState } from 'react'
-import { Minimize2, X } from 'lucide-react'
+import { MoonStar, X } from 'lucide-react'
 
 export interface MinimizedTerminal {
   id: string
@@ -78,7 +78,9 @@ export default function MinimizedTray({ items, onRestore, onClose }: MinimizedTr
         .minimized-tray__popover {
           position: absolute;
           top: 100%;
-          left: 0;
+          /* MIN-11: a bandeja vive no grupo direito do header, então o popover
+             cresce para a esquerda: ancorado a left ele sairia da janela. */
+          right: 0;
           margin-top: 0.5rem;
           width: max-content;
           min-width: 240px;
@@ -184,7 +186,8 @@ export default function MinimizedTray({ items, onRestore, onClose }: MinimizedTr
         title="Terminais minimizados"
         onClick={() => setOpen((prev) => !prev)}
       >
-        <Minimize2 size={14} aria-hidden="true" />
+        {/* MIN-12: lua com estrela — terminal minimizado está dormindo. */}
+        <MoonStar size={14} aria-hidden="true" />
         {items.length}
       </button>
 

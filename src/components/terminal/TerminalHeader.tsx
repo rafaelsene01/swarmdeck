@@ -1,8 +1,8 @@
-// SPEC: multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01, SHOT-23)
+// SPEC: multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02, CHROME-04), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01, SHOT-23), minimized-tray (MIN-13)
 
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { Camera, CopyPlus, GripVertical, Maximize2, Minus, RotateCcw, X } from 'lucide-react'
+import { Camera, CopyPlus, GripVertical, Maximize2, Minimize2, Moon, RotateCcw, X } from 'lucide-react'
 import InlineRename from '../shell/InlineRename'
 import EditorMenu from './EditorMenu'
 import StatusBadge from './StatusBadge'
@@ -38,6 +38,12 @@ export interface TerminalHeaderProps {
   cwd?: string
   /** Se true, fechar exige confirmação (há processo rodando). */
   hasActiveProcess?: boolean
+  /**
+   * SPEC: terminal-chrome (CHROME-04) — `true` troca o controle de maximizar
+   * pelo de restaurar (ícone e rótulo). O clique é o mesmo `onMaximize`:
+   * quem monta o header é que alterna o modo.
+   */
+  isMaximized?: boolean
   onMaximize?: () => void
   onMinimize?: () => void
   /** Abre outro terminal na mesma aba com o mesmo projeto e provedor. */
@@ -81,6 +87,7 @@ export default function TerminalHeader({
   activities,
   cwd,
   hasActiveProcess = false,
+  isMaximized = false,
   onMaximize,
   onMinimize,
   onClone,
@@ -216,11 +223,29 @@ export default function TerminalHeader({
         >
           <Camera size={13} aria-hidden="true" />
         </button>
-        <button type="button" onClick={onMaximize} aria-label="maximizar terminal">
-          <Maximize2 size={13} aria-hidden="true" />
+        {/* SPEC: terminal-chrome (CHROME-04) — maximizado, o mesmo botão vira
+            "restaurar": setas para dentro em vez de para fora. */}
+        <button
+          type="button"
+          onClick={onMaximize}
+          aria-label={isMaximized ? 'restaurar terminal' : 'maximizar terminal'}
+          title={isMaximized ? 'restaurar tamanho' : 'maximizar terminal'}
+        >
+          {isMaximized ? (
+            <Minimize2 size={13} aria-hidden="true" />
+          ) : (
+            <Maximize2 size={13} aria-hidden="true" />
+          )}
         </button>
-        <button type="button" onClick={onMinimize} aria-label="minimizar terminal">
-          <Minus size={13} aria-hidden="true" />
+        {/* SPEC: minimized-tray (MIN-13) — esconder o terminal é "botar para
+            dormir": mesma lua da bandeja do header, não um traço genérico. */}
+        <button
+          type="button"
+          onClick={onMinimize}
+          aria-label="minimizar terminal"
+          title="minimizar para a bandeja"
+        >
+          <Moon size={13} aria-hidden="true" />
         </button>
         <button
           type="button"

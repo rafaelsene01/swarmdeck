@@ -239,7 +239,7 @@ describe('SettingsShell — seção Atualizações ligada ao fluxo confirmado (S
         Promise.resolve({
           current: '0.1.0',
           latest: '0.2.0',
-          notes: '',
+          notes: '### Funcionalidades\n\n- Algo novo',
           has_update: true,
           mode: 'installed',
           platform_key: 'windows-x86_64-silent',
@@ -252,7 +252,10 @@ describe('SettingsShell — seção Atualizações ligada ao fluxo confirmado (S
 
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_status'))
     expect(await screen.findByText('0.1.0')).toBeInTheDocument()
-    expect(await screen.findByText(/Nova versão disponível: 0.2.0/)).toBeInTheDocument()
+    expect(await screen.findByText('Nova versão disponível')).toBeInTheDocument()
+    expect(await screen.findByText('0.2.0')).toBeInTheDocument()
+    // SILENT-42: as notas da release chegam do backend e saem renderizadas.
+    expect(await screen.findByRole('listitem')).toHaveTextContent('Algo novo')
   })
 
   it('falha de update_status monta o estado unavailable com a versão instalada preservada', async () => {

@@ -1,4 +1,4 @@
-// SPEC: silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-12, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-41)
+// SPEC: silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-12, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-41, SILENT-42, SILENT-43, SILENT-44, SILENT-45)
 
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -33,7 +33,8 @@ describe('UpdateSettings', () => {
     const onDownload = vi.fn()
     renderSettings({ status: 'ready', current: '0.3.1', latest: '0.4.0', hasUpdate: true }, { onDownload })
 
-    expect(screen.getByText(/Nova versão disponível: 0.4.0/)).toBeInTheDocument()
+    expect(screen.getByText('Nova versão disponível')).toBeInTheDocument()
+    expect(screen.getByText('0.4.0')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Baixar' }))
     expect(onDownload).toHaveBeenCalledTimes(1)
   })
@@ -179,6 +180,67 @@ describe('UpdateSettings', () => {
     expect(screen.queryByText('Modo')).not.toBeInTheDocument()
     expect(screen.queryByText('Instalado')).not.toBeInTheDocument()
     expect(screen.queryByText('Portátil')).not.toBeInTheDocument()
+  })
+
+  // SILENT-42: as notas da release do GitHub chegam em Markdown e saem como
+  // títulos e itens — não como texto cru.
+  it('estado "ready" com hasUpdate renderiza as notas da release em títulos e itens', () => {
+    renderSettings(
+      { status: 'ready', current: '0.3.1', latest: '0.4.0', hasUpdate: true },
+      { notes: '### Funcionalidades\n\n- Adiciona o **modo foco**\n- Corrige `update_status`' },
+    )
+
+    expect(screen.getByRole('heading', { name: 'Funcionalidades' })).toBeInTheDocument()
+    const [first, second] = screen.getAllByRole('listitem')
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(first).toHaveTextContent('Adiciona o modo foco')
+    expect(first?.querySelector('strong')).toHaveTextContent('modo foco')
+    expect(second?.querySelector('code')).toHaveTextContent('update_status')
+  })
+
+  // SILENT-43: sem versão nova não há seção de notas, mesmo que o manifesto
+  // tenha mandado texto.
+  it('sem atualização disponível não mostra a seção de notas', () => {
+    renderSettings(
+      { status: 'ready', current: '0.3.1', latest: '0.3.1', hasUpdate: false },
+      { notes: '### Funcionalidades\n\n- Algo antigo' },
+    )
+
+    expect(screen.queryByRole('heading', { name: 'Nova versão disponível' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('listitem')).not.toBeInTheDocument()
+  })
+
+  // SILENT-44: as notas continuam à vista enquanto o download e a instalação
+  // acontecem — a ação primária é que troca.
+  it('as notas continuam visíveis durante o download e depois dele', () => {
+    const notes = '### Funcionalidades\n\n- Algo novo'
+
+    const { unmount } = render(
+      <UpdateSettings
+        state={{ status: 'downloading', current: '0.3.1', latest: '0.4.0', downloaded: 1, total: 2 }}
+        notes={notes}
+        autoCheckEnabled
+        checking={false}
+        onToggleAutoCheck={vi.fn()}
+        onCheck={vi.fn()}
+        onDownload={vi.fn()}
+        onInstall={vi.fn()}
+        onRestart={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('listitem')).toHaveTextContent('Algo novo')
+    unmount()
+
+    renderSettings({ status: 'downloaded', current: '0.3.1', latest: '0.4.0' }, { notes })
+    expect(screen.getByRole('listitem')).toHaveTextContent('Algo novo')
+    expect(screen.getByRole('button', { name: 'Instalar' })).toBeInTheDocument()
+  })
+
+  // SILENT-45: nenhuma ação de pular versão.
+  it('não oferece "Pular esta versão"', () => {
+    renderSettings({ status: 'ready', current: '0.3.1', latest: '0.4.0', hasUpdate: true })
+
+    expect(screen.queryByRole('button', { name: /pular/i })).not.toBeInTheDocument()
   })
 
   it('o texto explicativo não menciona mais instalação no fechamento do app', () => {

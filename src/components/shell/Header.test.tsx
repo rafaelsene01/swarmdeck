@@ -1,4 +1,4 @@
-// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07), release-distribution (REL-51), quota-indicator (QUOTA-01, QUOTA-12), terminal-layout-options (LAYOUT-02), minimized-tray (MIN-02, MIN-09, MIN-10)
+// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07), release-distribution (REL-51), quota-indicator (QUOTA-01, QUOTA-12), terminal-layout-options (LAYOUT-02), minimized-tray (MIN-02, MIN-09, MIN-10, MIN-11)
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -180,6 +180,23 @@ describe('Header', () => {
     )
 
     expect(labels).toEqual(['layout options', 'quota', 'settings'])
+  })
+
+  // SPEC: minimized-tray (MIN-11) — a bandeja mudou para o grupo direito,
+  // imediatamente antes do menu de layout.
+  it('põe a bandeja de minimizados no grupo direito, logo antes do menu de layout', () => {
+    const { container } = renderHeader({
+      terminalCount: 2,
+      minimizedTerminals: [{ id: 't-1', tabName: 'Aba 1', name: 'Terminal 1' }],
+    })
+
+    const rightGroup = container.querySelectorAll('.shell-header__group')[1]!
+    const tray = screen.getByLabelText('minimized terminals')
+
+    expect(rightGroup).toContainElement(tray)
+    expect(rightGroup.querySelector('.minimized-tray')!.nextElementSibling).toContainElement(
+      screen.getByLabelText('layout options'),
+    )
   })
 
   // SPEC: terminal-layout-options (LAYOUT-02)

@@ -1,4 +1,4 @@
-// SPEC: minimized-tray (MIN-02, MIN-03, MIN-04, MIN-05, MIN-06, MIN-07, MIN-08)
+// SPEC: minimized-tray (MIN-02, MIN-03, MIN-04, MIN-05, MIN-06, MIN-07, MIN-08, MIN-12)
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -40,6 +40,13 @@ describe('MinimizedTray', () => {
     renderTray()
 
     expect(screen.getByLabelText('minimized terminals')).toHaveTextContent('2')
+  })
+
+  // MIN-12: lua no lugar do Minimize2.
+  it('usa a lua como ícone da bandeja', () => {
+    const { container } = renderTray()
+
+    expect(container.querySelector('.lucide-moon-star')).toBeInTheDocument()
   })
 
   // MIN-04, MIN-08
