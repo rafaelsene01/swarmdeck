@@ -1,4 +1,4 @@
-// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11), release-distribution (REL-51), quota-indicator (QUOTA-01, QUOTA-12), terminal-layout-options (LAYOUT-02)
+// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11), release-distribution (REL-51), quota-indicator (QUOTA-01, QUOTA-12), terminal-layout-options (LAYOUT-02), terminal-screenshot (SHOT-01, SHOT-06, SHOT-07)
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -15,8 +15,9 @@ vi.mock('@tauri-apps/api/core', () => ({
 }))
 
 // `split` saiu da lista: LAYOUT-02 troca aquele botão inerte pelo menu de
-// layout, que tem comportamento de verdade.
-const INERT_LABELS = ['layout', 'history', 'camera', 'run', 'copy']
+// layout, que tem comportamento de verdade. `camera` saiu por SHOT-01: arma
+// o modo de captura.
+const INERT_LABELS = ['run', 'copy']
 
 function renderHeader(props: Partial<Parameters<typeof Header>[0]> = {}) {
   return render(
@@ -43,24 +44,25 @@ describe('Header', () => {
 
   // Saíram a pedido do usuário (16/08/2026): o logo genérico da esquerda
   // (não era a marca do app), o campo de busca e o ícone de agentes ao lado
-  // dele. HDR-02 descrevia 11 elementos; agora são 7.
-  it('renders the seven remaining elements of HDR-02 - the avatar slot is now QuotaIndicator (QUOTA-01)', () => {
+  // dele. Em 18/08/2026 saíram também os inertes `layout` (o quadrado da ponta
+  // esquerda) e `history`. HDR-02 descrevia 11 elementos; agora são 5.
+  it('renders the five remaining elements of HDR-02 - the avatar slot is now QuotaIndicator (QUOTA-01)', () => {
     renderHeader()
 
-    expect(screen.getByLabelText('layout')).toBeInTheDocument()
     expect(screen.getByLabelText('new terminal')).toBeInTheDocument()
-    expect(screen.getByLabelText('history')).toBeInTheDocument()
     expect(screen.getByLabelText('camera')).toBeInTheDocument()
     expect(screen.getByLabelText('run')).toBeInTheDocument()
     expect(screen.getByLabelText('copy')).toBeInTheDocument()
-    // O sétimo elemento é o menu de layout, que substituiu o `split` (LAYOUT-02).
+    // O quinto elemento é o menu de layout, que substituiu o `split` (LAYOUT-02).
     expect(screen.getByLabelText('layout options')).toBeInTheDocument()
     expect(screen.getByLabelText('settings')).toBeInTheDocument()
   })
 
-  it('no longer renders the logo, the search field or the agents icon', () => {
+  it('no longer renders the logo, the search field, the agents icon, the layout square or the history button', () => {
     renderHeader()
 
+    expect(screen.queryByLabelText('layout')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('history')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('SwarmDeck')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('search')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('agents')).not.toBeInTheDocument()
@@ -109,11 +111,11 @@ describe('Header', () => {
   it('renders every icon via a lucide-react SVG - one per described element (HDR-04)', () => {
     const { container } = renderHeader()
 
-    // 8 icons with quotaPrefs absent (QuotaIndicator not mounted): LayoutGrid,
-    // Plus, History, Camera, Play, Copy, Columns2, Settings.
+    // 6 icons with quotaPrefs absent (QuotaIndicator not mounted): Plus,
+    // Camera, Play, Copy, Columns2, Settings.
     // `.lucide` is the base class every lucide-react icon renders (createLucideIcon.mjs) -
     // proves provenance, not just SVG count (no hand-drawn inline SVG would pass this).
-    expect(container.querySelectorAll('svg.lucide')).toHaveLength(8)
+    expect(container.querySelectorAll('svg.lucide')).toHaveLength(6)
   })
 
   it('uses only --bg/--fg/--accent/--muted custom properties for color - no hex/rgb literal (HDR-03)', () => {
@@ -168,9 +170,6 @@ describe('Header', () => {
 
     expect(screen.queryByLabelText('split')).not.toBeInTheDocument()
     expect(screen.getByLabelText('layout options')).toBeEnabled()
-
-    // O botão do grupo da esquerda continua inerte — não é este.
-    expect(screen.getByLabelText('layout')).toBeDisabled()
   })
 
   it('põe o menu de layout como irmão imediatamente anterior ao indicador de cota', async () => {
@@ -184,5 +183,42 @@ describe('Header', () => {
     const layoutButton = screen.getByLabelText('layout options')
 
     expect(quota.previousElementSibling).toContainElement(layoutButton)
+  })
+
+  // SHOT-01: o clique arma o modo de captura.
+  it('chama onToggleCapture ao clicar na câmera', () => {
+    const onToggleCapture = vi.fn()
+    renderHeader({ terminalCount: 1, onToggleCapture })
+
+    fireEvent.click(screen.getByLabelText('camera'))
+
+    expect(onToggleCapture).toHaveBeenCalledTimes(1)
+  })
+
+  // SHOT-01, SHOT-06: o estado armado é visível no botão e alterna.
+  it('marca a câmera como pressionada quando o modo está armado', () => {
+    const { rerender } = renderHeader({ terminalCount: 1, captureArmed: false })
+    expect(screen.getByLabelText('camera')).toHaveAttribute('aria-pressed', 'false')
+
+    rerender(
+      <Header
+        onCreateTerminal={vi.fn()}
+        onOpenSettings={vi.fn()}
+        atMaxTerminals={false}
+        terminalCount={1}
+        captureArmed
+      />,
+    )
+
+    const camera = screen.getByLabelText('camera')
+    expect(camera).toHaveAttribute('aria-pressed', 'true')
+    expect(camera).toHaveAttribute('data-armed', 'true')
+  })
+
+  // SHOT-07: sem terminal na aba ativa não há o que capturar.
+  it('desabilita a câmera com zero terminais', () => {
+    renderHeader({ terminalCount: 0 })
+
+    expect(screen.getByLabelText('camera')).toBeDisabled()
   })
 })

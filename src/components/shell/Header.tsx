@@ -1,6 +1,7 @@
-// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11), release-distribution (REL-51), quota-indicator (QUOTA-01, QUOTA-12), terminal-layout-options (LAYOUT-02)
+// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11), release-distribution (REL-51), quota-indicator (QUOTA-01, QUOTA-12), terminal-layout-options (LAYOUT-02), terminal-screenshot (SHOT-01, SHOT-06, SHOT-07, SHOT-23)
 
-import { LayoutGrid, Plus, History, Camera, Play, Copy, Settings } from 'lucide-react'
+import type { Ref } from 'react'
+import { Plus, Camera, Play, Copy, Settings } from 'lucide-react'
 import QuotaIndicator, { type QuotaIndicatorProps } from './QuotaIndicator'
 import LayoutMenu from './LayoutMenu'
 import { DEFAULT_LAYOUT, type TabLayout } from '../../state/layout'
@@ -15,6 +16,12 @@ export interface HeaderProps {
   /** Layout da aba ativa; ausente = o horizontal de sempre. */
   layout?: TabLayout
   onLayoutChange?: (layout: TabLayout) => void
+  /** SPEC: terminal-screenshot (SHOT-01) — modo de captura armado. */
+  captureArmed?: boolean
+  /** Arma e desarma o modo de captura (SHOT-01, SHOT-06). */
+  onToggleCapture?: () => void
+  /** SPEC: terminal-screenshot (SHOT-23) — para devolver o foco ao fechar o modal. */
+  cameraRef?: Ref<HTMLButtonElement>
   /** `undefined`/`null` = preferências ainda não carregadas, mesmo efeito que `enabled: false` (QUOTA-12). */
   quotaPrefs?: {
     enabled: boolean
@@ -38,6 +45,9 @@ export default function Header({
   terminalCount = 0,
   layout = DEFAULT_LAYOUT,
   onLayoutChange,
+  captureArmed = false,
+  onToggleCapture,
+  cameraRef,
   quotaPrefs,
 }: HeaderProps) {
   return (
@@ -77,6 +87,14 @@ export default function Header({
           cursor: pointer;
         }
         .shell-header button:disabled { color: var(--muted); cursor: default; }
+        .shell-header__camera {
+          transition: background 120ms ease, border-color 120ms ease;
+        }
+        .shell-header__camera[data-armed='true'] {
+          border: 1px solid var(--accent);
+          background: rgba(245, 183, 0, 0.14);
+          color: var(--accent);
+        }
         .shell-header__run {
           gap: 0.25rem;
           padding: 0.3rem 0.6rem;
@@ -87,9 +105,6 @@ export default function Header({
       `}</style>
 
       <div className="shell-header__group">
-        <button type="button" disabled aria-label="layout">
-          <LayoutGrid size={18} />
-        </button>
         <button
           type="button"
           onClick={onCreateTerminal}
@@ -98,10 +113,19 @@ export default function Header({
         >
           <Plus size={18} />
         </button>
-        <button type="button" disabled aria-label="history">
-          <History size={18} />
-        </button>
-        <button type="button" disabled aria-label="camera">
+        {/* SPEC: terminal-screenshot (SHOT-01, SHOT-06, SHOT-07) — o botão
+            deixa de ser inerte: arma e desarma o modo de captura, e fica
+            desabilitado sem terminal para clicar. */}
+        <button
+          type="button"
+          ref={cameraRef}
+          className="shell-header__camera"
+          onClick={onToggleCapture}
+          disabled={terminalCount === 0}
+          aria-pressed={captureArmed}
+          data-armed={captureArmed}
+          aria-label="camera"
+        >
           <Camera size={18} />
         </button>
       </div>

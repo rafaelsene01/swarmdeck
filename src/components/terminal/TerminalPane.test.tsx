@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02)
+// SPEC: multi-terminal (TERM-01, TERM-02), terminal-screenshot (SHOT-13)
 
 import { describe, expect, it, vi } from 'vitest'
 import { render } from '@testing-library/react'
@@ -74,5 +74,29 @@ describe('TerminalPane', () => {
         data: Array.from(new TextEncoder().encode('[24;80R')),
       }),
     )
+  })
+
+  // SHOT-13: a captura precisa da instância viva do painel clicado.
+  it('entrega a instância do xterm no mount e `null` no unmount', async () => {
+    invokeMock.mockResolvedValue('term-1')
+    const onTerminal = vi.fn()
+
+    const { unmount } = render(<TerminalPane cwd="." onTerminal={onTerminal} />)
+
+    expect(onTerminal).toHaveBeenCalledTimes(1)
+    expect(onTerminal.mock.calls[0]![0]).toBeTruthy()
+
+    unmount()
+
+    expect(onTerminal).toHaveBeenLastCalledWith(null)
+  })
+
+  // A prop é opcional: sem ela o painel monta e desmonta como antes.
+  it('monta e desmonta sem a prop `onTerminal`', () => {
+    invokeMock.mockResolvedValue('term-1')
+
+    const { unmount } = render(<TerminalPane cwd="." />)
+
+    expect(() => unmount()).not.toThrow()
   })
 })

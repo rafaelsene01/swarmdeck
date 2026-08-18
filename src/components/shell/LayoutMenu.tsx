@@ -65,6 +65,7 @@ export default function LayoutMenu({ count, layout, onChange }: LayoutMenuProps)
           right: 0;
           margin-top: 0.5rem;
           width: max-content;
+          min-width: 190px;
           padding: 0.35rem;
           background: #17171a;
           color: var(--fg);

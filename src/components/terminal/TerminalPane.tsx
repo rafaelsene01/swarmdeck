@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-06), terminal-chrome (CHROME-01), session-restore (SESS-12, SESS-13)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-06), terminal-chrome (CHROME-01), session-restore (SESS-12, SESS-13), terminal-screenshot (SHOT-13)
 
 import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
@@ -33,6 +33,13 @@ export interface TerminalPaneProps {
    * (TERM-06) nunca colide com a chave que o agente usa via MCP.
    */
   onSessionId?: (id: string) => void
+  /**
+   * SPEC: terminal-screenshot (SHOT-13) — entrega a instância viva do xterm
+   * a quem montou o painel, e `null` no cleanup. O `Terminal` nasce e morre
+   * dentro do efeito abaixo; sem esta ponte, `App.tsx` não tem como pedir o
+   * buffer do painel que o usuário clicou no modo de captura.
+   */
+  onTerminal?: (term: Terminal | null) => void
 }
 
 /** ConPTY tem custo real em resize; arrastar divisória dispararia dezenas
@@ -57,6 +64,7 @@ export default function TerminalPane({
   sessionId,
   resume,
   onSessionId,
+  onTerminal,
 }: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -76,6 +84,7 @@ export default function TerminalPane({
     terminal.loadAddon(fitAddon)
     terminal.open(container)
     fitAddon.fit()
+    onTerminal?.(terminal)
 
     let terminalId: string | null = null
     let disposed = false
@@ -171,6 +180,7 @@ export default function TerminalPane({
       if (resizeTimer) clearTimeout(resizeTimer)
       resizeObserver.disconnect()
       dataDisposable.dispose()
+      onTerminal?.(null)
       if (terminalId) {
         void invoke('pty_kill', { id: terminalId })
       }

@@ -158,6 +158,8 @@ pub fn run() {
             commands::quota::quota_prefs_get,
             commands::quota::quota_prefs_set,
             commands::quota::quota_claude,
+            // SPEC: terminal-screenshot (SHOT-16)
+            commands::screenshot::screenshot_save,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o SwarmDeck");

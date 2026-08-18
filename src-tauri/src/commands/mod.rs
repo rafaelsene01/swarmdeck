@@ -7,6 +7,8 @@ pub mod editors;
 pub mod projects;
 // SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-11)
 pub mod quota;
+// SPEC: terminal-screenshot (SHOT-16)
+pub mod screenshot;
 // SPEC: task-kanban (KAN-01, KAN-04)
 pub mod tasks;
 pub mod terminal;
