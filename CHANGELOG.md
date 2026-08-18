@@ -1,6 +1,12 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.18] - 2026-08-18
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.17] - 2026-08-17
 
 ### Outros
@@ -11,6 +17,13 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 - Reformatted the `save` function call in the terminal layout tests to enhance code clarity and maintainability.
 - Ensured consistent formatting for better alignment with coding standards.
+
+- Enhance TerminalHeader and App components for editor integration
+
+- Added `cwd` prop to the `TerminalHeader` component to pass the current working directory to the `EditorMenu`.
+- Updated the `TerminalHeader` test to reflect the new button for opening the editor.
+- Introduced editor-related specifications in relevant files to support editor launch functionality.
+- Refactored command resolution logic in the Tauri backend to facilitate editor command execution.
 
 ## [0.1.16] - 2026-08-17
 
