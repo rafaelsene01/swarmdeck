@@ -1,8 +1,8 @@
-// SPEC: multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01)
+// SPEC: multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01, SHOT-23)
 
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { CopyPlus, GripVertical, Maximize2, Minus, RotateCcw, X } from 'lucide-react'
+import { Camera, CopyPlus, GripVertical, Maximize2, Minus, RotateCcw, X } from 'lucide-react'
 import InlineRename from '../shell/InlineRename'
 import EditorMenu from './EditorMenu'
 import StatusBadge from './StatusBadge'
@@ -46,6 +46,12 @@ export interface TerminalHeaderProps {
   onReset?: () => void
   /** `false` desabilita clonar — a aba já está no teto de 4 terminais. */
   canClone?: boolean
+  /**
+   * SPEC: terminal-screenshot (SHOT-01) — captura este painel. Recebe o
+   * próprio botão para que quem abre o modal saiba a quem devolver o foco
+   * ao fechá-lo (SHOT-23).
+   */
+  onScreenshot?: (button: HTMLButtonElement) => void
   onClose?: () => void
   /**
    * Torna a alça a origem do arrasto de reordenação (LAYOUT-17). Sem esta
@@ -80,6 +86,7 @@ export default function TerminalHeader({
   onClone,
   onReset,
   canClone = true,
+  onScreenshot,
   onClose,
   onDragStartReorder,
 }: TerminalHeaderProps) {
@@ -199,6 +206,16 @@ export default function TerminalHeader({
       <div className="terminal-header__actions">
         {/* EDITOR-01: abre o `cwd` deste terminal num editor instalado. */}
         <EditorMenu cwd={cwd} />
+        {/* SPEC: terminal-screenshot (SHOT-01) — captura direta deste painel:
+            dentro do header do terminal não há o que selecionar. */}
+        <button
+          type="button"
+          onClick={(event) => onScreenshot?.(event.currentTarget)}
+          aria-label="capturar terminal"
+          title="capturar este terminal"
+        >
+          <Camera size={13} aria-hidden="true" />
+        </button>
         <button type="button" onClick={onMaximize} aria-label="maximizar terminal">
           <Maximize2 size={13} aria-hidden="true" />
         </button>

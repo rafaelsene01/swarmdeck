@@ -134,9 +134,10 @@ describe('GridLayout — aplica o plano de layout da aba', () => {
     expect([...container.querySelectorAll('b')].map((n) => n.textContent)).toEqual(['a', 'b', 'c'])
   })
 
-  // Edge case: minimizado segue na ordem e mantém a altura recolhida de
-  // TERM-08 também num layout que não é o default.
-  it('painel minimizado mantém posição e altura recolhida na variante last', () => {
+  // SPEC: minimized-tray (MIN-01) — minimizado sai da tela por inteiro e sai
+  // do plano; os visíveis se redistribuem como se ele não existisse. A célula
+  // continua no DOM: desmontar mataria o PTY (TERM-08).
+  it('painel minimizado sai do plano do grid sem desmontar', () => {
     const panes = panesOf('a', 'b', 'c')
     panes[1]!.mode = 'minimized'
 
@@ -144,11 +145,14 @@ describe('GridLayout — aplica o plano de layout da aba', () => {
 
     const celulas = cells(container)
     expect(celulas.map((c) => c.textContent)).toEqual(['a', 'b', 'c'])
-    expect(celulas[1]!.style.maxHeight).toBe('34px')
-    expect(celulas[1]!.style.minHeight).toBe('34px')
-    // O plano da variante `last` continua valendo: quem ocupa a linha inteira
-    // é o terceiro, e o minimizado segue com sua coluna.
-    expect(celulas.map((c) => c.style.gridColumn)).toEqual(['span 1', 'span 1', 'span 2'])
+    expect(celulas[1]!.style.display).toBe('none')
+    // Sobraram 2 visíveis: duas colunas de span 1, sem a linha inteira que a
+    // variante `last` daria ao terceiro de três.
+    expect(celulas[0]!.style.gridColumn).toBe('span 1')
+    expect(celulas[2]!.style.gridColumn).toBe('span 1')
+    expect(container.querySelector('.grid-layout')!.getAttribute('style')).toContain(
+      'grid-template-columns: repeat(2, 1fr)',
+    )
   })
 
   it('só renderiza divisória entre vizinhos da mesma linha e sem span', () => {

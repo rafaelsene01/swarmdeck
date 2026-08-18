@@ -1,7 +1,7 @@
-// SPEC: shell-chrome (HDR-01, HDR-08, EMPTY-01..EMPTY-09), release-distribution (REL-52), multi-terminal (TERM-12, TERM-13), terminal-tabs (TAB-06), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26, LAYOUT-29), terminal-screenshot (SHOT-02, SHOT-03, SHOT-04, SHOT-05, SHOT-08, SHOT-13, SHOT-14, SHOT-15, SHOT-23)
+// SPEC: shell-chrome (HDR-01, HDR-08, EMPTY-01..EMPTY-09), release-distribution (REL-52), multi-terminal (TERM-12, TERM-13), terminal-tabs (TAB-06), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26, LAYOUT-29), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), minimized-tray (MIN-01, MIN-04, MIN-05, MIN-06)
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import App from './App'
 
 // Same `vi.hoisted` pattern as `NewTerminalDialog.test.tsx` — the `vi.mock`
@@ -1380,8 +1380,7 @@ describe('App - session-restore: confirmar abas e sessões no boot', () => {
   })
 })
 
-describe('App - terminal-screenshot: modo de captura (SHOT-02..SHOT-08)', () => {
-  /** Cria um terminal com um `cwd` próprio, para identificá-lo depois. */
+describe('App - terminal-screenshot: captura pelo botão do painel (SHOT-01, SHOT-13..SHOT-23)', () => {
   async function createTerminalIn(dir: string) {
     fireEvent.click(screen.getByLabelText('new terminal'))
     await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
@@ -1394,220 +1393,69 @@ describe('App - terminal-screenshot: modo de captura (SHOT-02..SHOT-08)', () => 
     )
   }
 
-  const targets = (container: HTMLElement) =>
-    [...container.querySelectorAll<HTMLElement>('.app-pane[data-capture-target="true"]')]
+  /** Botão de câmera do enésimo painel (SHOT-01). */
+  const paneCamera = (nth = 0) => screen.getAllByLabelText('capturar terminal')[nth]!
 
-  const arm = () => fireEvent.click(screen.getByLabelText('camera'))
-
-  // SHOT-02, SHOT-04: armar contorna os painéis visíveis e mostra a dica.
-  it('marca os painéis da aba ativa e mostra a dica ao armar', async () => {
-    const { container } = render(<App />)
+  // SHOT-01, SHOT-14: o botão do painel captura aquele painel, sem seleção.
+  it('captura o painel do próprio botão e abre o modal', async () => {
+    render(<App />)
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
     await createTerminalIn('/a')
     await createTerminalIn('/b')
 
-    expect(targets(container)).toHaveLength(0)
-    expect(screen.queryByText(/Selecione um terminal para capturar/)).not.toBeInTheDocument()
-
-    arm()
-
-    expect(targets(container)).toHaveLength(2)
-    expect(
-      screen.getByText('Selecione um terminal para capturar · Esc cancela'),
-    ).toBeInTheDocument()
-  })
-
-  // SHOT-03: painel minimizado não está na tela, então não é alvo.
-  it('não marca o painel minimizado', async () => {
-    const { container } = render(<App />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
-
-    await createTerminalIn('/a')
-    await createTerminalIn('/b')
-    fireEvent.click(screen.getAllByLabelText('minimizar terminal')[0]!)
-
-    arm()
-
-    expect(targets(container)).toHaveLength(1)
-  })
-
-  // SHOT-03: painel de aba inativa está em `display: none`.
-  it('não marca painel de aba inativa, e remarca ao trocar de aba', async () => {
-    const { container } = render(<App />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
-
-    await createTerminalIn('/a')
-    fireEvent.click(screen.getByLabelText('nova aba'))
-    await createTerminalIn('/b')
-    await createTerminalIn('/c')
-
-    arm()
-
-    // A aba 2 é a ativa: seus 2 painéis são alvo, o da aba 1 não.
-    expect(targets(container).map((pane) => pane.querySelector('[data-cwd]')?.getAttribute('data-cwd')))
-      .toEqual(['/b', '/c'])
-
-    fireEvent.click(screen.getByRole('tab', { name: /Aba 1/ }))
-
-    expect(targets(container).map((pane) => pane.querySelector('[data-cwd]')?.getAttribute('data-cwd')))
-      .toEqual(['/a'])
-  })
-
-  // SHOT-02, SHOT-03: painel escondido por outro maximizado não está na tela.
-  it('não marca o painel escondido por outro maximizado', async () => {
-    const { container } = render(<App />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
-
-    await createTerminalIn('/a')
-    await createTerminalIn('/b')
-    fireEvent.click(screen.getAllByLabelText('maximizar terminal')[0]!)
-
-    arm()
-
-    expect(targets(container)).toHaveLength(1)
-    expect(targets(container)[0]!.querySelector('[data-cwd]')?.getAttribute('data-cwd')).toBe('/a')
-  })
-
-  // SHOT-07: com a câmera desabilitada não haveria como desarmar pelo botão.
-  it('desarma sozinho quando o último terminal da aba é fechado', async () => {
-    const { container } = render(<App />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
-
-    await createTerminalIn('/a')
-    arm()
-    expect(targets(container)).toHaveLength(1)
-
-    fireEvent.click(screen.getByLabelText('fechar terminal'))
-
-    await waitFor(() =>
-      expect(screen.queryByText(/Selecione um terminal para capturar/)).not.toBeInTheDocument(),
-    )
-    expect(screen.getByLabelText('camera')).toHaveAttribute('aria-pressed', 'false')
-  })
-
-  // SHOT-05, SHOT-06: Esc e um segundo clique na câmera desarmam.
-  it('desarma com Esc e com um segundo clique na câmera', async () => {
-    const { container } = render(<App />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
-
-    await createTerminalIn('/a')
-
-    arm()
-    expect(targets(container)).toHaveLength(1)
-
-    fireEvent.keyDown(window, { key: 'Escape' })
-    expect(targets(container)).toHaveLength(0)
-    expect(screen.getByLabelText('camera')).toHaveAttribute('aria-pressed', 'false')
-
-    arm()
-    expect(targets(container)).toHaveLength(1)
-    arm()
-    expect(targets(container)).toHaveLength(0)
-  })
-
-  // SHOT-08: o modo armado não bloqueia os controles do painel nem as abas.
-  it('mantém os controles do painel e a troca de aba operando com o modo armado', async () => {
-    const { container } = render(<App />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
-
-    await createTerminalIn('/a')
-    arm()
-
-    fireEvent.click(screen.getByLabelText('maximizar terminal'))
-    expect(container.querySelector<HTMLElement>('.app-pane')?.style.position).toBe('fixed')
-
-    fireEvent.click(screen.getByLabelText('nova aba'))
-    expect(screen.getByRole('button', { name: '+ Create Terminal' })).toBeInTheDocument()
-  })
-})
-
-describe('App - terminal-screenshot: captura no clique (SHOT-13..SHOT-23)', () => {
-  async function createTerminalIn(dir: string) {
-    fireEvent.click(screen.getByLabelText('new terminal'))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
-    openMock.mockResolvedValueOnce(dir)
-    fireEvent.click(screen.getByRole('button', { name: 'buscar pasta' }))
-    await waitFor(() => expect(screen.getByLabelText('Diretório')).toHaveValue(dir))
-    fireEvent.click(screen.getByRole('button', { name: 'criar' }))
-    await waitFor(() =>
-      expect(screen.queryByRole('button', { name: 'criar' })).not.toBeInTheDocument(),
-    )
-  }
-
-  const paneBody = (container: HTMLElement, nth = 0) =>
-    container.querySelectorAll<HTMLElement>('.app-pane .app-pane__body')[nth]!
-
-  // SHOT-14, SHOT-15: o clique no painel gera o print, abre o modal e desarma.
-  it('captura o painel clicado, abre o modal e desarma o modo', async () => {
-    const { container } = render(<App />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
-
-    await createTerminalIn('/a')
-    await createTerminalIn('/b')
-    fireEvent.click(screen.getByLabelText('camera'))
-
-    fireEvent.click(paneBody(container, 1))
+    fireEvent.click(paneCamera(1))
 
     expect(await screen.findByRole('dialog', { name: 'Captura do terminal' })).toBeInTheDocument()
     // O segundo painel: índice 2 e o `cwd` dele.
     expect(snapshotBlobMock).toHaveBeenCalledWith({ cwd: '/b' }, { index: 2, cwd: '/b' })
-    expect(screen.getByLabelText('camera')).toHaveAttribute('aria-pressed', 'false')
-    expect(container.querySelectorAll('[data-capture-target="true"]')).toHaveLength(0)
   })
 
   // SHOT-16: o nome sugerido carrega o painel de origem e um carimbo ordenável.
   it('sugere um nome de arquivo com o índice do painel e a data', async () => {
-    const { container } = render(<App />)
+    render(<App />)
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
     await createTerminalIn('/a')
-    fireEvent.click(screen.getByLabelText('camera'))
-    fireEvent.click(paneBody(container))
+    fireEvent.click(paneCamera())
 
     await screen.findByRole('dialog', { name: 'Captura do terminal' })
     expect(screen.getByText(/^swarmdeck-terminal-1-\d{8}-\d{6}\.png$/)).toBeInTheDocument()
   })
 
-  // SHOT-13: sem instância viva de xterm o modo desarma e nada abre.
-  it('desarma sem abrir modal quando a captura falha', async () => {
+  // SHOT-13: painel sem dimensão na tela não abre o modal.
+  it('não abre modal quando a captura falha', async () => {
     snapshotBlobMock.mockRejectedValue(new Error('terminal sem dimensão visível'))
-    const { container } = render(<App />)
+    render(<App />)
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
     await createTerminalIn('/a')
-    fireEvent.click(screen.getByLabelText('camera'))
-    fireEvent.click(paneBody(container))
+    fireEvent.click(paneCamera())
 
-    await waitFor(() =>
-      expect(screen.getByLabelText('camera')).toHaveAttribute('aria-pressed', 'false'),
-    )
+    await waitFor(() => expect(snapshotBlobMock).toHaveBeenCalled())
     expect(screen.queryByRole('dialog', { name: 'Captura do terminal' })).not.toBeInTheDocument()
   })
 
-  // SHOT-13: painel sem instância viva de xterm desarma sem abrir o modal
-  // e sem sequer tentar pintar.
-  it('desarma sem pintar quando o painel não tem instância de xterm', async () => {
-    const { container } = render(<App />)
+  // SHOT-13: painel sem instância viva de xterm não pinta nem abre o modal.
+  it('não pinta quando o painel não tem instância de xterm', async () => {
+    render(<App />)
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
     await createTerminalIn('/sem-xterm')
-    fireEvent.click(screen.getByLabelText('camera'))
-    fireEvent.click(paneBody(container))
+    fireEvent.click(paneCamera())
 
     expect(snapshotBlobMock).not.toHaveBeenCalled()
-    expect(screen.getByLabelText('camera')).toHaveAttribute('aria-pressed', 'false')
     expect(screen.queryByRole('dialog', { name: 'Captura do terminal' })).not.toBeInTheDocument()
   })
 
-  // SHOT-23: o teclado volta para o botão de câmera ao fechar o modal.
-  it('devolve o foco à câmera ao fechar o modal', async () => {
-    const { container } = render(<App />)
+  // SHOT-23: o teclado volta para a câmera **daquele** painel ao fechar o modal.
+  it('devolve o foco à câmera do painel capturado ao fechar o modal', async () => {
+    render(<App />)
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
     await createTerminalIn('/a')
-    fireEvent.click(screen.getByLabelText('camera'))
-    fireEvent.click(paneBody(container))
+    await createTerminalIn('/b')
+    fireEvent.click(paneCamera(1))
     await screen.findByRole('dialog', { name: 'Captura do terminal' })
 
     fireEvent.click(screen.getByLabelText('fechar'))
@@ -1615,6 +1463,93 @@ describe('App - terminal-screenshot: captura no clique (SHOT-13..SHOT-23)', () =
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: 'Captura do terminal' })).not.toBeInTheDocument(),
     )
-    expect(document.activeElement).toBe(screen.getByLabelText('camera'))
+    expect(document.activeElement).toBe(paneCamera(1))
+  })
+})
+
+// SPEC: minimized-tray (MIN-01, MIN-04, MIN-05, MIN-06)
+describe('App - minimized-tray', () => {
+  async function createTerminalIn(dir: string) {
+    fireEvent.click(screen.getByLabelText('new terminal'))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
+    openMock.mockResolvedValueOnce(dir)
+    fireEvent.click(screen.getByRole('button', { name: 'buscar pasta' }))
+    await waitFor(() => expect(screen.getByLabelText('Diretório')).toHaveValue(dir))
+    fireEvent.click(screen.getByRole('button', { name: 'criar' }))
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'criar' })).not.toBeInTheDocument(),
+    )
+  }
+
+  /** Células do grid que continuam na tela (as demais estão em display:none). */
+  const visibleCells = (container: HTMLElement) =>
+    [...container.querySelectorAll<HTMLElement>('.app-tab-panel:not([style*="display: none"]) .grid-layout__cell')].filter(
+      (cell) => cell.style.display !== 'none',
+    )
+
+  // MIN-01: o painel sai da tela, mas o `TerminalPane` segue montado — é a
+  // desmontagem que mataria o PTY.
+  it('minimizar tira o painel da tela sem desmontá-lo', async () => {
+    const { container } = render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    await createTerminalIn('/a')
+    await createTerminalIn('/b')
+    expect(visibleCells(container)).toHaveLength(2)
+
+    fireEvent.click(screen.getAllByLabelText('minimizar terminal')[0]!)
+
+    expect(visibleCells(container)).toHaveLength(1)
+    // Os dois stubs continuam no DOM: nada desmontou.
+    expect(container.querySelectorAll('[data-testid="terminal-pane-stub"]')).toHaveLength(2)
+  })
+
+  // MIN-04, MIN-05: a bandeja lista o minimizado com a aba de origem, e
+  // restaurar de outra aba traz a aba dele para a frente.
+  it('lista o minimizado de outra aba e volta para ela ao restaurar', async () => {
+    const { container } = render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    await createTerminalIn('/a')
+    fireEvent.click(screen.getAllByLabelText('minimizar terminal')[0]!)
+
+    fireEvent.click(screen.getByLabelText('nova aba'))
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: /Aba 2/ })).toHaveAttribute('aria-selected', 'true'),
+    )
+
+    fireEvent.click(screen.getByLabelText('minimized terminals'))
+    expect(screen.getByText('Minimized (1)')).toBeInTheDocument()
+    // "Aba 1" também é o rótulo da aba na barra: a asserção olha só o popover.
+    expect(screen.getByRole('menu')).toHaveTextContent('Aba 1')
+
+    // "Terminal 1" também é o título do painel (montado, fora da tela): o
+    // clique tem que ser no item do popover.
+    fireEvent.click(within(screen.getByRole('menu')).getByRole('menuitem'))
+
+    expect(screen.getByRole('tab', { name: /Aba 1/ })).toHaveAttribute('aria-selected', 'true')
+    expect(visibleCells(container)).toHaveLength(1)
+    expect(screen.queryByLabelText('minimized terminals')).not.toBeInTheDocument()
+  })
+
+  // MIN-06: fechar pela bandeja encerra o terminal de qualquer aba, não só da
+  // ativa.
+  it('fechar pela bandeja remove o terminal de outra aba', async () => {
+    const { container } = render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    await createTerminalIn('/a')
+    fireEvent.click(screen.getAllByLabelText('minimizar terminal')[0]!)
+    fireEvent.click(screen.getByLabelText('nova aba'))
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: /Aba 2/ })).toHaveAttribute('aria-selected', 'true'),
+    )
+
+    fireEvent.click(screen.getByLabelText('minimized terminals'))
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    fireEvent.click(screen.getByLabelText('fechar Terminal 1'))
+
+    expect(screen.queryByLabelText('minimized terminals')).not.toBeInTheDocument()
+    expect(container.querySelectorAll('[data-testid="terminal-pane-stub"]')).toHaveLength(0)
   })
 })

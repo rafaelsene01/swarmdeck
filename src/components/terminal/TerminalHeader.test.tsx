@@ -1,4 +1,4 @@
-// SPEC: terminal-chrome (CHROME-02), multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01)
+// SPEC: terminal-chrome (CHROME-02), multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01)
 
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -13,7 +13,7 @@ describe('TerminalHeader — barra de título da janela (CHROME-02)', () => {
     expect(screen.getByText('Terminal 2')).toBeInTheDocument()
   })
 
-  it('expõe abrir-no-editor, maximizar, minimizar, clonar, reiniciar e fechar como botões rotulados, nessa ordem', () => {
+  it('expõe abrir-no-editor, capturar, maximizar, minimizar, clonar, reiniciar e fechar como botões rotulados, nessa ordem', () => {
     const { container } = render(<TerminalHeader index={1} title={null} />)
 
     // Escopado à barra de ações: o próprio título também é um `role="button"`
@@ -25,12 +25,26 @@ describe('TerminalHeader — barra de título da janela (CHROME-02)', () => {
     expect(labels).toEqual([
       // EDITOR-01: o botão do editor abre a barra de ações.
       'abrir pasta no editor',
+      // SHOT-01: a câmera saiu do header do app e passou a ser deste painel.
+      'capturar terminal',
       'maximizar terminal',
       'minimizar terminal',
       'clonar terminal',
       'reiniciar terminal',
       'fechar terminal',
     ])
+  })
+
+  // SPEC: terminal-screenshot (SHOT-01, SHOT-23) — captura direta, e o
+  // próprio botão vai junto para que o modal saiba a quem devolver o foco.
+  it('capturar dispara onScreenshot com o próprio botão', () => {
+    const onScreenshot = vi.fn()
+    render(<TerminalHeader index={1} title={null} onScreenshot={onScreenshot} />)
+
+    const button = screen.getByLabelText('capturar terminal')
+    fireEvent.click(button)
+
+    expect(onScreenshot).toHaveBeenCalledWith(button)
   })
 
   it('clonar dispara onClone e fica desabilitado quando canClone é false', () => {

@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), editor-launch (EDITOR-02), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), settings-shell (SET-01, SET-04, SET-05), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17), terminal-screenshot (SHOT-02, SHOT-03, SHOT-04, SHOT-05, SHOT-08, SHOT-13, SHOT-14, SHOT-15, SHOT-23), window-chrome (WIN-01, WIN-02, WIN-03)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), editor-launch (EDITOR-02), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), settings-shell (SET-01, SET-04, SET-05), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), window-chrome (WIN-01, WIN-02, WIN-03), minimized-tray (MIN-01, MIN-02, MIN-04, MIN-05, MIN-06, MIN-07)
 
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -172,14 +172,13 @@ export default function App() {
   // SET-01: Settings is an overlay over the main window, not a separate
   // OS window — the whole shell mounts inline (see the backdrop below).
   const [settingsOpen, setSettingsOpen] = useState(false)
-  // SPEC: terminal-screenshot (SHOT-01) — modo de captura armado pela câmera.
-  const [captureArmed, setCaptureArmed] = useState(false)
   // SPEC: terminal-screenshot (SHOT-14) — print pronto, aguardando salvar/copiar.
   const [capture, setCapture] = useState<{ blob: Blob; fileName: string } | null>(null)
   /** Instâncias vivas do xterm, por id de terminal (SHOT-13). */
   const terminalsRef = useRef<Map<string, Terminal>>(new Map())
-  /** Botão de câmera, para devolver o foco ao fechar o modal (SHOT-23). */
-  const cameraRef = useRef<HTMLButtonElement>(null)
+  /** Botão de câmera que originou o print, para devolver o foco ao fechar o
+   * modal (SHOT-23) — agora há um por painel, então guarda-se o clicado. */
+  const cameraRef = useRef<HTMLButtonElement | null>(null)
 
   // SPEC: agent-selection (AGT-01, AGT-03, AGT-04)
   // Catálogo real e padrão efetivo, buscados uma vez no mount — antes disto
@@ -493,41 +492,20 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [settingsOpen])
 
-  // SPEC: terminal-screenshot (SHOT-07) — sem terminal na aba ativa não há o
-  // que capturar, e a câmera fica desabilitada: manter o modo armado deixaria
-  // a dica na tela sem forma de desarmar pelo botão.
-  useEffect(() => {
-    if (terminals.length === 0) setCaptureArmed(false)
-  }, [terminals.length])
-
-  // SPEC: terminal-screenshot (SHOT-05) — Esc desarma a captura. Mesmo
-  // formato do listener de SET-04 acima; `dialogOpen`/`settingsOpen` têm
-  // precedência: com um modal aberto o Esc é dele.
-  useEffect(() => {
-    if (!captureArmed) return
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      if (dialogOpen || settingsOpen) return
-      setCaptureArmed(false)
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [captureArmed, dialogOpen, settingsOpen])
-
   /**
-   * SPEC: terminal-screenshot (SHOT-13, SHOT-14, SHOT-15) — captura o painel
-   * clicado no modo armado.
+   * SPEC: terminal-screenshot (SHOT-01, SHOT-13, SHOT-14) — captura o painel
+   * cujo botão de câmera foi clicado.
    *
-   * Roda na fase de captura do React, antes do xterm e dos botões do
-   * `TerminalHeader`: fora do modo armado o handler nem existe, então o
-   * clique normal segue intacto (SHOT-08). Painel sem instância viva ou sem
-   * dimensão na tela desarma sem abrir o modal.
+   * Painel sem instância viva ou sem dimensão na tela não abre o modal.
    */
-  const handleCapturePane = (terminalId: string, index: number, cwd: string) => {
+  const handleCapturePane = (
+    terminalId: string,
+    index: number,
+    cwd: string,
+    button: HTMLButtonElement,
+  ) => {
     const term = terminalsRef.current.get(terminalId)
-    setCaptureArmed(false)
+    cameraRef.current = button
     if (!term) return
 
     void snapshotBlob(term, { index, cwd })
@@ -591,6 +569,31 @@ export default function App() {
     )
   }
 
+  /** SPEC: minimized-tray (MIN-02, MIN-04) — minimizados de **todas** as abas,
+   * com a aba de origem. O nome é o mesmo rótulo padrão que
+   * `TerminalHeader` mostra (`Terminal <n>`, n = posição na aba): um rename
+   * manual vive no estado local do header e não sobe até aqui. */
+  const minimizedTerminals = tabs.flatMap((tab) =>
+    tab.terminals.flatMap((t, index) =>
+      t.mode === 'minimized'
+        ? [{ id: t.id, tabName: tab.name, name: `Terminal ${index + 1}` }]
+        : [],
+    ),
+  )
+
+  /** SPEC: minimized-tray (MIN-05) — devolve o terminal ao grid e traz a aba
+   * dele para a frente; restaurar um terminal de outra aba sem trocar de aba
+   * não mostraria nada. */
+  const handleRestoreMinimized = (id: string) => {
+    const owner = tabs.find((tab) => tab.terminals.some((t) => t.id === id))
+    setTabs((prev) =>
+      prev.map((tab) =>
+        tab.id === owner?.id ? { ...tab, terminals: restore(tab.terminals, id) } : tab,
+      ),
+    )
+    if (owner) setActiveTabId(owner.id)
+  }
+
   /** Clonar: outro terminal na mesma aba, mesmo projeto (`cwd`) e mesmo
    * provedor. Respeita o teto de 4 por aba — o botão já vem desabilitado no
    * header, esta guarda é a que vale se ele for chamado de outro caminho. */
@@ -628,8 +631,17 @@ export default function App() {
     })
   }
 
+  /** Fecha `id` em qualquer aba — não só na ativa. A bandeja de minimizados
+   * (MIN-06, MIN-07) fecha terminal de aba que não está na tela, e todo
+   * chamador passa por aqui. */
   const handleCloseTerminal = (id: string) => {
-    setActiveTerminals((prev) => evenWidths(close(prev, id)))
+    setTabs((prev) =>
+      prev.map((tab) =>
+        tab.terminals.some((t) => t.id === id)
+          ? { ...tab, terminals: evenWidths(close(tab.terminals, id)) }
+          : tab,
+      ),
+    )
     setAgentByTerminalId((prev) => {
       const { [id]: _removed, ...rest } = prev
       return rest
@@ -688,9 +700,6 @@ export default function App() {
               const isMaximized = terminal.mode === 'maximized'
               const isMinimized = terminal.mode === 'minimized'
               const hiddenByMaximize = maximizedId !== undefined && !isMaximized
-              // SPEC: terminal-screenshot (SHOT-02, SHOT-03)
-              const isCaptureTarget =
-                captureArmed && tab.id === activeTab.id && !isMinimized && !hiddenByMaximize
 
               return (
                 <div
@@ -699,26 +708,6 @@ export default function App() {
                   // arrasto de reordenação. `preventDefault` no dragover é o
                   // que habilita o drop; sem ele o `onDrop` nunca dispara.
                   data-drop-target={dropTargetId === terminal.id ? 'true' : undefined}
-                  // SPEC: terminal-screenshot (SHOT-02, SHOT-03) — só painel
-                  // visível da aba ativa é alvo: o minimizado tem 34px com
-                  // `overflow: hidden`, o de aba inativa está em
-                  // `display: none` e o escondido por outro maximizado
-                  // também — nenhum dos três está na tela.
-                  data-capture-target={isCaptureTarget ? 'true' : undefined}
-                  // SPEC: terminal-screenshot (SHOT-08) — a barra de título
-                  // do painel fica de fora: interceptar o clique nela
-                  // (`stopPropagation` na fase de captura) desligaria
-                  // maximizar, minimizar, clonar e fechar enquanto o modo
-                  // estivesse armado, que é o que SHOT-08 proíbe.
-                  onClickCapture={
-                    isCaptureTarget
-                      ? (event) => {
-                          if ((event.target as HTMLElement).closest('.terminal-header')) return
-                          event.stopPropagation()
-                          handleCapturePane(terminal.id, index, terminal.cwd)
-                        }
-                      : undefined
-                  }
                   onDragOver={(event) => {
                     event.preventDefault()
                     setDropTargetId(terminal.id)
@@ -739,9 +728,11 @@ export default function App() {
                     zIndex: isMaximized ? 100 : undefined,
                     borderRadius: isMaximized ? 0 : undefined,
                     boxShadow: isMaximized ? 'none' : undefined,
-                    display: hiddenByMaximize ? 'none' : undefined,
-                    maxHeight: isMinimized ? '34px' : undefined,
-                    overflow: isMinimized ? 'hidden' : undefined,
+                    // SPEC: minimized-tray (MIN-01) — minimizado sai da
+                    // tela; a célula do grid já recebe `display: none`, e
+                    // isto cobre o caso de a célula ficar visível por outro
+                    // caminho. Nunca desmonta: o PTY morreria.
+                    display: hiddenByMaximize || isMinimized ? 'none' : undefined,
                   }}
                 >
                   <TerminalHeader
@@ -755,6 +746,10 @@ export default function App() {
                     onClone={() => handleCloneTerminal(terminal.id)}
                     onReset={() => handleResetTerminal(terminal.id)}
                     canClone={tab.terminals.length < MAX_TERMINALS}
+                    // SPEC: terminal-screenshot (SHOT-01)
+                    onScreenshot={(button) =>
+                      handleCapturePane(terminal.id, index, terminal.cwd, button)
+                    }
                     onClose={() => handleCloseTerminal(terminal.id)}
                     onDragStartReorder={(event) => {
                       event.dataTransfer.setData(REORDER_MIME, terminal.id)
@@ -874,25 +869,6 @@ export default function App() {
         }
         /* SPEC: terminal-layout-options (LAYOUT-17) — painel sob o cursor
            durante o arrasto de reordenação. */
-        .app-capture-hint {
-          flex: 0 0 auto;
-          padding: 0.35rem 1rem;
-          font-size: 0.8rem;
-          color: var(--accent);
-          background: rgba(245, 183, 0, 0.10);
-          border-bottom: 1px solid var(--border);
-        }
-        /* SPEC: terminal-screenshot (SHOT-02) — outline e não border:
-           borda mudaria o box model e deslocaria o conteúdo ao armar. */
-        .app-pane[data-capture-target='true'] {
-          outline: 2px dashed rgba(245, 183, 0, 0.5);
-          outline-offset: -2px;
-          cursor: crosshair;
-        }
-        .app-pane[data-capture-target='true']:hover {
-          outline: 2px solid var(--accent);
-          box-shadow: 0 0 0 4px rgba(245, 183, 0, 0.12);
-        }
         .app-pane[data-drop-target='true'] {
           border-color: var(--accent);
           box-shadow: 0 0 0 1px var(--accent);
@@ -1058,10 +1034,10 @@ export default function App() {
         terminalCount={terminals.length}
         layout={activeTab.layout}
         onLayoutChange={handleLayoutChange}
-        captureArmed={captureArmed}
-        onToggleCapture={() => setCaptureArmed((armed) => !armed)}
-        cameraRef={cameraRef}
         quotaPrefs={quotaPrefs}
+        minimizedTerminals={minimizedTerminals}
+        onRestoreMinimized={handleRestoreMinimized}
+        onCloseMinimized={handleCloseTerminal}
       />
 
       {/* SPEC: terminal-tabs (TAB-01, TAB-03, TAB-04) */}
@@ -1136,15 +1112,6 @@ export default function App() {
           >
             ×
           </button>
-        </div>
-      )}
-
-      {/* SPEC: terminal-screenshot (SHOT-04) — mesma posição do aviso de
-          diretório: dentro de `.app-grid-area` as abas são absolutas e
-          cobririam a dica. */}
-      {captureArmed && (
-        <div className="app-capture-hint" role="status">
-          Selecione um terminal para capturar · Esc cancela
         </div>
       )}
 

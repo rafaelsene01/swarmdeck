@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-03, TERM-04), terminal-chrome (CHROME-01, CHROME-03), terminal-layout-options (LAYOUT-07, LAYOUT-08, LAYOUT-09, LAYOUT-10, LAYOUT-11, LAYOUT-12, LAYOUT-18, LAYOUT-20)
+// SPEC: multi-terminal (TERM-03, TERM-04), terminal-chrome (CHROME-01, CHROME-03), terminal-layout-options (LAYOUT-07, LAYOUT-08, LAYOUT-09, LAYOUT-10, LAYOUT-11, LAYOUT-12, LAYOUT-18, LAYOUT-20), minimized-tray (MIN-01)
 
 import { useCallback, useRef, useState, type ReactNode } from 'react'
 import { DEFAULT_LAYOUT, layoutPlan, type LayoutPlan, type TabLayout } from '../../state/layout'
@@ -107,7 +107,12 @@ export default function GridLayout({
   const localKey = localPanes.map((p) => p.id).join('|')
   const effectivePanes = paneKey === localKey ? localPanes : panes
   const maximizedId = effectivePanes.find((p) => p.mode === 'maximized')?.id
-  const plan = layoutPlan(effectivePanes.length, layout)
+  // SPEC: minimized-tray (MIN-01) — minimizado sai da tela por inteiro, então
+  // sai também do plano: quem divide colunas e linhas são só os visíveis. A
+  // célula do minimizado continua no DOM (`display: none`) porque desmontá-la
+  // mataria o PTY e o scrollback (TERM-08).
+  const visiblePanes = effectivePanes.filter((p) => p.mode !== 'minimized')
+  const plan = layoutPlan(visiblePanes.length, layout)
   const { columns, rows } = plan
 
   const handlePointerMove = useCallback(
@@ -157,14 +162,18 @@ export default function GridLayout({
         height: '100%',
       }}
     >
-      {effectivePanes.map((pane, index) => {
-        const neighbor = effectivePanes[index + 1]
+      {effectivePanes.map((pane) => {
         const isMaximized = pane.mode === 'maximized'
         const isMinimized = pane.mode === 'minimized'
+        // Índice **entre os visíveis**: é ele que casa com `plan.spans` e com
+        // o vizinho de divisória. Minimizado dá -1 e não entra em nenhum dos
+        // dois.
+        const index = visiblePanes.indexOf(pane)
+        const neighbor = visiblePanes[index + 1]
         // Um terminal maximizado ocupa a área toda; os demais continuam
         // montados (o PTY e o scrollback de xterm.js sobrevivem), só saem
-        // de vista — nunca são desmontados. Mesma lógica para minimizado:
-        // encolhe a uma barra compacta em vez de sumir do DOM (TERM-04, TERM-08).
+        // de vista — nunca são desmontados. Mesma coisa para minimizado
+        // (TERM-04, TERM-08, MIN-01).
         const hiddenByMaximize = maximizedId !== undefined && !isMaximized
 
         return (
@@ -180,13 +189,9 @@ export default function GridLayout({
               inset: isMaximized ? 0 : undefined,
               // 100 para passar por cima do header e da barra de abas (nenhum
               // dos dois tem z-index próprio) e continuar abaixo do backdrop
-              // de diálogo (1000). Altura de recolhido = altura da barra de
-              // título de `.terminal-header`.
+              // de diálogo (1000).
               zIndex: isMaximized ? 100 : undefined,
-              display: hiddenByMaximize ? 'none' : undefined,
-              minHeight: isMinimized ? '34px' : undefined,
-              maxHeight: isMinimized ? '34px' : undefined,
-              overflow: isMinimized ? 'hidden' : undefined,
+              display: hiddenByMaximize || isMinimized ? 'none' : undefined,
             }}
           >
             {renderPane?.(pane)}

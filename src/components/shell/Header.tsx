@@ -1,9 +1,9 @@
-// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07, HDR-09, HDR-10, HDR-11), release-distribution (REL-51), quota-indicator (QUOTA-01, QUOTA-12), terminal-layout-options (LAYOUT-02), terminal-screenshot (SHOT-01, SHOT-06, SHOT-07, SHOT-23)
+// SPEC: shell-chrome (HDR-01, HDR-02, HDR-03, HDR-04, HDR-05, HDR-06, HDR-07), release-distribution (REL-51), quota-indicator (QUOTA-01, QUOTA-12), terminal-layout-options (LAYOUT-02), minimized-tray (MIN-02, MIN-09, MIN-10)
 
-import type { Ref } from 'react'
-import { Plus, Camera, Play, Copy, Settings } from 'lucide-react'
+import { Settings, SquareTerminal } from 'lucide-react'
 import QuotaIndicator, { type QuotaIndicatorProps } from './QuotaIndicator'
 import LayoutMenu from './LayoutMenu'
+import MinimizedTray, { type MinimizedTerminal } from './MinimizedTray'
 import { DEFAULT_LAYOUT, type TabLayout } from '../../state/layout'
 
 export interface HeaderProps {
@@ -16,12 +16,6 @@ export interface HeaderProps {
   /** Layout da aba ativa; ausente = o horizontal de sempre. */
   layout?: TabLayout
   onLayoutChange?: (layout: TabLayout) => void
-  /** SPEC: terminal-screenshot (SHOT-01) — modo de captura armado. */
-  captureArmed?: boolean
-  /** Arma e desarma o modo de captura (SHOT-01, SHOT-06). */
-  onToggleCapture?: () => void
-  /** SPEC: terminal-screenshot (SHOT-23) — para devolver o foco ao fechar o modal. */
-  cameraRef?: Ref<HTMLButtonElement>
   /** `undefined`/`null` = preferências ainda não carregadas, mesmo efeito que `enabled: false` (QUOTA-12). */
   quotaPrefs?: {
     enabled: boolean
@@ -29,13 +23,20 @@ export interface HeaderProps {
     /** QUOTA-26: lista ordenada do popover. Ausente = só o Claude. */
     providers?: { id: string; enabled: boolean }[]
   } | null
+  /** SPEC: minimized-tray (MIN-02) — minimizados de **todas** as abas; vazio
+   * não renderiza a bandeja. */
+  minimizedTerminals?: MinimizedTerminal[]
+  onRestoreMinimized?: (id: string) => void
+  onCloseMinimized?: (id: string) => void
 }
 
 /**
  * App shell header — icon toolbar replacing the old text `.app-toolbar`.
- * Only "new terminal" and "settings" have real behavior (HDR-05..HDR-08);
- * every other icon is inert on purpose (HDR-09..HDR-11) — see
- * `.specs/features/shell-chrome/overview.md` Out of Scope.
+ *
+ * SPEC: minimized-tray (MIN-09, MIN-10) — os dois últimos inertes (`run` e
+ * `copy`, HDR-09/HDR-10) saíram, e o "new terminal" trocou o `+` por um
+ * botão de ícone de terminal (`print/run.png`). Todo botão do header tem
+ * comportamento real agora.
  */
 export default function Header({
   onCreateTerminal,
@@ -45,10 +46,10 @@ export default function Header({
   terminalCount = 0,
   layout = DEFAULT_LAYOUT,
   onLayoutChange,
-  captureArmed = false,
-  onToggleCapture,
-  cameraRef,
   quotaPrefs,
+  minimizedTerminals = [],
+  onRestoreMinimized,
+  onCloseMinimized,
 }: HeaderProps) {
   return (
     <header className="shell-header">
@@ -87,57 +88,47 @@ export default function Header({
           cursor: pointer;
         }
         .shell-header button:disabled { color: var(--muted); cursor: default; }
-        .shell-header__camera {
-          transition: background 120ms ease, border-color 120ms ease;
-        }
-        .shell-header__camera[data-armed='true'] {
-          border: 1px solid var(--accent);
-          background: rgba(245, 183, 0, 0.14);
+        /* SPEC: minimized-tray (MIN-10) — botão de ícone de terminal, no
+           formato de print/run.png: retângulo arredondado com borda, fundo
+           levemente elevado e o glifo em acento. */
+        .shell-header__new-terminal {
+          padding: 0.3rem 0.55rem;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.04);
           color: var(--accent);
         }
-        .shell-header__run {
-          gap: 0.25rem;
-          padding: 0.3rem 0.6rem;
-          border-radius: 999px;
-          border: 1px solid var(--muted);
-          color: var(--muted);
+        .shell-header__new-terminal:hover:not(:disabled) {
+          background: rgba(245, 183, 0, 0.14);
+          border-color: var(--accent);
+        }
+        .shell-header__new-terminal:disabled {
+          border-color: var(--border);
+          background: transparent;
         }
       `}</style>
 
       <div className="shell-header__group">
         <button
           type="button"
+          className="shell-header__new-terminal"
           onClick={onCreateTerminal}
           disabled={atMaxTerminals}
           aria-label="new terminal"
+          title="Novo terminal"
         >
-          <Plus size={18} />
+          <SquareTerminal size={18} />
         </button>
-        {/* SPEC: terminal-screenshot (SHOT-01, SHOT-06, SHOT-07) — o botão
-            deixa de ser inerte: arma e desarma o modo de captura, e fica
-            desabilitado sem terminal para clicar. */}
-        <button
-          type="button"
-          ref={cameraRef}
-          className="shell-header__camera"
-          onClick={onToggleCapture}
-          disabled={terminalCount === 0}
-          aria-pressed={captureArmed}
-          data-armed={captureArmed}
-          aria-label="camera"
-        >
-          <Camera size={18} />
-        </button>
+        {/* SPEC: minimized-tray (MIN-02) — bandeja dos minimizados de todas as
+            abas; não renderiza nada quando não há nenhum. */}
+        <MinimizedTray
+          items={minimizedTerminals}
+          onRestore={(id) => onRestoreMinimized?.(id)}
+          onClose={(id) => onCloseMinimized?.(id)}
+        />
       </div>
 
       <div className="shell-header__group">
-        <button type="button" disabled className="shell-header__run" aria-label="run">
-          <Play size={14} />
-          RUN
-        </button>
-        <button type="button" disabled aria-label="copy">
-          <Copy size={18} />
-        </button>
         {/* SPEC: terminal-layout-options (LAYOUT-02) — o menu de layout ocupa
             o lugar do antigo botão inerte `split`, imediatamente à esquerda do
             indicador de cota. */}

@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-04, TERM-07, TERM-08), terminal-layout-options (LAYOUT-16, LAYOUT-19, LAYOUT-25), session-restore (SESS-10, SESS-16)
+// SPEC: multi-terminal (TERM-04, TERM-07, TERM-08), terminal-layout-options (LAYOUT-16, LAYOUT-19, LAYOUT-25), session-restore (SESS-10, SESS-16), minimized-tray (MIN-01)
 
 /**
  * Estado de exibição de um terminal no grid.
@@ -6,8 +6,9 @@
  * - `normal`: ocupa sua célula no grid, como os demais.
  * - `maximized`: ocupa toda a área de terminais; os outros continuam
  *   montados (vivos), só ficam fora de vista.
- * - `minimized`: recolhido a uma barra compacta; o PTY continua rodando e
- *   acumulando saída — o componente permanece montado, só oculto.
+ * - `minimized`: fora da tela por inteiro (a célula sai do plano do grid e
+ *   recebe `display: none`) e listado na bandeja do header; o PTY continua
+ *   rodando e acumulando saída — o componente permanece montado (MIN-01).
  */
 export type PaneMode = 'normal' | 'maximized' | 'minimized'
 
@@ -46,7 +47,8 @@ export function maximize(terminals: TerminalState[], id: string): TerminalState[
 
 /**
  * Minimiza `id`. A sessão continua na lista — é isso que preserva o PTY e o
- * scrollback acumulado enquanto o terminal está recolhido (TERM-08).
+ * scrollback acumulado enquanto o terminal está fora da tela (TERM-08,
+ * MIN-01).
  */
 export function minimize(terminals: TerminalState[], id: string): TerminalState[] {
   return terminals.map((t) => (t.id === id ? { ...t, mode: 'minimized' } : t))
