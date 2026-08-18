@@ -1,6 +1,17 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.20] - 2026-08-18
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Enhance TerminalPane to handle pending data before terminal ID resolution
+
+- Introduced a mechanism to store bytes produced by xterm before `pty_spawn` resolves, preventing data loss during session restoration.
+- Implemented a `sendToPty` function to manage data transmission to the terminal, ensuring that pending data is sent once the terminal ID is available.
+
 ## [0.1.19] - 2026-08-18
 
 ### Outros
@@ -29,6 +40,10 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 This reverts commit 869283a52d3eafc6d2ce41076aa685b25055f73a.
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Update tauri configuration to include installer icon
+
+- Added "installerIcon" property to the NSIS configuration in tauri.conf.json to specify the icon used for the installer.
 
 ## [0.1.18] - 2026-08-18
 
