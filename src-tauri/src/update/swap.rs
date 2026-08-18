@@ -69,8 +69,7 @@ pub fn verify_signature(
 ) -> Result<(), PortableUpdateError> {
     let key = parse_public_key(public_key)
         .map_err(|e| PortableUpdateError::InvalidPublicKey(e.to_string()))?;
-    let sig = parse_signature(signature)
-        .map_err(PortableUpdateError::InvalidSignatureFormat)?;
+    let sig = parse_signature(signature).map_err(PortableUpdateError::InvalidSignatureFormat)?;
     key.verify(data, &sig, false)
         .map_err(|e| PortableUpdateError::SignatureMismatch(e.to_string()))
 }

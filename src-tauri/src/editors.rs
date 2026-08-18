@@ -289,7 +289,10 @@ mod tests {
     fn build_open_command_roteia_script_do_windows_por_cmd() {
         let cmd = build_open_command(Path::new(r"C:\bin\code.cmd"), Path::new(r"C:\proj"));
 
-        assert_eq!(argv(&cmd), vec!["cmd", "/C", r"C:\bin\code.cmd", r"C:\proj"]);
+        assert_eq!(
+            argv(&cmd),
+            vec!["cmd", "/C", r"C:\bin\code.cmd", r"C:\proj"]
+        );
     }
 
     #[test]
