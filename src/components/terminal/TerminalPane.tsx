@@ -79,6 +79,26 @@ export default function TerminalPane({
 
     let terminalId: string | null = null
     let disposed = false
+    /**
+     * Bytes produzidos pelo xterm ANTES de `pty_spawn` resolver.
+     *
+     * O ConPTY já emite o DSR (`ESC[6n`) na abertura, e esses bytes chegam
+     * pelo `Channel` — que o backend alimenta a cada 16 ms — sem esperar a
+     * resposta do `invoke`. Com dois painéis subindo juntos (restauração de
+     * sessão) o `invoke` de um deles resolve depois desse primeiro chunk: a
+     * resposta ao DSR era descartada por falta de `terminalId`, o ConPTY
+     * nunca destravava o processo filho e o painel ficava preto para sempre.
+     * Guardar e reenviar no `then` fecha essa janela.
+     */
+    let pending: number[] = []
+
+    const sendToPty = (data: number[]) => {
+      if (!terminalId) {
+        pending.push(...data)
+        return
+      }
+      void invoke('pty_write', { id: terminalId, data })
+    }
 
     /**
      * Reajusta xterm ao tamanho atual do container e repassa as dimensões
@@ -104,11 +124,7 @@ export default function TerminalPane({
 
     // Teclado ligado antes do primeiro byte do processo.
     const dataDisposable = terminal.onData((data) => {
-      if (!terminalId) return
-      void invoke('pty_write', {
-        id: terminalId,
-        data: Array.from(new TextEncoder().encode(data)),
-      })
+      sendToPty(Array.from(new TextEncoder().encode(data)))
     })
 
     // Saída ligada antes do primeiro byte do processo.
@@ -131,6 +147,11 @@ export default function TerminalPane({
           return
         }
         terminalId = id
+        if (pending.length > 0) {
+          const buffered = pending
+          pending = []
+          sendToPty(buffered)
+        }
         onSessionId?.(id)
         syncSize()
       })
