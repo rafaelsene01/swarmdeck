@@ -1,11 +1,24 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.23] - 2026-08-18
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.22] - 2026-08-18
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Refactor terminal screenshot functionality and enhance minimized tray support
+
+- Updated terminal screenshot specifications in App.tsx to include new capture modes and improved state management.
+- Refactored Header and TerminalHeader components to integrate minimized tray functionality, removing inactive buttons and updating the new terminal button to an icon.
+- Enhanced GridLayout to ensure minimized terminals are excluded from layout calculations while remaining in the DOM.
+- Updated tests across various components to reflect changes in terminal screenshot handling and minimized tray behavior, ensuring comprehensive coverage of new features.
 
 ## [0.1.21] - 2026-08-18
 
