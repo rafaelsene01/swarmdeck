@@ -1,11 +1,24 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.24] - 2026-08-18
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.23] - 2026-08-18
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Enhance terminal header and update settings functionality
+
+- Added support for maximizing and restoring terminal windows in TerminalHeader, with appropriate icon changes.
+- Updated UpdateSettings to render release notes in Markdown format, ensuring proper display of features and updates.
+- Enhanced tests for TerminalHeader and UpdateSettings to cover new functionality, including the handling of maximized states and release notes rendering.
+- Updated specifications for minimized tray and terminal chrome to reflect recent changes.
 
 ## [0.1.22] - 2026-08-18
 
