@@ -1200,6 +1200,57 @@ describe('App - session-restore: confirmar abas e sessões no boot', () => {
     ])
   })
 
+  // SESS-15: o catálogo chega por IPC depois da leitura do workspace. Sem
+  // segurar o modal, ele monta com `resumableAgentIds` vazio e congela todo
+  // terminal em "nova sessão" — nenhuma conversa voltaria.
+  it('catálogo que responde depois do workspace ainda retoma as sessões salvas', async () => {
+    let liberarCatalogo!: (entries: unknown) => void
+    const catalogo = new Promise((resolve) => {
+      liberarCatalogo = resolve
+    })
+
+    invokeMock.mockImplementation((command: string) => {
+      if (command === 'agent_catalog') return catalogo
+      if (command === 'agent_default') return Promise.resolve('claude-code')
+      if (command === 'quota_prefs_get') return Promise.resolve({ enabled: false, window: 'both' })
+      if (command === 'terminal_picker_last_dir') return Promise.resolve(null)
+      if (command === 'terminal_workspace_get') return Promise.resolve(SAVED)
+      return Promise.resolve(undefined)
+    })
+
+    render(<App />)
+
+    // Workspace já chegou; o modal espera o catálogo.
+    await waitFor(() =>
+      expect(invokeMock.mock.calls.some(([c]) => c === 'terminal_workspace_get')).toBe(true),
+    )
+    expect(
+      screen.queryByRole('dialog', { name: 'restaurar sessão anterior' }),
+    ).not.toBeInTheDocument()
+
+    await act(async () => {
+      liberarCatalogo([
+        {
+          id: 'claude-code',
+          name: 'Claude Code',
+          vendor: 'Anthropic',
+          command: 'claude',
+          beta: false,
+          installed: true,
+          supportsSessionResume: true,
+        },
+      ])
+    })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Restaurar selecionados' }))
+
+    await waitFor(() => expect(screen.getAllByTestId('terminal-pane-stub')).toHaveLength(2))
+    expect(spawns().map(([, args]) => [args.sessionId, args.resume])).toEqual([
+      ['sessao-salva-0', true],
+      ['sessao-salva-1', true],
+    ])
+  })
+
   // SESS-06: o desmarcado não volta — nem na tela, nem na gravação seguinte.
   it('terminal desmarcado não é montado nem regravado', async () => {
     mockBoot(SAVED)

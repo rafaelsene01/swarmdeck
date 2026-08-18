@@ -168,6 +168,13 @@ export default function App() {
   /** SPEC: session-restore (SESS-15) — ids cujo CLI aceita `--resume`; o modal
    * usa isto para decidir se o switch fica ativo ou travado. */
   const [resumableAgentIds, setResumableAgentIds] = useState<Set<string>>(new Set())
+  /** SPEC: session-restore (SESS-15) — o catálogo chega por IPC e demora mais
+   * que a leitura do workspace (detecta o PATH). O modal congela os switches
+   * na primeira renderização: montado com `resumableAgentIds` ainda vazio,
+   * todo terminal nasceria em "nova sessão" e nenhuma conversa voltaria.
+   * Segura o modal até o catálogo responder — erro incluso, senão a falha
+   * esconderia o modal para sempre. */
+  const [agentCatalogSettled, setAgentCatalogSettled] = useState(false)
   const [defaultAgentId, setDefaultAgentId] = useState<string | null>(null)
   // Agente escolhido por sessão (AGT-03): sobrescreve o padrão só para o
   // terminal criado com aquela escolha, sem tocar a preferência global.
@@ -416,6 +423,11 @@ export default function App() {
       setResumableAgentIds(
         new Set(entries.filter((entry) => entry.supportsSessionResume).map((entry) => entry.id)),
       )
+      setAgentCatalogSettled(true)
+    })
+    .catch((error) => {
+      console.error('falha ao ler o catálogo de agentes', error)
+      if (!cancelled) setAgentCatalogSettled(true)
     })
 
     void invoke<string | null>('agent_default').then((id) => {
@@ -1007,7 +1019,7 @@ export default function App() {
 
       {/* SPEC: session-restore (SESS-01) — enquanto isto está montado nenhum
           `TerminalPane` existe: `tabs` continua sendo a aba vazia inicial. */}
-      {pendingRestore && (
+      {pendingRestore && agentCatalogSettled && (
         <div className="app-dialog-backdrop">
           <RestoreSessionDialog
             tabs={pendingRestore.map((tab) => ({
