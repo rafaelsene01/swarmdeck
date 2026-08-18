@@ -1,11 +1,26 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.22] - 2026-08-18
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.21] - 2026-08-18
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Implement terminal screenshot functionality and related tests
+
+- Added terminal screenshot capabilities in App.tsx, including state management for capture mode and handling of terminal instances.
+- Introduced ScreenshotModal component for previewing and saving screenshots, with error handling for save and copy actions.
+- Updated Header component to include a camera button for toggling screenshot mode, reflecting its state visually.
+- Enhanced TerminalPane to provide the live instance of the terminal for capturing screenshots.
+- Added comprehensive tests for the new screenshot features, ensuring functionality and error handling are validated.
+- Updated existing test files to reflect changes in specifications and functionality related to terminal screenshots.
 
 ## [0.1.20] - 2026-08-18
 
