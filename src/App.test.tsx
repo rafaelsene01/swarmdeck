@@ -25,6 +25,16 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({
   open: openMock,
 }))
 
+// SET-01: `App` now mounts `SettingsShell` inline (the settings overlay), so
+// the two Tauri modules that shell imports have to be stubbed here too.
+vi.mock('@tauri-apps/api/window', () => ({
+  getCurrentWindow: () => ({ close: vi.fn() }),
+}))
+
+vi.mock('@tauri-apps/api/app', () => ({
+  getVersion: () => Promise.resolve('0.0.0-test'),
+}))
+
 /** Mesmo padrão de `useTaskStore.test.ts` — acha o handler registrado via
  * `listen('update://available', ...)` para disparar o evento manualmente. */
 function getUpdateAvailableHandler() {
@@ -95,7 +105,8 @@ beforeEach(() => {
     if (command === 'agent_catalog') return Promise.resolve([])
     if (command === 'agent_default') return Promise.resolve(null)
     if (command === 'terminal_picker_last_dir') return Promise.resolve(null)
-    if (command === 'settings_open') return Promise.resolve(undefined)
+    // SET-01: consumed by the inline `SettingsShell` (settings overlay).
+    if (command === 'project_list') return Promise.resolve([])
     if (command === 'quota_prefs_get') return Promise.resolve({ enabled: false, window: 'both' })
     if (command === 'terminal_workspace_get') return Promise.resolve([])
     if (command === 'terminal_workspace_set') return Promise.resolve(undefined)
@@ -142,13 +153,39 @@ describe('App - shell-chrome wiring', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
   })
 
-  it('Header\'s "settings" icon calls settings_open, same as the old button (HDR-08)', async () => {
+  it('Header\'s "settings" icon opens Settings as an overlay over the main window (HDR-08, SET-01)', async () => {
     render(<App />)
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
+    expect(screen.queryByRole('dialog', { name: 'Configurações' })).not.toBeInTheDocument()
+
     fireEvent.click(screen.getByLabelText('settings'))
 
-    expect(invokeMock).toHaveBeenCalledWith('settings_open')
+    expect(screen.getByRole('dialog', { name: 'Configurações' })).toBeInTheDocument()
+    // The overlay replaces the old separate window - no OS window is opened.
+    expect(invokeMock).not.toHaveBeenCalledWith('settings_open')
+  })
+
+  it('the Settings overlay closes on "Fechar", on Esc and on a backdrop click (SET-04, SET-05)', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    const openSettings = () => fireEvent.click(screen.getByLabelText('settings'))
+    const overlay = () => screen.queryByRole('dialog', { name: 'Configurações' })
+
+    openSettings()
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar' }))
+    expect(overlay()).not.toBeInTheDocument()
+
+    openSettings()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(overlay()).not.toBeInTheDocument()
+
+    openSettings()
+    const backdrop = document.querySelector('.app-settings-backdrop')
+    if (!backdrop) throw new Error('backdrop do overlay de Configurações não encontrado')
+    fireEvent.mouseDown(backdrop)
+    expect(overlay()).not.toBeInTheDocument()
   })
 })
 

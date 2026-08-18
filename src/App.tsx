@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), settings-shell (SET-01, SET-04, SET-05), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17)
 
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -23,6 +23,7 @@ import TerminalPane from './components/terminal/TerminalPane'
 import TerminalHeader from './components/terminal/TerminalHeader'
 import NewTerminalDialog from './components/terminal/NewTerminalDialog'
 import type { AgentDescriptor } from './routes/settings/AgentPanel'
+import SettingsShell from './routes/settings/SettingsShell'
 import {
   type LayoutEntry,
   type TerminalState,
@@ -153,6 +154,9 @@ export default function App() {
   /** Id da aba em renomeação inline (TAB-06); `null` = nenhuma. */
   const [renamingTabId, setRenamingTabId] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
+  // SET-01: Settings is an overlay over the main window, not a separate
+  // OS window — the whole shell mounts inline (see the backdrop below).
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   // SPEC: agent-selection (AGT-01, AGT-03, AGT-04)
   // Catálogo real e padrão efetivo, buscados uma vez no mount — antes disto
@@ -227,10 +231,12 @@ export default function App() {
   }
 
   // SPEC: quota-indicator (QUOTA-11)
-  // A janela de Configurações é um `WebviewWindow` separado (SET-01) — uma
-  // mudança de preferência lá não chega aqui por estado React compartilhado,
-  // só pelo evento `quota://prefs-changed` (mesmo mecanismo de
-  // `update://available` acima). `null` até a primeira leitura resolver:
+  // Configurações agora é um overlay dentro desta janela (SET-01), mas
+  // `SettingsShell` não levanta estado até aqui: uma mudança de preferência
+  // lá continua chegando só pelo evento `quota://prefs-changed`, que
+  // `quota_prefs_set` emite para a janela `main`
+  // (`src-tauri/src/commands/quota.rs`) — mesmo mecanismo de
+  // `update://available` acima. `null` até a primeira leitura resolver:
   // mesmo efeito que `enabled: false` no `Header` (QUOTA-12).
   const [quotaPrefs, setQuotaPrefs] = useState<QuotaPrefsPayload | null>(null)
 
@@ -431,13 +437,26 @@ export default function App() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!event.ctrlKey || event.key.toLowerCase() !== 't') return
       event.preventDefault()
-      if (dialogOpen) return
+      if (dialogOpen || settingsOpen) return
       setDialogOpen(true)
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [terminals.length, dialogOpen])
+  }, [terminals.length, dialogOpen, settingsOpen])
+
+  // SET-04: Esc closes the Settings overlay — the modal covers the whole
+  // app, so the usual dialog escape hatch has to work here too.
+  useEffect(() => {
+    if (!settingsOpen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSettingsOpen(false)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [settingsOpen])
 
   // `GridLayout` sincroniza `panes` pela sequência de ids (AD-011), então
   // reordenar chega ao grid. Trocar só o `mode` com a mesma ordem continua
@@ -853,6 +872,35 @@ export default function App() {
           justify-content: center;
           background: rgba(0, 0, 0, 0.6);
         }
+        /* SET-01: Settings overlays the whole main window instead of opening
+           its own OS window. Margins follow print/modal_config.png: the card
+           stops short of every edge so the app stays visible behind it, and
+           it sits above every other layer (EditorMenu is the highest at
+           1100). */
+        .app-settings-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 1200;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: clamp(16px, 5vh, 56px) clamp(16px, 7vw, 120px);
+          background: rgba(0, 0, 0, 0.62);
+          backdrop-filter: blur(4px);
+        }
+        .app-settings-modal {
+          display: flex;
+          width: 100%;
+          max-width: 1120px;
+          height: 100%;
+          max-height: 860px;
+          overflow: hidden;
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          background: var(--surface);
+          box-shadow: 0 32px 80px rgba(0, 0, 0, 0.65);
+        }
+        .app-settings-modal > .settings-shell { flex: 1 1 auto; min-width: 0; }
         .app-dialog-backdrop .new-terminal-dialog {
           background: #1c1c1f;
           border: 1px solid #333;
@@ -865,11 +913,13 @@ export default function App() {
         }
       `}</style>
 
-      {/* SPEC: shell-chrome (HDR-01, HDR-08) — SET-01's settings_open wiring
-          (src-tauri/src/windows/settings.rs) moved into onOpenSettings below. */}
+      {/* SPEC: shell-chrome (HDR-01, HDR-08) — SET-01: the gear now opens the
+          Settings overlay below instead of invoking `settings_open`
+          (src-tauri/src/windows/settings.rs), which stays registered but is
+          no longer called from the UI. */}
       <Header
         onCreateTerminal={() => setDialogOpen(true)}
-        onOpenSettings={() => void invoke('settings_open')}
+        onOpenSettings={() => setSettingsOpen(true)}
         atMaxTerminals={terminals.length >= MAX_TERMINALS}
         hasUpdateAvailable={hasUpdateAvailable}
         terminalCount={terminals.length}
@@ -986,6 +1036,22 @@ export default function App() {
             onConfirm={handleCreate}
             onCancel={() => setDialogOpen(false)}
           />
+        </div>
+      )}
+
+      {/* SET-01/SET-04: clicking the backdrop closes, same as X/"Fechar"; the
+          click guard keeps a click inside the card from bubbling out. */}
+      {settingsOpen && (
+        <div
+          className="app-settings-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSettingsOpen(false)
+          }}
+        >
+          <div className="app-settings-modal" role="dialog" aria-modal="true" aria-label="Configurações">
+            <SettingsShell onClose={() => setSettingsOpen(false)} />
+          </div>
         </div>
       )}
     </div>

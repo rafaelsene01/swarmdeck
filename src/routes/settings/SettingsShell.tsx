@@ -68,7 +68,14 @@ interface UpdateStatusResult {
   platform_key: string
 }
 
-export default function SettingsShell() {
+export interface SettingsShellProps {
+  /** SET-01: set when the shell is mounted as an overlay inside the main
+   * window (`App.tsx`) — closing then means unmounting the modal, not
+   * closing an OS window. Absent when it runs in the `settings` window. */
+  onClose?: () => void
+}
+
+export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
   const [section, setSection] = useState<SectionId>('general')
 
   // Geral (QUOTA-09/10): carrega ao abrir a seção; falha de `invoke` mantém
@@ -354,76 +361,125 @@ export default function SettingsShell() {
   // SET-06: trilho "Configurações › [Seção ativa]".
   const activeSection = SECTIONS.find((item) => item.id === section)
 
-  // SET-04/SET-05: X e "Fechar" fecham a janela `settings` de dentro do
-  // app — a capability `core:window:allow-close` (T1) autoriza a chamada.
+  // SET-04/SET-05: X e "Fechar" fecham o shell. Montado como overlay
+  // (`onClose` presente) isso é desmontar o modal; na janela `settings` é
+  // fechar a janela — a capability `core:window:allow-close` (T1) autoriza
+  // a chamada.
   const handleClose = () => {
+    if (onClose) {
+      onClose()
+      return
+    }
     void getCurrentWindow().close()
   }
 
   return (
     <div className="settings-shell">
       <style>{`
-        .settings-shell { display: flex; flex-direction: column; height: 100%; }
+        /* SET-01: as medidas seguem print/modal_config.png — cabeçalho alto,
+           trilho lateral escurecido e conteúdo com respiro largo, para o
+           shell ler como um cartão e não como uma janela espremida. */
+        .settings-shell {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          background: var(--surface, #131318);
+          color: var(--fg, #e8e8ea);
+        }
         .settings-shell__body { display: flex; flex: 1 1 auto; min-height: 0; }
         .settings-shell__header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0.5rem 1rem;
-          border-bottom: 1px solid #222;
+          gap: 1rem;
+          padding: 1.1rem 1.5rem;
+          border-bottom: 1px solid var(--border, #26262d);
         }
-        .settings-shell__breadcrumb { font-size: 0.9rem; opacity: 0.8; }
+        .settings-shell__breadcrumb {
+          font-size: 1.05rem;
+          font-weight: 600;
+          letter-spacing: -0.01em;
+        }
         .settings-shell__close {
-          padding: 0.25rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          padding: 0;
           border: none;
           background: transparent;
-          color: inherit;
+          color: var(--muted, #8a8a92);
           cursor: pointer;
-          border-radius: 6px;
+          border-radius: 8px;
+          transition: background 120ms ease, color 120ms ease;
         }
-        .settings-shell__close:hover { background: rgba(255, 255, 255, 0.06); }
+        .settings-shell__close:hover {
+          background: rgba(255, 255, 255, 0.08);
+          color: var(--fg, #e8e8ea);
+        }
         .settings-shell__footer {
           display: flex;
           justify-content: flex-end;
-          padding: 0.75rem 1rem;
-          border-top: 1px solid #222;
+          padding: 0.9rem 1.5rem;
+          border-top: 1px solid var(--border, #26262d);
+          background: rgba(0, 0, 0, 0.2);
         }
         .settings-shell__footer-close {
-          padding: 0.5rem 1rem;
-          border-radius: 6px;
-          border: 1px solid #333;
-          background: transparent;
+          padding: 0.5rem 1.5rem;
+          border-radius: 8px;
+          border: 1px solid var(--border, #26262d);
+          background: rgba(255, 255, 255, 0.04);
           color: inherit;
+          font-size: 0.9rem;
           cursor: pointer;
+          transition: background 120ms ease, border-color 120ms ease;
         }
-        .settings-shell__footer-close:hover { background: rgba(255, 255, 255, 0.06); }
+        .settings-shell__footer-close:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: #3a3a44;
+        }
         .settings-shell__nav {
           display: flex;
           flex-direction: column;
-          gap: 0.25rem;
-          min-width: 180px;
-          padding: 1rem 0.5rem;
-          border-right: 1px solid #222;
+          gap: 0.15rem;
+          min-width: 208px;
+          padding: 1rem 0.65rem;
+          border-right: 1px solid var(--border, #26262d);
+          background: var(--surface-2, #0a0a0c);
           flex: 0 0 auto;
+          overflow: auto;
         }
         .settings-shell__nav-item {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 0.6rem;
           text-align: left;
-          padding: 0.5rem 0.75rem;
-          border-radius: 6px;
+          padding: 0.55rem 0.75rem;
+          border-radius: 8px;
           border: none;
           background: transparent;
-          color: inherit;
+          color: var(--muted, #8a8a92);
+          font-size: 0.9rem;
           cursor: pointer;
+          transition: background 120ms ease, color 120ms ease;
         }
-        .settings-shell__nav-item:hover { background: rgba(255, 255, 255, 0.06); }
+        .settings-shell__nav-item:hover {
+          background: rgba(255, 255, 255, 0.05);
+          color: var(--fg, #e8e8ea);
+        }
         .settings-shell__nav-item[aria-current='page'] {
-          background: rgba(245, 183, 0, 0.18);
+          background: rgba(245, 183, 0, 0.14);
+          color: var(--accent, #f5b700);
           font-weight: 600;
         }
-        .settings-shell__content { flex: 1 1 auto; min-width: 0; overflow: auto; padding: 1rem; }
+        .settings-shell__content {
+          flex: 1 1 auto;
+          min-width: 0;
+          overflow: auto;
+          padding: 1.5rem 1.75rem 2rem;
+          scrollbar-width: thin;
+        }
       `}</style>
 
       <div className="settings-shell__header">

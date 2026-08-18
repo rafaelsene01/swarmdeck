@@ -81,7 +81,9 @@ export default function LayoutMenu({ count, layout, onChange }: LayoutMenuProps)
           text-transform: uppercase;
           color: var(--muted);
         }
-        .layout-menu__item {
+        /* Seletor prefixado para vencer a regra "shell-header button" do
+           Header, que centraliza e repadda todo botao descendente. */
+        .layout-menu .layout-menu__item {
           display: flex;
           align-items: center;
           justify-content: flex-start;
@@ -96,10 +98,10 @@ export default function LayoutMenu({ count, layout, onChange }: LayoutMenuProps)
           text-align: left;
           cursor: pointer;
         }
-        .layout-menu__item:hover { background: rgba(255, 255, 255, 0.06); }
-        .layout-menu__item[data-active='true'] { border-color: var(--accent); }
+        .layout-menu .layout-menu__item:hover { background: rgba(255, 255, 255, 0.06); }
+        .layout-menu .layout-menu__item[data-active='true'] { border-color: var(--accent); }
         /* Variantes aninhadas sob "Horizontal" (LAYOUT-13). */
-        .layout-menu__item--nested { width: auto; margin-left: 1.25rem; }
+        .layout-menu .layout-menu__item--nested { width: auto; margin-left: 1.25rem; }
       `}</style>
 
       <button
