@@ -128,8 +128,12 @@ export default function EditorMenu({ cwd }: EditorMenuProps) {
           color: var(--fg);
           font: inherit;
           text-align: left;
+          white-space: nowrap;
           cursor: pointer;
         }
+        /* Slot fixo: os nomes começam todos na mesma coluna, seja qual for a
+           largura do desenho da marca. */
+        .editor-menu__item svg { flex: 0 0 16px; }
         .editor-menu__item:hover { background: rgba(255, 255, 255, 0.07); }
         .editor-menu__item:focus-visible {
           outline: 2px solid var(--accent);

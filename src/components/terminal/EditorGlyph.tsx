@@ -1,35 +1,72 @@
 // SPEC: editor-launch (EDITOR-02)
 
 /**
- * Marcas dos editores de código, desenhadas inline — mesma decisão de
- * `shell/ProviderIcon.tsx`: são aproximações de traço, não os logos
- * oficiais, porque o app não embarca arquivo de marca de terceiros.
+ * Marcas oficiais dos editores de código, inline (EDITOR-02).
  *
- * Chaveado pelo `id` de `editors::CATALOG` (Rust). Um id sem desenho
- * próprio cai no glifo genérico de código — acrescentar um editor ao
- * catálogo nunca quebra o popover.
+ * Os desenhos são os paths monocromáticos publicados pelo projeto
+ * `simple-icons` (CC0), copiados aqui em vez de virarem dependência: são
+ * onze paths, e o app não ganha nada carregando um pacote de 3 mil ícones.
+ *
+ * Chaveado pelo `id` de `editors::CATALOG` (Rust). Um id sem marca própria
+ * cai no glifo genérico de código — acrescentar um editor ao catálogo nunca
+ * quebra o popover.
+ *
+ * A cor é a da marca quando ela é legível sobre `#17171a` (fundo do
+ * popover); nas marcas pretas ou brancas puras usa-se o tom de acento do
+ * produto, porque preto sobre preto não é ícone nenhum.
  */
 
-interface GlyphMeta {
-  /** Cor da marca, legível sobre `#17171a` (fundo do popover). */
+interface Brand {
   color: string
-  /** Qual desenho usar — vários ids compartilham o mesmo (as três variantes
-   * de VS Code, os três IDEs JetBrains). */
-  shape: 'vscode' | 'cursor' | 'windsurf' | 'trae' | 'zed' | 'sublime' | 'jetbrains' | 'generic'
+  /** `d` do path oficial, em viewBox 0 0 24 24. */
+  path: string
 }
 
-const GLYPHS: Record<string, GlyphMeta> = {
-  vscode: { color: '#3ea6f0', shape: 'vscode' },
-  'vscode-insiders': { color: '#24bfa5', shape: 'vscode' },
-  vscodium: { color: '#4f9e6a', shape: 'vscode' },
-  cursor: { color: '#d8d8de', shape: 'cursor' },
-  windsurf: { color: '#58c4a1', shape: 'windsurf' },
-  trae: { color: '#ff6a3d', shape: 'trae' },
-  zed: { color: '#7fa4f5', shape: 'zed' },
-  sublime: { color: '#ff9800', shape: 'sublime' },
-  intellij: { color: '#fe4a7d', shape: 'jetbrains' },
-  webstorm: { color: '#25c8d6', shape: 'jetbrains' },
-  pycharm: { color: '#39d47e', shape: 'jetbrains' },
+const VSCODE_PATH =
+  'M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z'
+
+const BRANDS: Record<string, Brand> = {
+  vscode: { color: '#0098ff', path: VSCODE_PATH },
+  // Insiders reusa a fita do VS Code — muda só a cor da build (EDITOR-02).
+  'vscode-insiders': { color: '#24bfa5', path: VSCODE_PATH },
+  vscodium: {
+    color: '#2f80ed',
+    path: 'M11.583.54a1.467 1.467 0 0 0-.441 2.032c2.426 3.758 2.999 6.592 2.75 9.075-1.004 4.756-3.187 5.721-5.094 5.721-1.863 0-1.364-3.065.036-3.962.836-.522 1.906-.861 2.728-.861.814 0 1.474-.658 1.474-1.47 0-.812-.66-1.47-1.474-1.47-.96 0-1.901.202-2.78.545.18-.847.246-1.762.014-2.735-.352-1.477-1.367-2.889-3.128-4.257a1.476 1.476 0 0 0-2.069.256c-.5.64-.384 1.564.259 2.063 1.435 1.114 1.908 1.939 2.07 2.618.162.679.032 1.407-.293 2.408-.416 1.349-.9 2.553-1.11 3.708-.105.568-.114 1.187-.14 1.68-1.034-1.006-1.438-2.336-1.438-4.279 0-.811-.66-1.47-1.474-1.47-.814.001-1.473.659-1.473 1.47 0 2.654.776 5.179 2.855 6.863 1.883 1.793 6.67 1.13 6.67 4.01 0 .812 1.19 1.208 2.004 1.208.834 0 1.885-.558 1.885-1.208 0-3.267 3.443-5.253 9.11-5.244A1.472 1.472 0 0 0 24 15.773 1.472 1.472 0 0 0 22.53 14.3c-.388 0-.765.013-1.138.035.634-1.49.915-3.13.857-4.903a1.473 1.473 0 0 0-1.522-1.42 1.472 1.472 0 0 0-1.425 1.517c.076 2.32-.01 4.393-1.74 5.485-.49.31-1.062.58-1.604.58.42-1.145.738-2.353.869-3.655.083-.83.091-1.818-.003-2.585-.148-1.188-.325-2.535.126-3.55.405-.874 1.313-1.24 2.645-1.24.814 0 1.473-.659 1.473-1.47 0-.811-.659-1.47-1.473-1.47-1.98 0-3.481 1.042-4.332 2.3-.445-.95-.987-1.929-1.642-2.943a1.474 1.474 0 0 0-2.037-.44z',
+  },
+  cursor: {
+    color: '#d6d6dd',
+    path: 'M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23',
+  },
+  windsurf: {
+    color: '#37d4a7',
+    path: 'M23.55 5.067c-1.2038-.002-2.1806.973-2.1806 2.1765v4.8676c0 .972-.8035 1.7594-1.7597 1.7594-.568 0-1.1352-.286-1.4718-.7659l-4.9713-7.1003c-.4125-.5896-1.0837-.941-1.8103-.941-1.1334 0-2.1533.9635-2.1533 2.153v4.8957c0 .972-.7969 1.7594-1.7596 1.7594-.57 0-1.1363-.286-1.4728-.7658L.4076 5.1598C.2822 4.9798 0 5.0688 0 5.2882v4.2452c0 .2147.0656.4228.1884.599l5.4748 7.8183c.3234.462.8006.8052 1.3509.9298 1.3771.313 2.6446-.747 2.6446-2.0977v-4.893c0-.972.7875-1.7593 1.7596-1.7593h.003a1.798 1.798 0 0 1 1.4718.7658l4.9723 7.0994c.4135.5905 1.05.941 1.8093.941 1.1587 0 2.1515-.9645 2.1515-2.153v-4.8948c0-.972.7875-1.7594 1.7596-1.7594h.194a.22.22 0 0 0 .2204-.2202v-4.622a.22.22 0 0 0-.2203-.2203Z',
+  },
+  trae: {
+    color: '#e8e8ee',
+    path: 'M24 20.5H3.5V17H0V3.5h24ZM3.5 17h17V7h-17Zm8.5-5-2.5 2.5L7 12l2.5-2.5Zm7 0-2.5 2.5L14 12l2.5-2.5z',
+  },
+  zed: {
+    color: '#7da3f5',
+    path: 'M2.25 1.5a.75.75 0 0 0-.75.75v16.5H0V2.25A2.25 2.25 0 0 1 2.25 0h20.095c1.002 0 1.504 1.212.795 1.92L10.764 14.298h3.486V12.75h1.5v1.922a1.125 1.125 0 0 1-1.125 1.125H9.264l-2.578 2.578h11.689V9h1.5v9.375a1.5 1.5 0 0 1-1.5 1.5H5.185L2.562 22.5H21.75a.75.75 0 0 0 .75-.75V5.25H24v16.5A2.25 2.25 0 0 1 21.75 24H1.655C.653 24 .151 22.788.86 22.08L13.19 9.75H9.75v1.5h-1.5V9.375A1.125 1.125 0 0 1 9.375 8.25h5.314l2.625-2.625H5.625V15h-1.5V5.625a1.5 1.5 0 0 1 1.5-1.5h13.19L21.438 1.5z',
+  },
+  sublime: {
+    color: '#ff9800',
+    path: 'M20.953.004a.397.397 0 0 0-.18.017L3.225 5.585c-.175.055-.323.214-.402.398a.42.42 0 0 0-.06.22v5.726a.42.42 0 0 0 .06.22c.079.183.227.341.402.397l7.454 2.364-7.454 2.363c-.255.08-.463.374-.463.655v5.688c0 .282.208.444.463.363l17.55-5.565c.237-.075.426-.336.452-.6.003-.022.013-.04.013-.065V12.06c0-.281-.208-.575-.463-.656L13.4 9.065l7.375-2.339c.255-.08.462-.375.462-.656V.384c0-.211-.117-.355-.283-.38z',
+  },
+  // As três marcas JetBrains são placas quadradas com as letras vazadas —
+  // o tom é o acento de cada produto, não o preto da versão oficial.
+  intellij: {
+    color: '#fe2857',
+    path: 'M0 0v24h24V0zm3.723 3.111h5v1.834h-1.39v6.277h1.39v1.834h-5v-1.834h1.444V4.945H3.723zm11.055 0H17v6.5c0 .612-.055 1.111-.222 1.556-.167.444-.39.777-.723 1.11-.277.279-.666.557-1.11.668a3.933 3.933 0 0 1-1.445.278c-.778 0-1.444-.167-1.944-.445a4.81 4.81 0 0 1-1.279-1.056l1.39-1.555c.277.334.555.555.833.722.277.167.611.278.945.278.389 0 .721-.111 1-.389.221-.278.333-.667.333-1.278zM2.222 19.5h9V21h-9z',
+  },
+  webstorm: {
+    color: '#07c3f2',
+    path: 'M0 0v24h24V0H0zm17.889 2.889c1.444 0 2.667.444 3.667 1.278l-1.111 1.667c-.889-.611-1.722-1-2.556-1s-1.278.389-1.278.889v.056c0 .667.444.889 2.111 1.333 2 .556 3.111 1.278 3.111 3v.056c0 2-1.5 3.111-3.611 3.111-1.5-.056-3-.611-4.167-1.667l1.278-1.556c.889.722 1.833 1.222 2.944 1.222.889 0 1.389-.333 1.389-.944v-.056c0-.556-.333-.833-2-1.278-2-.5-3.222-1.056-3.222-3.056v-.056c0-1.833 1.444-3 3.444-3zm-16.111.222h2.278l1.5 5.778 1.722-5.778h1.667l1.667 5.778 1.5-5.778h2.333l-2.833 9.944H9.723L8.112 7.277l-1.667 5.778H4.612L1.779 3.111zm.5 16.389h9V21h-9v-1.5z',
+  },
+  pycharm: {
+    color: '#21d789',
+    path: 'M7.833 6.666v-.055c0-1-.667-1.5-1.778-1.5H4.389v3.055h1.723c1.111 0 1.721-.666 1.721-1.5zM0 0v24h24V0H0zm2.223 3.167h4c2.389 0 3.833 1.389 3.833 3.445v.055c0 2.278-1.778 3.5-4.001 3.5H4.389v2.945H2.223V3.167zM11.277 21h-9v-1.5h9V21zm4.779-7.777c-2.944.055-5.111-2.223-5.111-5.057C10.944 5.333 13.056 3 16.111 3c1.889 0 3 .611 3.944 1.556l-1.389 1.61c-.778-.722-1.556-1.111-2.556-1.111-1.658 0-2.873 1.375-2.887 3.084.014 1.709 1.174 3.083 2.887 3.083 1.111 0 1.833-.445 2.61-1.167l1.39 1.389c-.999 1.112-2.166 1.779-4.054 1.779z',
+  },
 }
 
 export interface EditorGlyphProps {
@@ -38,8 +75,7 @@ export interface EditorGlyphProps {
 }
 
 export default function EditorGlyph({ id, size = 16 }: EditorGlyphProps) {
-  const meta = GLYPHS[id] ?? { color: 'currentColor', shape: 'generic' as const }
-  const color = meta.color
+  const brand = BRANDS[id]
   const common = {
     width: size,
     height: size,
@@ -49,86 +85,25 @@ export default function EditorGlyph({ id, size = 16 }: EditorGlyphProps) {
     'data-editor-glyph': id,
   }
 
-  switch (meta.shape) {
-    // Fita do VS Code: a barra vertical à direita e a dobra em "<".
-    case 'vscode':
-      return (
-        <svg {...common}>
-          <path
-            fill={color}
-            fillRule="evenodd"
-            d="M17.4 1.9 21.5 3.8c.3.2.5.5.5.8v14.8c0 .3-.2.6-.5.8l-4.1 1.9c-.4.2-.8.1-1.1-.2l-6.4-5.9-4 3-3-2.2c-.3-.3-.3-.7 0-.9L6.1 12 2.9 9.9c-.3-.2-.3-.6 0-.9l3-2.2 4 3 6.4-5.9c.3-.3.7-.4 1.1-.2Zm.2 4.6L12.3 12l5.3 5.5V6.5Z"
-          />
-        </svg>
-      )
-    // Cubo isométrico do Cursor.
-    case 'cursor':
-      return (
-        <svg {...common} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round">
-          <path d="M12 2.6 20.6 7.3v9.4L12 21.4 3.4 16.7V7.3Z" />
-          <path d="M12 12 20.6 7.3M12 12 3.4 7.3M12 12v9.4" />
-        </svg>
-      )
-    // Rajadas de vento do Windsurf.
-    case 'windsurf':
-      return (
-        <svg
-          {...common}
-          fill="none"
-          stroke={color}
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M3 8h10.5a2.8 2.8 0 1 0-2.8-2.8" />
-          <path d="M3 12h13.5a2.8 2.8 0 1 1-2.8 2.8" />
-          <path d="M3 16h7" />
-        </svg>
-      )
-    // Vela triangular do Trae.
-    case 'trae':
-      return (
-        <svg {...common}>
-          <path fill={color} d="M12.9 2.6a1 1 0 0 1 1.8.5v16.6a1 1 0 0 1-1.5.9L4 16.2a1 1 0 0 1-.2-1.6Z" />
-          <path fill={color} opacity="0.45" d="M16.6 6.6 21 14.7a1 1 0 0 1-.9 1.5h-3.5Z" />
-        </svg>
-      )
-    // "Z" angular do Zed.
-    case 'zed':
-      return (
-        <svg {...common}>
-          <path fill={color} d="M5.6 3.5h12.8v3.4L10.2 17.1h8.2v3.4H5.6v-3.4l8.2-10.2H5.6Z" />
-        </svg>
-      )
-    // Placas inclinadas do Sublime Text.
-    case 'sublime':
-      return (
-        <svg {...common}>
-          <path fill={color} d="M5.8 5.6 18.2 2.3v4.6L5.8 10.2Z" />
-          <path fill={color} opacity="0.55" d="M18.2 21.7 5.8 18.4v-4.6l12.4 3.3Z" />
-        </svg>
-      )
-    // Moldura quadrada com a barra inferior das marcas JetBrains.
-    case 'jetbrains':
-      return (
-        <svg {...common} fill="none" stroke={color} strokeWidth="1.6">
-          <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="3" />
-          <path d="M6.9 17.3h6.4" strokeWidth="2" strokeLinecap="round" />
-        </svg>
-      )
-    // Genérico: chaves de código, para qualquer id novo do catálogo.
-    default:
-      return (
-        <svg
-          {...common}
-          fill="none"
-          stroke={color}
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M9 7 4.5 12 9 17M15 7l4.5 5-4.5 5" />
-        </svg>
-      )
+  // Id fora do catálogo de marcas: chaves de código, em vez de nada.
+  if (!brand) {
+    return (
+      <svg
+        {...common}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M9 7 4.5 12 9 17M15 7l4.5 5-4.5 5" />
+      </svg>
+    )
   }
+
+  return (
+    <svg {...common}>
+      <path fill={brand.color} d={brand.path} />
+    </svg>
+  )
 }

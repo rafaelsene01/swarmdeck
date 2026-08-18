@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), settings-shell (SET-01, SET-04, SET-05), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), editor-launch (EDITOR-02), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), settings-shell (SET-01, SET-04, SET-05), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17)
 
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -830,7 +830,10 @@ export default function App() {
         }
         .terminal-header__title-input:focus { border-color: var(--accent); }
         .terminal-header__actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
-        .terminal-header__actions button {
+        /* Filho direto de propósito: os itens do popover do EditorMenu são
+           botões descendentes deste contêiner e não podem herdar a caixa
+           quadrada de 24px das ações do cabeçalho (EDITOR-02). */
+        .terminal-header__actions > button {
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -843,12 +846,12 @@ export default function App() {
           color: var(--muted);
           cursor: pointer;
         }
-        .terminal-header__actions button:hover {
+        .terminal-header__actions > button:hover {
           background: rgba(255, 255, 255, 0.1);
           border-color: var(--border);
           color: var(--fg);
         }
-        .terminal-header__actions button:focus-visible {
+        .terminal-header__actions > button:focus-visible {
           outline: 2px solid var(--accent);
           outline-offset: 1px;
         }
