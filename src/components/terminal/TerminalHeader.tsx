@@ -1,9 +1,10 @@
-// SPEC: multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02), terminal-layout-options (LAYOUT-17)
+// SPEC: multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01)
 
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { CopyPlus, GripVertical, Maximize2, Minus, RotateCcw, X } from 'lucide-react'
 import InlineRename from '../shell/InlineRename'
+import EditorMenu from './EditorMenu'
 import StatusBadge from './StatusBadge'
 import ActivityLog, { type ActivityEntry, sortByMostRecent } from './ActivityLog'
 
@@ -32,6 +33,9 @@ export interface TerminalHeaderProps {
    * mais recente no hover. `undefined`/vazio não renderiza o log.
    */
   activities?: ActivityEntry[]
+  /** SPEC: editor-launch (EDITOR-01) — pasta de trabalho deste terminal,
+   * repassada ao `EditorMenu`. `undefined` deixa o botão desabilitado. */
+  cwd?: string
   /** Se true, fechar exige confirmação (há processo rodando). */
   hasActiveProcess?: boolean
   onMaximize?: () => void
@@ -69,6 +73,7 @@ export default function TerminalHeader({
   status,
   statusColor,
   activities,
+  cwd,
   hasActiveProcess = false,
   onMaximize,
   onMinimize,
@@ -192,6 +197,8 @@ export default function TerminalHeader({
         </details>
       )}
       <div className="terminal-header__actions">
+        {/* EDITOR-01: abre o `cwd` deste terminal num editor instalado. */}
+        <EditorMenu cwd={cwd} />
         <button type="button" onClick={onMaximize} aria-label="maximizar terminal">
           <Maximize2 size={13} aria-hidden="true" />
         </button>

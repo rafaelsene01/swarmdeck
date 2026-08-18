@@ -627,6 +627,7 @@ export default function App() {
                     index={index}
                     id={sessionIdByTerminalId[terminal.id]}
                     title={null}
+                    cwd={terminal.cwd}
                     hasActiveProcess
                     onMaximize={() => handleMaximize(terminal.id, terminal.mode)}
                     onMinimize={() => handleMinimize(terminal.id, terminal.mode)}

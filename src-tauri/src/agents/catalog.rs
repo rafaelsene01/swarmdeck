@@ -1,4 +1,7 @@
 // SPEC: agent-selection (AGT-01, AGT-02), session-restore (SESS-11, SESS-12, SESS-13)
+// SPEC: editor-launch (EDITOR-02) — `resolve_command_in_path` é a mesma
+// resolução de PATH, agora devolvendo o caminho resolvido: `editors.rs`
+// precisa dele para lançar `code.cmd`/`cursor.cmd` no Windows.
 
 //! Catálogo estático dos agentes de IA suportados e detecção de CLI no PATH.
 //!
@@ -9,7 +12,7 @@
 //! multiplexador de terminais mesmo sem nenhum CLI instalado (ver
 //! `spec.md`, "Casos de borda").
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Uma entrada do catálogo: identidade estável + como resolver o CLI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -102,7 +105,7 @@ pub fn catalog() -> &'static [AgentDescriptor] {
     &CATALOG
 }
 
-/// `true` quando `dir` contém um arquivo que resolve `command`.
+/// O caminho do arquivo em `dir` que resolve `command`, se houver.
 ///
 /// Tenta primeiro o nome exato (cobre binários Unix sem extensão e o caso
 /// raro de um arquivo Windows sem extensão). Quando `pathext` é passado,
@@ -114,27 +117,35 @@ pub fn catalog() -> &'static [AgentDescriptor] {
 /// do Windows via `PATHEXT` não diferencia caixa, então essa função não
 /// pode depender de o filesystem do processo ser case-insensitive por
 /// acaso (ele não é em CI Linux).
-fn command_exists_in_dir(dir: &Path, command: &str, pathext: Option<&str>) -> bool {
-    let entries = match std::fs::read_dir(dir) {
-        Ok(entries) => entries,
-        Err(_) => return false,
-    };
+fn resolve_command_in_dir(dir: &Path, command: &str, pathext: Option<&str>) -> Option<PathBuf> {
+    let names: Vec<std::ffi::OsString> = std::fs::read_dir(dir)
+        .ok()?
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.file_type().is_ok_and(|t| t.is_file()))
+        .map(|entry| entry.file_name())
+        .collect();
 
-    let mut candidates = vec![command.to_string()];
-    if let Some(pathext) = pathext {
-        candidates.extend(
+    // A ordem dos candidatos é a ordem de preferência, e não é cosmética: a
+    // mesma pasta costuma ter `code` (shim de shell, sem extensão, que só o
+    // Git Bash executa) e `code.cmd` (o que o Windows realmente resolve).
+    // Varrer as extensões de `%PATHEXT%` primeiro reproduz a resolução do
+    // SO; a ordem de `read_dir` decidiria no cara ou coroa.
+    let mut candidates: Vec<String> = pathext
+        .map(|pathext| {
             pathext
                 .split(';')
-                .filter(|e| !e.is_empty())
-                .map(|ext| format!("{command}{ext}")),
-        );
-    }
+                .filter(|ext| !ext.is_empty())
+                .map(|ext| format!("{command}{ext}"))
+                .collect()
+        })
+        .unwrap_or_default();
+    candidates.push(command.to_string());
 
-    entries.filter_map(|e| e.ok()).any(|entry| {
-        entry.file_type().is_ok_and(|t| t.is_file())
-            && candidates
-                .iter()
-                .any(|candidate| entry.file_name().eq_ignore_ascii_case(candidate))
+    candidates.iter().find_map(|candidate| {
+        names
+            .iter()
+            .find(|name| name.eq_ignore_ascii_case(candidate))
+            .map(|name| dir.join(name))
     })
 }
 
@@ -142,8 +153,17 @@ fn command_exists_in_dir(dir: &Path, command: &str, pathext: Option<&str>) -> bo
 /// resolvidos, em vez de ler o ambiente diretamente — assim o teste monta
 /// um PATH temporário com um executável falso sem depender do que existe
 /// de verdade na máquina que roda o teste.
+pub fn resolve_command_in_path(
+    command: &str,
+    path_var: &str,
+    pathext: Option<&str>,
+) -> Option<PathBuf> {
+    std::env::split_paths(path_var).find_map(|dir| resolve_command_in_dir(&dir, command, pathext))
+}
+
+/// Açúcar sobre `resolve_command_in_path` para quem só quer saber se resolve.
 fn command_exists_in_path(command: &str, path_var: &str, pathext: Option<&str>) -> bool {
-    std::env::split_paths(path_var).any(|dir| command_exists_in_dir(&dir, command, pathext))
+    resolve_command_in_path(command, path_var, pathext).is_some()
 }
 
 /// Detecta, para cada agente do catálogo, se o comando resolve no PATH
@@ -162,12 +182,12 @@ pub fn detect_installed() -> Vec<AgentStatus> {
 /// quando a variável não está definida. `None` fora do Windows: lá a
 /// resolução por extensão implícita não existe.
 #[cfg(windows)]
-fn windows_pathext() -> Option<String> {
+pub fn windows_pathext() -> Option<String> {
     Some(std::env::var("PATHEXT").unwrap_or_else(|_| ".COM;.EXE;.BAT;.CMD".to_string()))
 }
 
 #[cfg(not(windows))]
-fn windows_pathext() -> Option<String> {
+pub fn windows_pathext() -> Option<String> {
     None
 }
 

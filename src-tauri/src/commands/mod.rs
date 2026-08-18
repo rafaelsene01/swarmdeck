@@ -2,6 +2,8 @@
 
 // SPEC: agent-selection (AGT-01, AGT-03, AGT-04)
 pub mod agents;
+// SPEC: editor-launch (EDITOR-02, EDITOR-04)
+pub mod editors;
 pub mod projects;
 // SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-11)
 pub mod quota;

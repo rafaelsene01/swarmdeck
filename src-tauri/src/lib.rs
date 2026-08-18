@@ -7,6 +7,8 @@ use tauri::Manager;
 pub mod agents;
 pub mod commands;
 pub mod db;
+// SPEC: editor-launch (EDITOR-02, EDITOR-04, EDITOR-05)
+pub mod editors;
 pub mod ipc;
 pub mod paths;
 pub mod projects;
@@ -149,6 +151,9 @@ pub fn run() {
             // SPEC: agent-selection (AGT-01, AGT-03, AGT-04)
             commands::agents::agent_catalog,
             commands::agents::agent_default,
+            // SPEC: editor-launch (EDITOR-02, EDITOR-04)
+            commands::editors::editor_catalog,
+            commands::editors::editor_open,
             // SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-11, QUOTA-17)
             commands::quota::quota_prefs_get,
             commands::quota::quota_prefs_set,

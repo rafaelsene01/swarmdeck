@@ -1,4 +1,4 @@
-// SPEC: terminal-chrome (CHROME-02), multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-layout-options (LAYOUT-17)
+// SPEC: terminal-chrome (CHROME-02), multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01)
 
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -13,7 +13,7 @@ describe('TerminalHeader — barra de título da janela (CHROME-02)', () => {
     expect(screen.getByText('Terminal 2')).toBeInTheDocument()
   })
 
-  it('expõe maximizar, minimizar, clonar, reiniciar e fechar como botões rotulados, nessa ordem', () => {
+  it('expõe abrir-no-editor, maximizar, minimizar, clonar, reiniciar e fechar como botões rotulados, nessa ordem', () => {
     const { container } = render(<TerminalHeader index={1} title={null} />)
 
     // Escopado à barra de ações: o próprio título também é um `role="button"`
@@ -23,6 +23,8 @@ describe('TerminalHeader — barra de título da janela (CHROME-02)', () => {
     )
 
     expect(labels).toEqual([
+      // EDITOR-01: o botão do editor abre a barra de ações.
+      'abrir pasta no editor',
       'maximizar terminal',
       'minimizar terminal',
       'clonar terminal',
