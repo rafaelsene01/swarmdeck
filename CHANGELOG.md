@@ -1,6 +1,12 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.21] - 2026-08-18
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.20] - 2026-08-18
 
 ### Outros
@@ -11,6 +17,12 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 - Introduced a mechanism to store bytes produced by xterm before `pty_spawn` resolves, preventing data loss during session restoration.
 - Implemented a `sendToPty` function to manage data transmission to the terminal, ensuring that pending data is sent once the terminal ID is available.
+
+- Update editor-launch specifications and enhance EditorMenu styling
+
+- Updated the editor-launch specification in App.tsx to include the editor-launch feature (EDITOR-02).
+- Enhanced the EditorGlyph component to use official brand paths for code editor icons, improving visual consistency.
+- Adjusted the EditorMenu styles to ensure consistent alignment of editor names, enhancing user interface clarity.
 
 ## [0.1.19] - 2026-08-18
 
