@@ -32,6 +32,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine as _;
 use minisign_verify::{PublicKey, Signature};
 use thiserror::Error;
 
@@ -65,12 +67,65 @@ pub fn verify_signature(
     signature: &str,
     public_key: &str,
 ) -> Result<(), PortableUpdateError> {
-    let key = PublicKey::from_base64(public_key)
+    let key = parse_public_key(public_key)
         .map_err(|e| PortableUpdateError::InvalidPublicKey(e.to_string()))?;
-    let sig = Signature::decode(signature)
-        .map_err(|e| PortableUpdateError::InvalidSignatureFormat(e.to_string()))?;
+    let sig = parse_signature(signature)
+        .map_err(PortableUpdateError::InvalidSignatureFormat)?;
     key.verify(data, &sig, false)
         .map_err(|e| PortableUpdateError::SignatureMismatch(e.to_string()))
+}
+
+/// Aceita as três formas em que a chave pública minisign circula, porque
+/// quem chama passa a que tem em mãos:
+///
+/// 1. o conteúdo do arquivo `.pub` (linha de comentário + linha da chave);
+/// 2. só a linha base64 da chave (`RW...`);
+/// 3. o arquivo inteiro **em base64** — que é o que `tauri.conf.json` guarda
+///    em `plugins.updater.pubkey`, e o que o `tauri-plugin-updater` espera.
+///
+/// A forma 3 é a que chega em produção por `check::pubkey`. Passá-la direto
+/// a `PublicKey::from_base64` decodifica 100 bytes de texto onde a chave tem
+/// 42, e o erro que sobe é `Invalid encoding in minisign data` — a falha de
+/// update relatada em 0.1.17.
+fn parse_public_key(public_key: &str) -> Result<PublicKey, String> {
+    let trimmed = public_key.trim();
+
+    // Forma 1: arquivo .pub literal.
+    if let Ok(key) = PublicKey::decode(trimmed) {
+        return Ok(key);
+    }
+
+    // Forma 2: só a linha da chave.
+    if let Ok(key) = PublicKey::from_base64(trimmed) {
+        return Ok(key);
+    }
+
+    // Forma 3: arquivo .pub inteiro em base64 (tauri.conf.json). O erro
+    // desta tentativa é o que sobe, por ser o caminho de produção.
+    let decoded = BASE64
+        .decode(trimmed)
+        .map_err(|e| format!("base64 inválido: {e}"))?;
+    let text = String::from_utf8(decoded).map_err(|e| format!("chave não é UTF-8: {e}"))?;
+    PublicKey::decode(text.trim()).map_err(|e| e.to_string())
+}
+
+/// Aceita a assinatura minisign crua (conteúdo do `.sig`) e a forma que o
+/// `latest.json` publica: esse mesmo arquivo em base64, como o
+/// `tauri-plugin-updater` grava e lê. `apply::download` passa o campo
+/// `signature` do manifesto direto para cá, então a segunda forma é a de
+/// produção.
+fn parse_signature(signature: &str) -> Result<Signature, String> {
+    let trimmed = signature.trim();
+
+    if let Ok(sig) = Signature::decode(trimmed) {
+        return Ok(sig);
+    }
+
+    let decoded = BASE64
+        .decode(trimmed)
+        .map_err(|e| format!("base64 inválido: {e}"))?;
+    let text = String::from_utf8(decoded).map_err(|e| format!("assinatura não é UTF-8: {e}"))?;
+    Signature::decode(text.trim()).map_err(|e| e.to_string())
 }
 
 /// Aplica a troca de executável em `exe_dir`: reprova pasta somente-leitura
@@ -179,6 +234,49 @@ mod tests {
     const PUBLIC_KEY: &str = "RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3";
     const DATA: &[u8] = b"test";
     const SIGNATURE: &str = "untrusted comment: signature from minisign secret key\nRUQf6LRCGA9i559r3g7V1qNyJDApGip8MfqcadIgT9CuhV3EMhHoN1mGTkUidF/z7SrlQgXdy8ofjb7bNJJylDOocrCo8KLzZwo=\ntrusted comment: timestamp:1556193335\tfile:test\ny/rUw2y8/hOUYjZU71eHp/Wo1KZ40fGy2VJEDl34XMJM+TX48Ss/17u3IvIfbVR1FkZZSNCisQbuQY+bHwhEBg==\n";
+
+    /// Mesma chave de `PUBLIC_KEY`, na forma que `tauri.conf.json` guarda:
+    /// o arquivo `.pub` inteiro (comentário + chave) em base64.
+    fn public_key_tauri_form() -> String {
+        BASE64.encode(format!(
+            "untrusted comment: minisign public key: 628A0A42B42D1FA7
+{PUBLIC_KEY}
+"
+        ))
+    }
+
+    // 0. a chave como `tauri.conf.json` a guarda verifica igual à forma
+    // crua — sem isto o update de produção morre em "chave pública
+    // inválida: Invalid encoding in minisign data".
+    #[test]
+    fn verify_signature_aceita_chave_no_formato_do_tauri_conf() {
+        assert!(verify_signature(DATA, SIGNATURE, &public_key_tauri_form()).is_ok());
+    }
+
+    // 0b. chave que não é nenhuma das três formas continua reprovando.
+    #[test]
+    fn verify_signature_rejeita_chave_invalida() {
+        assert!(matches!(
+            verify_signature(DATA, SIGNATURE, "nao-e-uma-chave"),
+            Err(PortableUpdateError::InvalidPublicKey(_))
+        ));
+    }
+
+    // 0c. assinatura no formato do latest.json (arquivo .sig em base64)
+    // verifica igual à crua — é a forma que `apply::download` recebe.
+    #[test]
+    fn verify_signature_aceita_assinatura_no_formato_do_manifesto() {
+        let encoded = BASE64.encode(SIGNATURE);
+        assert!(verify_signature(DATA, &encoded, PUBLIC_KEY).is_ok());
+    }
+
+    // 0d. assinatura base64 válida mas adulterada por dentro continua
+    // reprovando — a normalização não afrouxa a verificação.
+    #[test]
+    fn verify_signature_rejeita_assinatura_adulterada_no_formato_do_manifesto() {
+        let tampered = SIGNATURE.replace("y/rUw2y8", "y/rUw2y9");
+        assert!(verify_signature(DATA, &BASE64.encode(tampered), PUBLIC_KEY).is_err());
+    }
 
     // 1. assinatura válida sobre os bytes certos -> Ok.
     #[test]

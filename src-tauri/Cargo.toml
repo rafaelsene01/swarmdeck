@@ -42,6 +42,11 @@ semver = "1"
 # esquema de confiança (Ed25519/minisign) para os dois caminhos de update.
 # Versão reconfirmada no crates.io em 01/08/2026 (T16): minisign-verify 0.2.5.
 minisign-verify = "0.2.5"
+# Decodifica a chave pública que `tauri.conf.json` guarda (o arquivo .pub
+# inteiro em base64) antes de entregá-la ao minisign-verify — ver
+# `update/swap.rs::parse_public_key`. Já estava na árvore como dependência
+# transitiva do tauri; aqui só passa a ser declarada.
+base64 = "0.22"
 
 # SPEC: multi-terminal (TERM-10, TERM-11)
 # Seletor nativo de pasta usado pelo `NewTerminalDialog` (T15) para escolher
