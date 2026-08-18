@@ -1,11 +1,47 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.19] - 2026-08-18
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Implement session restoration handling for delayed agent catalog response
+
+- Added a new test to verify that sessions are correctly restored when the agent catalog is received after the workspace is loaded.
+- Introduced a state variable to manage the catalog loading status, preventing the session restoration modal from displaying prematurely.
+- Updated the App component to handle the catalog response and ensure proper session restoration behavior.
+
+- Update base64 dependency and enhance public key handling in signature verification
+
+- Added `base64` crate as a direct dependency in `Cargo.toml` to facilitate public key decoding.
+- Implemented `parse_public_key` and `parse_signature` functions to handle multiple formats of public keys and signatures, improving robustness in the signature verification process.
+- Updated tests to ensure correct handling of public keys and signatures in various formats.
+
+- Refactor test assertions for improved readability
+
+- Reformatted the assertion in the `build_open_command_roteia_script_do_windows_por_cmd` test for better clarity and alignment.
+- Simplified the error handling in the `verify_signature` function by combining method calls into a single line for improved conciseness.
+
+- Revert "chore(release): v0.1.19"
+
+This reverts commit 869283a52d3eafc6d2ce41076aa685b25055f73a.
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.18] - 2026-08-18
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Refactor App component to integrate Settings as an overlay
+
+- Updated the App component to mount the SettingsShell inline as an overlay instead of opening a separate OS window.
+- Modified the settings_open command handling to reflect the new overlay behavior.
+- Enhanced the SettingsShell component to support closing via backdrop click and Escape key.
+- Updated tests to verify the new overlay functionality and interactions with the settings modal.
 
 ## [0.1.17] - 2026-08-17
 
