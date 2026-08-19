@@ -1,11 +1,24 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.26] - 2026-08-19
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.25] - 2026-08-19
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Update AgentStep and PaneWizard components to support "Terminal limpo" functionality
+
+- Enhanced AgentStep to include a "Terminal limpo" button, allowing users to select a clean terminal without an agent.
+- Updated tests for AgentStep to verify the behavior of the new button and its interaction with the onSelectAgent function.
+- Modified PaneWizard to handle the selection of "Terminal limpo" and ensure it emits the correct parameters during confirmation.
+- Updated specifications to reflect the inclusion of PROJ-21, ensuring comprehensive coverage of the new terminal functionality.
 
 ## [0.1.24] - 2026-08-18
 
