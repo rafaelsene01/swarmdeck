@@ -48,8 +48,9 @@ minisign-verify = "0.2.5"
 # transitiva do tauri; aqui só passa a ser declarada.
 base64 = "0.22"
 
-# SPEC: multi-terminal (TERM-10, TERM-11)
-# Seletor nativo de pasta usado pelo `NewTerminalDialog` (T15) para escolher
+# SPEC: projects (PROJ-17, PROJ-18)
+# Seletor nativo de pasta usado pelo wizard do painel (`PaneWizard`) e pelo
+# formulário de projeto para escolher
 # o diretório de trabalho do terminal. Versão confirmada no crates.io em
 # 03/08/2026 (T14): tauri-plugin-dialog 2.7.2 (exige `tauri ^2.10`,
 # satisfeito por `tauri = "2"` acima, mesma faixa que tauri-plugin-updater

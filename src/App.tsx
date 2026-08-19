@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), editor-launch (EDITOR-02), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), settings-shell (SET-01, SET-04, SET-05), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), window-chrome (WIN-01, WIN-02, WIN-03), minimized-tray (MIN-01, MIN-02, MIN-04, MIN-05, MIN-06, MIN-07)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), editor-launch (EDITOR-02), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), settings-shell (SET-01, SET-04, SET-05), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), window-chrome (WIN-01, WIN-02, WIN-03), minimized-tray (MIN-01, MIN-02, MIN-04, MIN-05, MIN-06, MIN-07), projects (PROJ-11, PROJ-12, PROJ-13, PROJ-14, PROJ-16)
 
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -36,7 +36,7 @@ import RestoreSessionDialog, {
 } from './components/shell/RestoreSessionDialog'
 import TerminalPane from './components/terminal/TerminalPane'
 import TerminalHeader from './components/terminal/TerminalHeader'
-import NewTerminalDialog from './components/terminal/NewTerminalDialog'
+import PaneWizard from './components/terminal/PaneWizard'
 import type { AgentDescriptor } from './routes/settings/AgentPanel'
 import SettingsShell from './routes/settings/SettingsShell'
 import {
@@ -168,7 +168,6 @@ export default function App() {
   const [activeTabId, setActiveTabId] = useState('')
   /** Id da aba em renomeação inline (TAB-06); `null` = nenhuma. */
   const [renamingTabId, setRenamingTabId] = useState<string | null>(null)
-  const [dialogOpen, setDialogOpen] = useState(false)
   // SET-01: Settings is an overlay over the main window, not a separate
   // OS window — the whole shell mounts inline (see the backdrop below).
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -182,7 +181,7 @@ export default function App() {
 
   // SPEC: agent-selection (AGT-01, AGT-03, AGT-04)
   // Catálogo real e padrão efetivo, buscados uma vez no mount — antes disto
-  // `NewTerminalDialog` recebia `agents={[]}`/`defaultAgentId={null}` fixos
+  // o antigo diálogo recebia `agents={[]}`/`defaultAgentId={null}` fixos
   // (ver git blame / relatório da task T5) e a pré-seleção do padrão (AGT-01)
   // e a marcação de "não instalado" (AGT-04) nunca aconteciam de verdade.
   const [agents, setAgents] = useState<AgentDescriptor[]>([])
@@ -334,6 +333,12 @@ export default function App() {
       ),
     )
     hydrated.current = true
+
+    // SPEC: projects (PROJ-14) — retomar o workspace é usar os projetos de
+    // novo. Uma chamada só com todos os `cwd`: o backend casa cada um e
+    // agrupa por projeto. Falha não interrompe a restauração.
+    const cwds = saved.flatMap((tab) => tab.terminals.map((t) => t.cwd))
+    if (cwds.length > 0) void invoke('project_touch_cwds', { cwds }).catch(() => {})
   }
 
   useEffect(() => {
@@ -463,21 +468,23 @@ export default function App() {
 
   // SPEC: shell-chrome (EMPTY-07, EMPTY-08, EMPTY-09) — Ctrl+T only while
   // EmptyState is showing (no panel is mounted to steal the keystroke from);
-  // re-bound whenever terminals.length or dialogOpen changes so the closure
-  // never reads a stale value.
+  // re-bound whenever terminals.length changes so the closure never reads a
+  // stale value. SPEC: projects (PROJ-11) — o rascunho já é um painel, então
+  // o próprio `terminals.length !== 0` é o que impede o segundo wizard
+  // (EMPTY-08) desde que `dialogOpen` deixou de existir.
   useEffect(() => {
     if (terminals.length !== 0) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!event.ctrlKey || event.key.toLowerCase() !== 't') return
       event.preventDefault()
-      if (dialogOpen || settingsOpen) return
-      setDialogOpen(true)
+      if (settingsOpen) return
+      handleNewTerminalDraft()
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [terminals.length, dialogOpen, settingsOpen])
+  }, [terminals.length, settingsOpen])
 
   // SET-04: Esc closes the Settings overlay — the modal covers the whole
   // app, so the usual dialog escape hatch has to work here too.
@@ -656,16 +663,32 @@ export default function App() {
     })
   }
 
-  // SPEC: agent-selection (AGT-03)
-  // `agentId` escolhido no diálogo (troca local à sessão, `NewTerminalDialog`
-  // já garante isso) precisa sobreviver até `TerminalPane`/`pty_spawn` — antes
-  // desta task o parâmetro era descartado (`_agentId`) e todo terminal
-  // arrancava sem `agent`, caindo sempre no shell puro.
-  const handleCreate = (cwd: string, agentId: string | null) => {
-    const terminal = { ...defaultTerminal(), cwd: cwd.trim() || '.' }
-    setActiveTerminals((prev) => evenWidths([...prev, terminal]))
-    setAgentByTerminalId((prev) => ({ ...prev, [terminal.id]: agentId }))
-    setDialogOpen(false)
+  /** SPEC: projects (PROJ-11) — os três gatilhos de novo terminal inserem um
+   * painel de rascunho na aba ativa, que renderiza o wizard. Nenhum
+   * `pty_spawn` acontece aqui: o PTY só nasce quando o wizard confirma e
+   * `TerminalPane` monta. O teto de 4 conta o rascunho (PROJ-11 AC14) porque
+   * ele já está na lista. */
+  const handleNewTerminalDraft = () => {
+    if (terminals.length >= MAX_TERMINALS) return
+
+    const draft = { ...defaultTerminal(), draft: true }
+    setActiveTerminals((prev) => evenWidths([...prev, draft]))
+  }
+
+  // SPEC: agent-selection (AGT-03), projects (PROJ-11)
+  // `agentId` escolhido no wizard (troca local à sessão) precisa sobreviver
+  // até `TerminalPane`/`pty_spawn`. Confirmar limpa `draft`: é a mesma linha
+  // do grid que deixa de renderizar o wizard e passa a montar o terminal.
+  //
+  // `projectId` não é usado aqui: quem grava `last_used` é o próprio wizard,
+  // na seleção do projeto — lá o `project_touch` também é o que valida que o
+  // caminho ainda existe (PROJ-13 AC15), e validar depois de o painel virar
+  // terminal vivo seria tarde demais.
+  const handleWizardConfirm = (id: string, cwd: string, agentId: string | null) => {
+    setActiveTerminals((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, cwd: cwd.trim() || '.', draft: false } : t)),
+    )
+    setAgentByTerminalId((prev) => ({ ...prev, [id]: agentId }))
   }
 
   /** Conteúdo de uma aba. Toda aba é renderizada em todo quadro — a inativa
@@ -687,7 +710,7 @@ export default function App() {
         style={{ display: tab.id === activeTab.id ? 'block' : 'none' }}
       >
         {tab.terminals.length === 0 ? (
-          <EmptyState onCreateTerminal={() => setDialogOpen(true)} />
+          <EmptyState onCreateTerminal={handleNewTerminalDraft} />
         ) : (
           <GridLayout
             panes={panes}
@@ -737,6 +760,10 @@ export default function App() {
                 >
                   <TerminalHeader
                     index={index}
+                    // SPEC: projects (PROJ-11, PROJ-12) — rascunho reduz as
+                    // ações do cabeçalho: não há PTY para capturar, clonar,
+                    // reiniciar nem minimizar.
+                    draft={terminal.draft}
                     id={sessionIdByTerminalId[terminal.id]}
                     title={null}
                     cwd={terminal.cwd}
@@ -759,21 +786,35 @@ export default function App() {
                     }}
                   />
                   <div className="app-pane__body">
-                    <TerminalPane
-                      key={`${terminal.id}:${resetNonceByTerminalId[terminal.id] ?? 0}`}
-                      cwd={terminal.cwd}
-                      agent={agentByTerminalId[terminal.id] ?? undefined}
-                      sessionId={terminal.agentSessionId ?? null}
-                      resume={terminal.resumeSession ?? false}
-                      onSessionId={(sessionId) =>
-                        setSessionIdByTerminalId((prev) => ({ ...prev, [terminal.id]: sessionId }))
-                      }
-                      // SPEC: terminal-screenshot (SHOT-13)
-                      onTerminal={(term) => {
-                        if (term) terminalsRef.current.set(terminal.id, term)
-                        else terminalsRef.current.delete(terminal.id)
-                      }}
-                    />
+                    {/* SPEC: projects (PROJ-11) — enquanto o painel é
+                        rascunho o wizard ocupa o corpo e `TerminalPane` não
+                        monta: sem mount não há `pty_spawn`, e é isso que
+                        mantém o painel sem processo até a confirmação. */}
+                    {terminal.draft ? (
+                      <PaneWizard
+                        agents={agents}
+                        installedIds={installedIds}
+                        defaultAgentId={defaultAgentId}
+                        onConfirm={(cwd, agentId) => handleWizardConfirm(terminal.id, cwd, agentId)}
+                        onCancel={() => handleCloseTerminal(terminal.id)}
+                      />
+                    ) : (
+                      <TerminalPane
+                        key={`${terminal.id}:${resetNonceByTerminalId[terminal.id] ?? 0}`}
+                        cwd={terminal.cwd}
+                        agent={agentByTerminalId[terminal.id] ?? undefined}
+                        sessionId={terminal.agentSessionId ?? null}
+                        resume={terminal.resumeSession ?? false}
+                        onSessionId={(sessionId) =>
+                          setSessionIdByTerminalId((prev) => ({ ...prev, [terminal.id]: sessionId }))
+                        }
+                        // SPEC: terminal-screenshot (SHOT-13)
+                        onTerminal={(term) => {
+                          if (term) terminalsRef.current.set(terminal.id, term)
+                          else terminalsRef.current.delete(terminal.id)
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
               )
@@ -964,12 +1005,11 @@ export default function App() {
         }
         .grid-layout__divider:hover { background: rgba(245, 183, 0, 0.35); }
         .terminal-pane { width: 100%; height: 100%; }
-        /* NewTerminalDialog (agent-selection/T4) não traz posicionamento
-           próprio — é apresentacional, recebe o layout de quem monta. Sem
-           isto ele nasce inline no fim da coluna, onde a camada de scroll
-           do xterm.js (sem clipping) fica por cima e intercepta cliques
-           nos botões do diálogo. Modal com backdrop é o tratamento correto
-           de qualquer forma. */
+        /* Backdrop de diálogo modal — hoje só o RestoreSessionDialog
+           (SESS-01) o usa; o antigo diálogo de novo terminal virou o wizard
+           dentro do painel de rascunho (PROJ-11). Sem isto o cartão nasce
+           inline no fim da coluna, onde a camada de scroll do xterm.js (sem
+           clipping) fica por cima e intercepta cliques. */
         .app-dialog-backdrop {
           position: fixed;
           inset: 0;
@@ -1008,16 +1048,6 @@ export default function App() {
           box-shadow: 0 32px 80px rgba(0, 0, 0, 0.65);
         }
         .app-settings-modal > .settings-shell { flex: 1 1 auto; min-width: 0; }
-        .app-dialog-backdrop .new-terminal-dialog {
-          background: #1c1c1f;
-          border: 1px solid #333;
-          border-radius: 8px;
-          padding: 1.25rem 1.5rem;
-          min-width: 320px;
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
       `}</style>
 
       {/* SPEC: window-chrome (WIN-01, WIN-02, WIN-03) — barra de título própria,
@@ -1029,7 +1059,7 @@ export default function App() {
           (src-tauri/src/windows/settings.rs), which stays registered but is
           no longer called from the UI. */}
       <Header
-        onCreateTerminal={() => setDialogOpen(true)}
+        onCreateTerminal={handleNewTerminalDraft}
         onOpenSettings={() => setSettingsOpen(true)}
         atMaxTerminals={terminals.length >= MAX_TERMINALS}
         hasUpdateAvailable={hasUpdateAvailable}
@@ -1152,18 +1182,6 @@ export default function App() {
             cameraRef.current?.focus()
           }}
         />
-      )}
-
-      {dialogOpen && (
-        <div className="app-dialog-backdrop">
-          <NewTerminalDialog
-            agents={agents}
-            installedIds={installedIds}
-            defaultAgentId={defaultAgentId}
-            onConfirm={handleCreate}
-            onCancel={() => setDialogOpen(false)}
-          />
-        </div>
       )}
 
       {/* SET-01/SET-04: clicking the backdrop closes, same as X/"Fechar"; the

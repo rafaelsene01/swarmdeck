@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-04, TERM-07, TERM-08), terminal-layout-options (LAYOUT-16, LAYOUT-19, LAYOUT-25), session-restore (SESS-10, SESS-16), minimized-tray (MIN-01)
+// SPEC: multi-terminal (TERM-04, TERM-07, TERM-08), terminal-layout-options (LAYOUT-16, LAYOUT-19, LAYOUT-25), session-restore (SESS-10, SESS-16), minimized-tray (MIN-01), projects (PROJ-12)
 
 /**
  * Estado de exibição de um terminal no grid.
@@ -31,6 +31,10 @@ export interface TerminalState {
    * decisão de arranque, e guardá-la faria o segundo boot herdar a escolha do
    * primeiro sem o usuário ter dito nada. */
   resumeSession?: boolean
+  /** SPEC: projects (PROJ-12) — painel que ainda não escolheu projeto/agente:
+   * renderiza o wizard em vez de `TerminalPane`, nunca é persistido, e some ao
+   * ser fechado sem `pty_kill`. */
+  draft?: boolean
 }
 
 /**
@@ -119,19 +123,23 @@ export interface LayoutEntry {
   agentSessionId?: string | null
 }
 
-/** Converte o estado de exibição para a forma que `layout.rs::save` grava. */
+/** Converte o estado de exibição para a forma que `layout.rs::save` grava.
+ * Rascunhos ficam de fora (PROJ-12): o painel ainda não tem `cwd` escolhido, e
+ * os `slot` dos demais seguem contíguos porque o filtro roda antes do índice. */
 export function toLayoutEntries(terminals: TerminalState[]): LayoutEntry[] {
-  return terminals.map((t, index) => ({
-    id: t.id,
-    slot: index,
-    fracW: t.fracW,
-    fracH: t.fracH,
-    cwd: t.cwd,
-    minimized: t.mode === 'minimized',
-    // SESS-10: o id da sessão vai junto; `resumeSession` não — é decisão de
-    // arranque, não estado do workspace.
-    agentSessionId: t.agentSessionId ?? null,
-  }))
+  return terminals
+    .filter((t) => !t.draft)
+    .map((t, index) => ({
+      id: t.id,
+      slot: index,
+      fracW: t.fracW,
+      fracH: t.fracH,
+      cwd: t.cwd,
+      minimized: t.mode === 'minimized',
+      // SESS-10: o id da sessão vai junto; `resumeSession` não — é decisão de
+      // arranque, não estado do workspace.
+      agentSessionId: t.agentSessionId ?? null,
+    }))
 }
 
 /** Reconstrói o estado de exibição a partir do que `layout.rs::restore`

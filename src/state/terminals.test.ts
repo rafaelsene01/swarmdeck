@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-04, TERM-08), terminal-layout-options (LAYOUT-16, LAYOUT-19, LAYOUT-25), session-restore (SESS-10, SESS-16)
+// SPEC: multi-terminal (TERM-04, TERM-08), terminal-layout-options (LAYOUT-16, LAYOUT-19, LAYOUT-25), session-restore (SESS-10, SESS-16), projects (PROJ-12)
 
 import { describe, expect, it } from 'vitest'
 import {
@@ -120,6 +120,44 @@ describe('toLayoutEntries', () => {
     const [entry] = toLayoutEntries([{ id: 'a', cwd: '/a', fracW: 1, fracH: 1, mode: 'normal' }])
 
     expect(entry?.agentSessionId).toBeNull()
+  })
+
+  // PROJ-12: o rascunho ainda não escolheu cwd; persistir criaria um painel que
+  // o boot seguinte abriria em lugar nenhum.
+  it('não persiste terminal em rascunho e mantém os slot contíguos', () => {
+    const list = terminals()
+    list.splice(1, 0, { id: 'draft', cwd: '', fracW: 0.25, fracH: 0.5, mode: 'normal', draft: true })
+
+    const entries = toLayoutEntries(list)
+
+    expect(entries.map((e) => e.id)).toEqual(['a', 'b', 'c'])
+    expect(entries.map((e) => e.slot)).toEqual([0, 1, 2])
+  })
+})
+
+// PROJ-12: rascunho é um terminal como outro qualquer para o grid — só não é
+// persistido. As operações de lista continuam valendo sobre ele.
+describe('operações de grid com um rascunho na lista', () => {
+  function withDraft(): TerminalState[] {
+    const list = terminals()
+    list.splice(1, 0, { id: 'draft', cwd: '', fracW: 0.25, fracH: 0.5, mode: 'normal', draft: true })
+    return list
+  }
+
+  it('close remove o rascunho sem tocar nos demais', () => {
+    expect(close(withDraft(), 'draft').map((t) => t.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('maximize e minimize alcançam o rascunho', () => {
+    expect(maximize(withDraft(), 'draft').find((t) => t.id === 'draft')?.mode).toBe('maximized')
+    expect(minimize(withDraft(), 'draft').find((t) => t.id === 'draft')?.mode).toBe('minimized')
+  })
+
+  it('moveTerminal reordena o rascunho e preserva a flag', () => {
+    const moved = moveTerminal(withDraft(), 'draft', 'c')
+
+    expect(moved.map((t) => t.id)).toEqual(['a', 'b', 'c', 'draft'])
+    expect(moved.find((t) => t.id === 'draft')?.draft).toBe(true)
   })
 })
 

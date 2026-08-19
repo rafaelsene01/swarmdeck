@@ -6,7 +6,7 @@
 //! Invólucros finos, no mesmo espírito de `commands/terminal.rs`: nenhuma
 //! regra nova mora aqui — só serializa o que `detect_installed` /
 //! `resolve_effective_default` (T1/T3, já testados) já calculam, para que
-//! `NewTerminalDialog` (T4) deixe de receber `agents={[]}` /
+//! a etapa AGENT do wizard deixe de receber `agents={[]}` /
 //! `defaultAgentId={null}` fixos.
 
 use std::sync::Mutex;

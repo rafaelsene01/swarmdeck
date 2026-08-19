@@ -24,7 +24,7 @@ pub mod quota_prefs;
 ///
 /// A ordem desta lista **é** a ordem de aplicação. Migrações novas entram
 /// no fim, sempre com versão maior — nunca reordenar nem reciclar número.
-// SPEC: release-distribution (REL-34, REL-23), mcp-task-server (MCP-02, MCP-08), agent-selection (AGT-01), multi-terminal (TERM-11), terminal-layout-options (LAYOUT-22), session-restore (SESS-10)
+// SPEC: release-distribution (REL-34, REL-23), mcp-task-server (MCP-02, MCP-08), agent-selection (AGT-01), multi-terminal (TERM-11 — REVOKED by AD-019; migration 005 kept, table now unused), terminal-layout-options (LAYOUT-22), session-restore (SESS-10)
 const MIGRATIONS: &[(i64, &str)] = &[
     (1, include_str!("migrations/001_terminal_layout.sql")),
     (2, include_str!("migrations/002_settings.sql")),

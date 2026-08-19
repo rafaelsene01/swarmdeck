@@ -1,4 +1,4 @@
-// SPEC: terminal-chrome (CHROME-02, CHROME-04), minimized-tray (MIN-13), multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01)
+// SPEC: terminal-chrome (CHROME-02, CHROME-04), minimized-tray (MIN-13), multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01), projects (PROJ-11, PROJ-12)
 
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -220,5 +220,43 @@ describe('TerminalHeader — alça como origem do arrasto (LAYOUT-17)', () => {
     fireEvent.dragStart(grip(container))
 
     expect(onDragStartReorder).toHaveBeenCalledTimes(1)
+  })
+})
+
+// SPEC: projects (PROJ-11, PROJ-12) — painel de rascunho não tem PTY atrás:
+// capturar, minimizar (AD-016), clonar e reiniciar não têm o que operar.
+describe('TerminalHeader — modo rascunho (PROJ-11, PROJ-12)', () => {
+  const actionLabels = (container: HTMLElement) =>
+    [...container.querySelectorAll('.terminal-header__actions button')].map((button) =>
+      button.getAttribute('aria-label'),
+    )
+
+  it('em rascunho não renderiza capturar, minimizar, clonar nem reiniciar', () => {
+    const { container } = render(<TerminalHeader index={1} title={null} draft />)
+
+    const labels = actionLabels(container)
+    expect(labels).not.toContain('capturar terminal')
+    expect(labels).not.toContain('minimizar terminal')
+    expect(labels).not.toContain('clonar terminal')
+    expect(labels).not.toContain('reiniciar terminal')
+  })
+
+  it('em rascunho o botão de fechar continua e chama onClose', () => {
+    const onClose = vi.fn()
+    render(<TerminalHeader index={1} title={null} draft onClose={onClose} />)
+
+    fireEvent.click(screen.getByLabelText('fechar terminal'))
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('fora do rascunho a barra de ações fica idêntica à de hoje', () => {
+    const { container: withoutProp } = render(<TerminalHeader index={1} title={null} />)
+    const { container: explicitFalse } = render(
+      <TerminalHeader index={1} title={null} draft={false} />,
+    )
+
+    expect(actionLabels(explicitFalse)).toEqual(actionLabels(withoutProp))
+    expect(actionLabels(withoutProp)).toContain('capturar terminal')
   })
 })

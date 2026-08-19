@@ -1,18 +1,22 @@
-// SPEC: projects (PROJ-05)
+// SPEC: projects (PROJ-05, PROJ-19, PROJ-20)
 
 import { useMemo, useState } from 'react'
+import { Pencil } from 'lucide-react'
 
 export interface ProjectRow {
   id: string
   name: string
   path: string
   color: string
-  taskCount: number
   lastUsed: number | null
 }
 
 export interface ProjectsPanelProps {
   projects: ProjectRow[]
+  /** SPEC: projects (PROJ-19) — abre o formulário de criação. */
+  onCreate?: () => void
+  /** SPEC: projects (PROJ-20) — abre o formulário de edição daquela linha. */
+  onEdit?: (project: ProjectRow) => void
 }
 
 /** Quantidade de caracteres mantidos em cada ponta do caminho truncado. */
@@ -57,7 +61,7 @@ export function filterProjects(projects: ProjectRow[], query: string): ProjectRo
  * padrão de `AgentPanel.tsx`: recebe os dados prontos via props, não busca
  * nada sozinho. Busca e ordenação são estado local (PROJ-05).
  */
-export default function ProjectsPanel({ projects }: ProjectsPanelProps) {
+export default function ProjectsPanel({ projects, onCreate, onEdit }: ProjectsPanelProps) {
   const [query, setQuery] = useState('')
 
   const visibleProjects = useMemo(
@@ -72,7 +76,7 @@ export default function ProjectsPanel({ projects }: ProjectsPanelProps) {
         <p className="projects-panel__empty-hint">
           Crie seu primeiro projeto para organizar as tarefas por diretório.
         </p>
-        <button type="button" className="projects-panel__cta">
+        <button type="button" className="projects-panel__cta" onClick={onCreate}>
           Criar projeto
         </button>
       </div>
@@ -90,6 +94,10 @@ export default function ProjectsPanel({ projects }: ProjectsPanelProps) {
         aria-label="Buscar projetos"
       />
 
+      <button type="button" className="projects-panel__cta" onClick={onCreate}>
+        Criar projeto
+      </button>
+
       <ul className="projects-panel__list">
         {visibleProjects.map((project) => (
           <li key={project.id} className="projects-panel__row">
@@ -102,7 +110,16 @@ export default function ProjectsPanel({ projects }: ProjectsPanelProps) {
             <span className="projects-panel__path" title={project.path}>
               {truncatePath(project.path)}
             </span>
-            <span className="projects-panel__task-count">{project.taskCount} tarefas</span>
+            {/* SPEC: projects (PROJ-20) — editar nome e cor; o caminho é
+                imutável depois de registrado. */}
+            <button
+              type="button"
+              className="projects-panel__edit"
+              onClick={() => onEdit?.(project)}
+              aria-label={`editar ${project.name}`}
+            >
+              <Pencil size={13} aria-hidden="true" />
+            </button>
           </li>
         ))}
       </ul>

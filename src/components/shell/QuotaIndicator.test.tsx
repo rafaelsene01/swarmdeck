@@ -5,7 +5,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import QuotaIndicator, { ringColor, type QuotaSnapshot } from './QuotaIndicator'
 
 // `vi.mock` é hoisted para o topo do arquivo pelo transform do Vitest — mesmo
-// padrão de `NewTerminalDialog.test.tsx`.
+// padrão de `PaneWizard.test.tsx`.
 const { invokeMock } = vi.hoisted(() => ({
   invokeMock: vi.fn(),
 }))

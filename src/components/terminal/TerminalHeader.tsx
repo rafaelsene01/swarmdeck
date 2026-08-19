@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02, CHROME-04), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01, SHOT-23), minimized-tray (MIN-13)
+// SPEC: multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02, CHROME-04), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01, SHOT-23), minimized-tray (MIN-13), projects (PROJ-11, PROJ-12)
 
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -66,14 +66,21 @@ export interface TerminalHeaderProps {
    * id do terminal no grid (`id` aqui é o da sessão do backend, outra coisa).
    */
   onDragStartReorder?: (event: React.DragEvent) => void
+  /**
+   * SPEC: projects (PROJ-11, PROJ-12) — o painel ainda é rascunho: não há PTY
+   * atrás dele, então capturar, clonar, reiniciar e minimizar (AD-016) não têm
+   * o que operar e não são renderizados. Fechar continua: é como se desiste do
+   * wizard.
+   */
+  draft?: boolean
 }
 
 /**
  * Identidade e ações de um terminal — apresentacional (recebe dados prontos
  * via props, não busca nada sozinho), com uma exceção pontual: o rename
  * manual (TERM-06) chama `terminal_set_title` diretamente, no mesmo padrão
- * já usado por `NewTerminalDialog.tsx` para suas próprias ações locais (ex.
- * `terminal_picker_set_last_dir`) — não é uma regra de negócio, é só a ponte
+ * já usado por outros componentes para suas próprias ações locais — não é
+ * uma regra de negócio, é só a ponte
  * para `TerminalMetaService::set_title` (mcp-task-server, já testado). Ver
  * `.specs/codebase/TESTING.md` → matriz de cobertura.
  */
@@ -96,6 +103,7 @@ export default function TerminalHeader({
   onScreenshot,
   onClose,
   onDragStartReorder,
+  draft = false,
 }: TerminalHeaderProps) {
   const draggable = Boolean(onDragStartReorder)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -215,14 +223,16 @@ export default function TerminalHeader({
         <EditorMenu cwd={cwd} />
         {/* SPEC: terminal-screenshot (SHOT-01) — captura direta deste painel:
             dentro do header do terminal não há o que selecionar. */}
-        <button
-          type="button"
-          onClick={(event) => onScreenshot?.(event.currentTarget)}
-          aria-label="capturar terminal"
-          title="capturar este terminal"
-        >
-          <Camera size={13} aria-hidden="true" />
-        </button>
+        {!draft && (
+          <button
+            type="button"
+            onClick={(event) => onScreenshot?.(event.currentTarget)}
+            aria-label="capturar terminal"
+            title="capturar este terminal"
+          >
+            <Camera size={13} aria-hidden="true" />
+          </button>
+        )}
         {/* SPEC: terminal-chrome (CHROME-04) — maximizado, o mesmo botão vira
             "restaurar": setas para dentro em vez de para fora. */}
         <button
@@ -239,31 +249,37 @@ export default function TerminalHeader({
         </button>
         {/* SPEC: minimized-tray (MIN-13) — esconder o terminal é "botar para
             dormir": mesma lua da bandeja do header, não um traço genérico. */}
-        <button
-          type="button"
-          onClick={onMinimize}
-          aria-label="minimizar terminal"
-          title="minimizar para a bandeja"
-        >
-          <Moon size={13} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          onClick={onClone}
-          disabled={!canClone}
-          aria-label="clonar terminal"
-          title={canClone ? 'clonar terminal' : 'a aba já tem 4 terminais'}
-        >
-          <CopyPlus size={13} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          onClick={handleReset}
-          aria-label="reiniciar terminal"
-          title="reiniciar com o mesmo projeto e provedor"
-        >
-          <RotateCcw size={13} aria-hidden="true" />
-        </button>
+        {!draft && (
+          <button
+            type="button"
+            onClick={onMinimize}
+            aria-label="minimizar terminal"
+            title="minimizar para a bandeja"
+          >
+            <Moon size={13} aria-hidden="true" />
+          </button>
+        )}
+        {!draft && (
+          <button
+            type="button"
+            onClick={onClone}
+            disabled={!canClone}
+            aria-label="clonar terminal"
+            title={canClone ? 'clonar terminal' : 'a aba já tem 4 terminais'}
+          >
+            <CopyPlus size={13} aria-hidden="true" />
+          </button>
+        )}
+        {!draft && (
+          <button
+            type="button"
+            onClick={handleReset}
+            aria-label="reiniciar terminal"
+            title="reiniciar com o mesmo projeto e provedor"
+          >
+            <RotateCcw size={13} aria-hidden="true" />
+          </button>
+        )}
         <button
           type="button"
           className="terminal-header__close"

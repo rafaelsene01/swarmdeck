@@ -20,7 +20,7 @@ export interface EditorMenuProps {
 /** Posição do popover na viewport. `position: fixed` de propósito: dentro do
  * cabeçalho o popover cairia sobre a camada de scroll do xterm.js, que não
  * tem clipping e intercepta cliques (mesmo problema já documentado em
- * `App.tsx` para o `NewTerminalDialog`). Ancorar na viewport tira o popover
+ * `App.tsx` para o diálogo de restauração). Ancorar na viewport tira o popover
  * do fluxo do painel e do contexto de empilhamento dele. */
 interface Anchor {
   top: number

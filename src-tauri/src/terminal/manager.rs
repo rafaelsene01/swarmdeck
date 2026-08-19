@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-03), session-restore (SESS-12, SESS-13, SESS-14)
+// SPEC: multi-terminal (TERM-01, TERM-03), session-restore (SESS-12, SESS-13, SESS-14), projects (PROJ-14)
 
 //! `TerminalManager`: registro das sessões PTY vivas.
 //!
@@ -179,11 +179,14 @@ impl TerminalManager {
         Ok(())
     }
 
-    /// Encerra o processo e remove a sessão do registro.
-    pub fn kill(&self, id: TerminalId) -> Result<(), ManagerError> {
+    /// Encerra o processo, remove a sessão do registro e devolve o `cwd` que
+    /// ela usava. O `cwd` sai daqui porque a `Entry` removida já o carrega:
+    /// é o que permite gravar `last_used` do projeto correspondente sem
+    /// perguntar nada ao frontend (PROJ-14).
+    pub fn kill(&self, id: TerminalId) -> Result<PathBuf, ManagerError> {
         let mut entry = self.lock().remove(&id).ok_or(ManagerError::UnknownId(id))?;
         entry.session.kill()?;
-        Ok(())
+        Ok(entry.cwd)
     }
 
     /// Drena a saída acumulada de uma sessão desde o último tick. Ponte que

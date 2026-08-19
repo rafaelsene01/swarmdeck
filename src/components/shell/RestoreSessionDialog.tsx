@@ -49,7 +49,7 @@ function shortCwd(cwd: string): string {
  * Modal de restauração do boot: confirma quais abas e terminais voltam e, para
  * cada terminal, se a conversa do agente é retomada ou recomeça.
  *
- * Apresentacional, como `NewTerminalDialog` e `LayoutMenu`: recebe o workspace
+ * Apresentacional, como `PaneWizard` e `LayoutMenu`: recebe o workspace
  * lido e devolve a escolha; não invoca comando nenhum e não sabe o que o `App`
  * fará com o resultado.
  *

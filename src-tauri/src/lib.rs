@@ -40,7 +40,7 @@ fn install_crypto_provider() {
 pub fn run() {
     install_crypto_provider();
 
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .setup(|app| {
             // SPEC: release-distribution (REL-16, REL-17)
             // `paths::db_path` é a única autoridade sobre onde o banco mora —
@@ -104,8 +104,8 @@ pub fn run() {
         // (AD-009), justamente porque o instalador do plugin encerra o
         // processo para poder substituir o `.exe`.
         .plugin(tauri_plugin_updater::Builder::new().build())
-        // SPEC: multi-terminal (TERM-10, TERM-11)
-        // Regista o plugin oficial de diálogo; o `NewTerminalDialog` (T15)
+        // SPEC: projects (PROJ-17, PROJ-18)
+        // Regista o plugin oficial de diálogo; o wizard do painel
         // chama `open()` direto do frontend para o seletor de pasta — nenhum
         // comando Rust novo abre o seletor em si.
         .plugin(tauri_plugin_dialog::init())
@@ -115,7 +115,7 @@ pub fn run() {
             commands::terminal::pty_write,
             commands::terminal::pty_resize,
             commands::terminal::pty_kill,
-            // SPEC: multi-terminal (TERM-10, TERM-11)
+            // SPEC: multi-terminal (TERM-11 — REVOKED by AD-019, no caller left)
             commands::terminal::terminal_picker_last_dir,
             commands::terminal::terminal_picker_set_last_dir,
             // SPEC: multi-terminal (TERM-06)
@@ -128,6 +128,11 @@ pub fn run() {
             commands::projects::project_create,
             commands::projects::project_update,
             commands::projects::project_delete,
+            // SPEC: projects (PROJ-14, PROJ-16, PROJ-18)
+            commands::projects::project_touch,
+            commands::projects::project_touch_cwds,
+            commands::projects::project_create_in,
+            commands::projects::project_sandbox_dir,
             // SPEC: silent-update (SILENT-09, SILENT-13, SILENT-25)
             commands::update::update_status,
             commands::update::update_download,
@@ -161,6 +166,33 @@ pub fn run() {
             // SPEC: terminal-screenshot (SHOT-16)
             commands::screenshot::screenshot_save,
         ])
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .expect("erro ao iniciar o SwarmDeck");
+
+    // SPEC: projects (PROJ-14)
+    // Último dos quatro momentos que escrevem `projects.last_used`: ao sair,
+    // todo projeto com sessão ainda viva conta como usado agora (P1 AC17).
+    // O `cwd` vem de `TerminalManager::list()`, que já é dono dele — o
+    // frontend não participa.
+    //
+    // `TerminalManager::shutdown()` **não** é chamado: encerrar os PTYs no
+    // fechamento está fora de escopo (spec `projects`, tabela Out of Scope);
+    // eles continuam morrendo por teardown do SO, como antes desta feature.
+    //
+    // O `Result` é descartado com `let _`: uma falha de banco no encerramento
+    // não pode travar a saída nem virar erro na cara do usuário (P1 AC19).
+    app.run(|handle, event| {
+        if let tauri::RunEvent::Exit = event {
+            let cwds: Vec<_> = handle
+                .state::<TerminalManager>()
+                .list()
+                .into_iter()
+                .map(|sessao| sessao.cwd)
+                .collect();
+
+            let db = handle.state::<Mutex<Db>>();
+            let db = db.lock().expect("db mutex poisoned");
+            let _ = projects::service::touch_from_cwds(db.conn(), &cwds);
+        }
+    });
 }

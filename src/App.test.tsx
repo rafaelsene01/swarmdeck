@@ -1,10 +1,10 @@
-// SPEC: shell-chrome (HDR-01, HDR-08, EMPTY-01..EMPTY-09), release-distribution (REL-52), multi-terminal (TERM-12, TERM-13), terminal-tabs (TAB-06), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26, LAYOUT-29), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), minimized-tray (MIN-01, MIN-04, MIN-05, MIN-06)
+// SPEC: shell-chrome (HDR-01, HDR-08, EMPTY-01..EMPTY-09), release-distribution (REL-52), multi-terminal (TERM-12, TERM-13), terminal-tabs (TAB-06), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26, LAYOUT-29), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), minimized-tray (MIN-01, MIN-04, MIN-05, MIN-06), projects (PROJ-11, PROJ-12)
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import App from './App'
 
-// Same `vi.hoisted` pattern as `NewTerminalDialog.test.tsx` — the `vi.mock`
+// Mesmo padrão `vi.hoisted` de `PaneWizard.test.tsx` — the `vi.mock`
 // factories below are hoisted above these imports by Vitest's transform.
 const { invokeMock, openMock, listenMock, snapshotBlobMock, saveMock } = vi.hoisted(() => ({
   invokeMock: vi.fn(),
@@ -90,7 +90,13 @@ vi.mock('./components/terminal/TerminalPane', async () => {
         // e `null` no cleanup; o dublê espelha esse contrato. O `cwd`
         // reservado abaixo simula o painel sem instância viva.
         if (cwd !== '/sem-xterm') onTerminal?.({ cwd })
-        return () => onTerminal?.(null)
+        return () => {
+          onTerminal?.(null)
+          // PROJ-12: o `pty_kill` do painel real mora na limpeza deste efeito
+          // (`TerminalPane.tsx:185`) — o dublê o espelha para que "fechar um
+          // rascunho não mata PTY nenhum" seja observável.
+          void invokeMock('pty_kill', { cwd })
+        }
       }, [])
 
       return (
@@ -106,6 +112,24 @@ vi.mock('./components/terminal/TerminalPane', async () => {
   }
 })
 
+/** SPEC: projects (PROJ-11) — respostas de que o `PaneWizard` do painel de
+ * rascunho depende. Os testes que trocam o `invokeMock` inteiro delegam para
+ * cá no fallback, senão `project_list` volta `undefined` e o wizard quebra. */
+function projectInvoke(command: string, args?: Record<string, unknown>) {
+  if (command === 'project_list') return Promise.resolve([])
+  if (command === 'project_sandbox_dir') return Promise.resolve('/home/user/.swarmdeck/sandbox')
+  if (command === 'project_create') {
+    return Promise.resolve({
+      id: `proj-${String(args?.path ?? '')}`,
+      name: String(args?.name ?? ''),
+      path: String(args?.path ?? ''),
+      color: '#f5b700',
+      last_used: null,
+    })
+  }
+  return Promise.resolve(undefined)
+}
+
 beforeEach(() => {
   invokeMock.mockReset()
   openMock.mockReset()
@@ -120,12 +144,11 @@ beforeEach(() => {
   // active process (App always passes `hasActiveProcess`) - jsdom has no
   // native `window.confirm`.
   vi.spyOn(window, 'confirm').mockReturnValue(true)
-  invokeMock.mockImplementation((command: string) => {
+  invokeMock.mockImplementation((command: string, args?: Record<string, unknown>) => {
     if (command === 'agent_catalog') return Promise.resolve([])
     if (command === 'agent_default') return Promise.resolve(null)
     if (command === 'terminal_picker_last_dir') return Promise.resolve(null)
-    // SET-01: consumed by the inline `SettingsShell` (settings overlay).
-    if (command === 'project_list') return Promise.resolve([])
+    // SET-01: `project_list` também é consumido pelo `SettingsShell` inline.
     if (command === 'quota_prefs_get') return Promise.resolve({ enabled: false, window: 'both' })
     if (command === 'terminal_workspace_get') return Promise.resolve([])
     if (command === 'terminal_workspace_set') return Promise.resolve(undefined)
@@ -138,20 +161,24 @@ beforeEach(() => {
         retryAt: null,
       })
     }
-    return Promise.resolve(undefined)
+    return projectInvoke(command, args)
   })
 })
 
-/** Drives the real create-terminal flow (open dialog -> pick folder -> confirm),
- * same steps `NewTerminalDialog.test.tsx` uses - needed by EMPTY-04/EMPTY-09
- * which require an actual terminal to exist first. */
-async function createTerminalViaDialog() {
-  openMock.mockResolvedValueOnce('/home/user/projeto')
-  fireEvent.click(screen.getByRole('button', { name: 'buscar pasta' }))
-  await waitFor(() => expect(screen.getByLabelText('Diretório')).toHaveValue('/home/user/projeto'))
-  fireEvent.click(screen.getByRole('button', { name: 'criar' }))
-  await waitFor(() => expect(screen.queryByRole('button', { name: 'criar' })).not.toBeInTheDocument())
+/** SPEC: projects (PROJ-11) — leva o painel de rascunho até virar terminal
+ * vivo: importa a pasta na etapa PROJECT e confirma na etapa AGENT. O gatilho
+ * que criou o rascunho já foi acionado por quem chama. */
+async function createTerminalViaWizard(dir = '/home/user/projeto') {
+  openMock.mockResolvedValueOnce(dir)
+  fireEvent.click(await screen.findByRole('button', { name: 'Import Project' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Nova sessão' }))
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'Nova sessão' })).not.toBeInTheDocument(),
+  )
 }
+
+/** O wizard está na tela (etapa PROJECT) — o marcador é a busca de projetos. */
+const wizardOnScreen = () => screen.queryAllByLabelText('Buscar projetos')
 
 describe('App - shell-chrome wiring', () => {
   it('mounts Header in place of the old .app-toolbar (HDR-01)', async () => {
@@ -163,13 +190,16 @@ describe('App - shell-chrome wiring', () => {
     expect(container.querySelector('.app-toolbar')).not.toBeInTheDocument()
   })
 
-  it('Header\'s "new terminal" icon opens NewTerminalDialog, same as the old button (HDR-08)', async () => {
+  it('Header\'s "new terminal" icon opens the pane wizard, same as the old button (HDR-08, PROJ-11)', async () => {
     render(<App />)
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
     fireEvent.click(screen.getByLabelText('new terminal'))
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
+    await waitFor(() => expect(wizardOnScreen()).toHaveLength(1))
+    // PROJ-11: o gatilho não arranca sessão nenhuma — o PTY só nasce na
+    // confirmação do wizard.
+    expect(invokeMock).not.toHaveBeenCalledWith('pty_spawn', expect.anything())
   })
 
   it('Header\'s "settings" icon opens Settings as an overlay over the main window (HDR-08, SET-01)', async () => {
@@ -261,8 +291,7 @@ describe('App - shell-chrome empty state', () => {
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
     fireEvent.click(screen.getByRole('button', { name: '+ Create Terminal' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
-    await createTerminalViaDialog()
+    await createTerminalViaWizard()
 
     expect(screen.queryByText('No Terminals Active')).not.toBeInTheDocument()
     expect(screen.getByLabelText('fechar terminal')).toBeInTheDocument()
@@ -272,44 +301,44 @@ describe('App - shell-chrome empty state', () => {
     expect(screen.getByText('No Terminals Active')).toBeInTheDocument()
   })
 
-  it('"+ Create Terminal" opens NewTerminalDialog (EMPTY-06)', async () => {
+  it('"+ Create Terminal" opens the pane wizard (EMPTY-06, PROJ-11)', async () => {
     render(<App />)
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
     fireEvent.click(screen.getByRole('button', { name: '+ Create Terminal' }))
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
+    await waitFor(() => expect(wizardOnScreen()).toHaveLength(1))
   })
 
-  it('Ctrl+T opens NewTerminalDialog while empty and dialog closed, and prevents the default (EMPTY-07)', async () => {
+  it('Ctrl+T opens the pane wizard while empty, and prevents the default (EMPTY-07, PROJ-11)', async () => {
     render(<App />)
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
     const notPrevented = fireEvent.keyDown(window, { key: 't', ctrlKey: true })
 
     expect(notPrevented).toBe(false)
-    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
+    await waitFor(() => expect(wizardOnScreen()).toHaveLength(1))
   })
 
-  it('Ctrl+T while the dialog is already open does not open a second instance (EMPTY-08)', async () => {
+  it('Ctrl+T with a draft pane already open does not open a second wizard (EMPTY-08, PROJ-11)', async () => {
     render(<App />)
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
     fireEvent.click(screen.getByRole('button', { name: '+ Create Terminal' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
+    await waitFor(() => expect(wizardOnScreen()).toHaveLength(1))
 
     fireEvent.keyDown(window, { key: 't', ctrlKey: true })
 
-    expect(screen.getAllByRole('button', { name: 'criar' })).toHaveLength(1)
+    expect(wizardOnScreen()).toHaveLength(1)
   })
 
-  it('T without Ctrl does not open the dialog (Edge Case)', async () => {
+  it('T without Ctrl does not open the wizard (Edge Case)', async () => {
     render(<App />)
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
     fireEvent.keyDown(window, { key: 't', ctrlKey: false })
 
-    expect(screen.queryByRole('button', { name: 'criar' })).not.toBeInTheDocument()
+    expect(wizardOnScreen()).toHaveLength(0)
   })
 
   it('Ctrl+T has no effect once a terminal is open (EMPTY-09)', async () => {
@@ -317,12 +346,11 @@ describe('App - shell-chrome empty state', () => {
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
     fireEvent.click(screen.getByRole('button', { name: '+ Create Terminal' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
-    await createTerminalViaDialog()
+    await createTerminalViaWizard()
 
     fireEvent.keyDown(window, { key: 't', ctrlKey: true })
 
-    expect(screen.queryByRole('button', { name: 'criar' })).not.toBeInTheDocument()
+    expect(wizardOnScreen()).toHaveLength(0)
   })
 })
 
@@ -332,8 +360,7 @@ describe('App - terminal-chrome (CHROME-03)', () => {
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
     fireEvent.click(screen.getByRole('button', { name: '+ Create Terminal' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
-    await createTerminalViaDialog()
+    await createTerminalViaWizard()
 
     const pane = container.querySelector<HTMLElement>('.app-pane')
     expect(pane?.style.position).toBe('')
@@ -356,8 +383,7 @@ describe('App - terminal-tabs (TAB-01..TAB-05)', () => {
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
     fireEvent.click(screen.getByRole('button', { name: '+ Create Terminal' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
-    await createTerminalViaDialog()
+    await createTerminalViaWizard()
     const paneOfTab1 = screen.getByTestId('terminal-pane-stub')
 
     fireEvent.click(screen.getByLabelText('nova aba'))
@@ -379,8 +405,7 @@ describe('App - terminal-tabs (TAB-01..TAB-05)', () => {
 
     fireEvent.click(screen.getByLabelText('nova aba'))
     fireEvent.click(screen.getByRole('button', { name: '+ Create Terminal' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
-    await createTerminalViaDialog()
+    await createTerminalViaWizard()
     expect(screen.getByTestId('terminal-pane-stub')).toBeInTheDocument()
 
     fireEvent.click(screen.getByLabelText('fechar Aba 2'))
@@ -402,8 +427,7 @@ describe('App - terminal-tabs (TAB-01..TAB-05)', () => {
 
     for (let i = 0; i < 4; i += 1) {
       fireEvent.click(screen.getByLabelText('new terminal'))
-      await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
-      await createTerminalViaDialog()
+      await createTerminalViaWizard()
     }
     expect(screen.getByLabelText('new terminal')).toBeDisabled()
 
@@ -417,8 +441,7 @@ describe('App - terminal-tabs (TAB-01..TAB-05)', () => {
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
     fireEvent.click(screen.getByLabelText('new terminal'))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
-    await createTerminalViaDialog()
+    await createTerminalViaWizard()
     expect(screen.getAllByTestId('terminal-pane-stub')).toHaveLength(1)
 
     // 1 -> 2 -> 3 -> 4: sempre clonando o primeiro terminal da aba.
@@ -439,8 +462,7 @@ describe('App - terminal-tabs (TAB-01..TAB-05)', () => {
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
     fireEvent.click(screen.getByLabelText('new terminal'))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
-    await createTerminalViaDialog()
+    await createTerminalViaWizard()
 
     const before = screen.getByTestId('terminal-pane-stub')
     fireEvent.click(screen.getByLabelText('reiniciar terminal'))
@@ -497,14 +519,7 @@ describe('App - terminal-layout-options (LAYOUT-15..LAYOUT-20)', () => {
   /** Cria um terminal com um `cwd` próprio, para poder identificá-lo depois. */
   async function createTerminalIn(dir: string) {
     fireEvent.click(screen.getByLabelText('new terminal'))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
-    openMock.mockResolvedValueOnce(dir)
-    fireEvent.click(screen.getByRole('button', { name: 'buscar pasta' }))
-    await waitFor(() => expect(screen.getByLabelText('Diretório')).toHaveValue(dir))
-    fireEvent.click(screen.getByRole('button', { name: 'criar' }))
-    await waitFor(() =>
-      expect(screen.queryByRole('button', { name: 'criar' })).not.toBeInTheDocument(),
-    )
+    await createTerminalViaWizard(dir)
   }
 
   /** Ordem dos painéis na tela, pelo `cwd` de cada um. */
@@ -677,14 +692,14 @@ describe('App - terminal-layout-options: restaurar o workspace no boot (LAYOUT-2
   ]
 
   function mockWorkspace(result: unknown) {
-    invokeMock.mockImplementation((command: string) => {
+    invokeMock.mockImplementation((command: string, args?: Record<string, unknown>) => {
       if (command === 'agent_catalog') return Promise.resolve([])
       if (command === 'agent_default') return Promise.resolve(null)
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: false, window: 'both' })
       if (command === 'terminal_workspace_get') {
         return result instanceof Error ? Promise.reject(result) : Promise.resolve(result)
       }
-      return Promise.resolve(undefined)
+      return projectInvoke(command, args)
     })
   }
 
@@ -904,12 +919,12 @@ describe('App - terminal-layout-options: gravar o workspace com debounce (LAYOUT
   }
 
   function mockBoot(workspaceGet: unknown) {
-    invokeMock.mockImplementation((command: string) => {
+    invokeMock.mockImplementation((command: string, args?: Record<string, unknown>) => {
       if (command === 'agent_catalog') return Promise.resolve([])
       if (command === 'agent_default') return Promise.resolve(null)
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: false, window: 'both' })
       if (command === 'terminal_workspace_get') return workspaceGet
-      return Promise.resolve(undefined)
+      return projectInvoke(command, args)
     })
   }
 
@@ -1040,7 +1055,7 @@ describe('App - terminal-layout-options: gravar o workspace com debounce (LAYOUT
 
 describe('App - quota-indicator prefs wiring (QUOTA-11)', () => {
   it('busca quota_prefs_get uma vez na montagem e o resultado desce para o Header', async () => {
-    invokeMock.mockImplementation((command: string) => {
+    invokeMock.mockImplementation((command: string, args?: Record<string, unknown>) => {
       if (command === 'agent_catalog') return Promise.resolve([])
       if (command === 'agent_default') return Promise.resolve(null)
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
@@ -1053,7 +1068,7 @@ describe('App - quota-indicator prefs wiring (QUOTA-11)', () => {
           retryAt: null,
         })
       }
-      return Promise.resolve(undefined)
+      return projectInvoke(command, args)
     })
 
     render(<App />)
@@ -1064,7 +1079,7 @@ describe('App - quota-indicator prefs wiring (QUOTA-11)', () => {
   })
 
   it('quota://prefs-changed com enabled:false remove o indicador sem remontar os painéis', async () => {
-    invokeMock.mockImplementation((command: string) => {
+    invokeMock.mockImplementation((command: string, args?: Record<string, unknown>) => {
       if (command === 'agent_catalog') return Promise.resolve([])
       if (command === 'agent_default') return Promise.resolve(null)
       if (command === 'terminal_picker_last_dir') return Promise.resolve(null)
@@ -1078,15 +1093,14 @@ describe('App - quota-indicator prefs wiring (QUOTA-11)', () => {
           retryAt: null,
         })
       }
-      return Promise.resolve(undefined)
+      return projectInvoke(command, args)
     })
 
     render(<App />)
     await waitFor(() => expect(screen.getByLabelText('quota')).toBeInTheDocument())
 
     fireEvent.click(screen.getByRole('button', { name: '+ Create Terminal' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
-    await createTerminalViaDialog()
+    await createTerminalViaWizard()
 
     const paneBefore = screen.getByTestId('terminal-pane-stub')
 
@@ -1134,7 +1148,7 @@ describe('App - session-restore: confirmar abas e sessões no boot', () => {
   ]
 
   function mockBoot(saved: unknown) {
-    invokeMock.mockImplementation((command: string) => {
+    invokeMock.mockImplementation((command: string, args?: Record<string, unknown>) => {
       if (command === 'agent_catalog') {
         return Promise.resolve([
           {
@@ -1154,7 +1168,7 @@ describe('App - session-restore: confirmar abas e sessões no boot', () => {
       if (command === 'terminal_workspace_get') {
         return saved instanceof Error ? Promise.reject(saved) : Promise.resolve(saved)
       }
-      return Promise.resolve(undefined)
+      return projectInvoke(command, args)
     })
   }
 
@@ -1219,6 +1233,46 @@ describe('App - session-restore: confirmar abas e sessões no boot', () => {
     ])
   })
 
+  // SPEC: projects (PROJ-14) — restaurar terminais é uso dos projetos deles.
+  it('restaurar terminais toca os projetos dos cwd restaurados uma vez só (P1 AC10)', async () => {
+    mockBoot(SAVED)
+
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Restaurar selecionados' }))
+
+    await waitFor(() => expect(screen.getAllByTestId('terminal-pane-stub')).toHaveLength(2))
+
+    const touches = invokeMock.mock.calls.filter(([command]) => command === 'project_touch_cwds')
+    expect(touches).toHaveLength(1)
+    expect(touches[0]?.[1]).toEqual({ cwds: ['/projeto', '/api'] })
+  })
+
+  it('"Começar do zero" não toca projeto nenhum', async () => {
+    mockBoot(SAVED)
+
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Começar do zero' }))
+
+    await waitFor(() => expect(screen.getByText('No Terminals Active')).toBeInTheDocument())
+    expect(invokeMock).not.toHaveBeenCalledWith('project_touch_cwds', expect.anything())
+  })
+
+  // SPEC: projects (PROJ-12) — o rascunho não entra no payload gravado.
+  it('um rascunho aberto é gravado como aba vazia, não como terminal (P1 AC12)', async () => {
+    mockBoot([{ ...SAVED[0], terminals: [] }])
+
+    render(<App />)
+    await waitFor(() => expect(screen.getByRole('tab', { name: /Deploy/ })).toBeInTheDocument())
+
+    fireEvent.click(screen.getByLabelText('new terminal'))
+    await waitFor(() => expect(wizardOnScreen()).toHaveLength(1))
+
+    await waitFor(() => expect(saveCalls().length).toBeGreaterThan(0), { timeout: 2000 })
+    const payload = saveCalls().at(-1)?.[1] as { tabs: { terminals: unknown[] }[] }
+    expect(payload.tabs).toHaveLength(1)
+    expect(payload.tabs[0]?.terminals).toEqual([])
+  })
+
   // SESS-15: o catálogo chega por IPC depois da leitura do workspace. Sem
   // segurar o modal, ele monta com `resumableAgentIds` vazio e congela todo
   // terminal em "nova sessão" — nenhuma conversa voltaria.
@@ -1228,13 +1282,13 @@ describe('App - session-restore: confirmar abas e sessões no boot', () => {
       liberarCatalogo = resolve
     })
 
-    invokeMock.mockImplementation((command: string) => {
+    invokeMock.mockImplementation((command: string, args?: Record<string, unknown>) => {
       if (command === 'agent_catalog') return catalogo
       if (command === 'agent_default') return Promise.resolve('claude-code')
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: false, window: 'both' })
       if (command === 'terminal_picker_last_dir') return Promise.resolve(null)
       if (command === 'terminal_workspace_get') return Promise.resolve(SAVED)
-      return Promise.resolve(undefined)
+      return projectInvoke(command, args)
     })
 
     render(<App />)
@@ -1337,8 +1391,7 @@ describe('App - session-restore: confirmar abas e sessões no boot', () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText('No Terminals Active')).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: '+ Create Terminal' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
-    await createTerminalViaDialog()
+    await createTerminalViaWizard()
 
     expect(spawns()).toHaveLength(1)
     expect(spawns()[0]![1].resume).toBe(false)
@@ -1383,14 +1436,7 @@ describe('App - session-restore: confirmar abas e sessões no boot', () => {
 describe('App - terminal-screenshot: captura pelo botão do painel (SHOT-01, SHOT-13..SHOT-23)', () => {
   async function createTerminalIn(dir: string) {
     fireEvent.click(screen.getByLabelText('new terminal'))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
-    openMock.mockResolvedValueOnce(dir)
-    fireEvent.click(screen.getByRole('button', { name: 'buscar pasta' }))
-    await waitFor(() => expect(screen.getByLabelText('Diretório')).toHaveValue(dir))
-    fireEvent.click(screen.getByRole('button', { name: 'criar' }))
-    await waitFor(() =>
-      expect(screen.queryByRole('button', { name: 'criar' })).not.toBeInTheDocument(),
-    )
+    await createTerminalViaWizard(dir)
   }
 
   /** Botão de câmera do enésimo painel (SHOT-01). */
@@ -1471,14 +1517,7 @@ describe('App - terminal-screenshot: captura pelo botão do painel (SHOT-01, SHO
 describe('App - minimized-tray', () => {
   async function createTerminalIn(dir: string) {
     fireEvent.click(screen.getByLabelText('new terminal'))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'criar' })).toBeInTheDocument())
-    openMock.mockResolvedValueOnce(dir)
-    fireEvent.click(screen.getByRole('button', { name: 'buscar pasta' }))
-    await waitFor(() => expect(screen.getByLabelText('Diretório')).toHaveValue(dir))
-    fireEvent.click(screen.getByRole('button', { name: 'criar' }))
-    await waitFor(() =>
-      expect(screen.queryByRole('button', { name: 'criar' })).not.toBeInTheDocument(),
-    )
+    await createTerminalViaWizard(dir)
   }
 
   /** Células do grid que continuam na tela (as demais estão em display:none). */
@@ -1551,5 +1590,97 @@ describe('App - minimized-tray', () => {
 
     expect(screen.queryByLabelText('minimized terminals')).not.toBeInTheDocument()
     expect(container.querySelectorAll('[data-testid="terminal-pane-stub"]')).toHaveLength(0)
+  })
+})
+
+// SPEC: projects (PROJ-11, PROJ-12) — o gatilho de novo terminal abre um
+// painel de rascunho com o wizard, não um diálogo modal.
+describe('App - projects: painel de rascunho', () => {
+  it('o rascunho ocupa um painel e conta no teto de 4 (P1 AC14)', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    for (let i = 0; i < 3; i += 1) {
+      fireEvent.click(screen.getByLabelText('new terminal'))
+      await createTerminalViaWizard(`/projeto/${i}`)
+    }
+
+    fireEvent.click(screen.getByLabelText('new terminal'))
+    await waitFor(() => expect(wizardOnScreen()).toHaveLength(1))
+
+    // O quarto painel é o rascunho: o gatilho trava mesmo sem PTY atrás dele.
+    expect(screen.getByLabelText('new terminal')).toBeDisabled()
+  })
+
+  it('o painel de rascunho renderiza o wizard e não monta TerminalPane', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    fireEvent.click(screen.getByLabelText('new terminal'))
+    await waitFor(() => expect(wizardOnScreen()).toHaveLength(1))
+
+    expect(screen.queryByTestId('terminal-pane-stub')).not.toBeInTheDocument()
+    expect(invokeMock).not.toHaveBeenCalledWith('pty_spawn', expect.anything())
+  })
+
+  it('fechar o rascunho remove o painel sem matar PTY nenhum (P1 AC13, AC18)', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    fireEvent.click(screen.getByLabelText('new terminal'))
+    await waitFor(() => expect(wizardOnScreen()).toHaveLength(1))
+
+    fireEvent.click(screen.getByLabelText('fechar terminal'))
+
+    expect(wizardOnScreen()).toHaveLength(0)
+    expect(screen.getByText('No Terminals Active')).toBeInTheDocument()
+    expect(invokeMock).not.toHaveBeenCalledWith('pty_kill', expect.anything())
+  })
+
+  it('fechar a aba inteira com um rascunho dentro não mata PTY nenhum (edge case)', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    fireEvent.click(screen.getByLabelText('nova aba'))
+    fireEvent.click(screen.getByLabelText('new terminal'))
+    await waitFor(() => expect(wizardOnScreen()).toHaveLength(1))
+
+    fireEvent.click(screen.getByLabelText('fechar Aba 2'))
+
+    await waitFor(() => expect(wizardOnScreen()).toHaveLength(0))
+    expect(invokeMock).not.toHaveBeenCalledWith('pty_kill', expect.anything())
+  })
+
+  // SPEC: projects (PROJ-13, PROJ-14, PROJ-16)
+  it('confirmar o wizard monta o terminal com o cwd e o agente escolhidos, e toca o projeto', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    fireEvent.click(screen.getByLabelText('new terminal'))
+    await createTerminalViaWizard('/home/user/alvo')
+
+    const pane = await screen.findByTestId('terminal-pane-stub')
+    expect(pane.dataset.cwd).toBe('/home/user/alvo')
+    // SESS-10: sessão nova, como em `defaultTerminal()`.
+    expect(pane.dataset.sessionId).not.toBe('')
+    expect(pane.dataset.resume).toBe('false')
+
+    // P1 AC9: o projeto importado pelo wizard é tocado uma vez.
+    const touches = invokeMock.mock.calls.filter(([command]) => command === 'project_touch')
+    expect(touches).toHaveLength(1)
+    expect(touches[0]?.[1]).toEqual({ id: 'proj-/home/user/alvo' })
+  })
+
+  it('"No Project" abre o terminal na sandbox e não toca projeto nenhum (P2 AC3)', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+
+    fireEvent.click(screen.getByLabelText('new terminal'))
+    fireEvent.click(await screen.findByRole('button', { name: 'No Project' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Nova sessão' }))
+
+    const pane = await screen.findByTestId('terminal-pane-stub')
+    expect(pane.dataset.cwd).toBe('/home/user/.swarmdeck/sandbox')
+    expect(invokeMock).not.toHaveBeenCalledWith('project_touch', expect.anything())
   })
 })

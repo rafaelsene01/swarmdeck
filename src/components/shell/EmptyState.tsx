@@ -1,4 +1,4 @@
-// SPEC: shell-chrome (EMPTY-05, EMPTY-06)
+// SPEC: shell-chrome (EMPTY-05, EMPTY-06), projects (PROJ-11)
 
 import { SquareTerminal } from 'lucide-react'
 
@@ -9,7 +9,8 @@ export interface EmptyStateProps {
 /**
  * Zero-terminal screen (EMPTY-01..EMPTY-05) — shown both on fresh boot and
  * after closing the last terminal (`App.tsx` gates on `terminals.length ===
- * 0`, no boot-only flag). The CTA opens `NewTerminalDialog` directly; the
+ * 0`, no boot-only flag). The CTA opens a draft pane with the wizard
+ * (PROJ-11); the
  * `Ctrl+T` shortcut hinted below is wired at the `App` level (T6), not here.
  */
 export default function EmptyState({ onCreateTerminal }: EmptyStateProps) {

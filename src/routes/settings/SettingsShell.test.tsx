@@ -1,7 +1,7 @@
-// SPEC: settings-shell (SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10)
+// SPEC: settings-shell (SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), projects (PROJ-19, PROJ-20)
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import SettingsShell from './SettingsShell'
 
 // Same `vi.hoisted` pattern as `App.test.tsx` — the `vi.mock` factories
@@ -28,6 +28,11 @@ vi.mock('@tauri-apps/api/window', () => ({
 
 vi.mock('@tauri-apps/api/app', () => ({
   getVersion: () => Promise.resolve('0.1.9'),
+}))
+
+// PROJ-19: o formulário de criação abre o seletor de pasta do SO.
+vi.mock('@tauri-apps/plugin-dialog', () => ({
+  open: () => Promise.resolve('/home/user/dev'),
 }))
 
 describe('SettingsShell — fechar a janela (SET-03/04/05)', () => {
@@ -331,5 +336,106 @@ describe('SettingsShell — seção Atualizações ligada ao fluxo confirmado (S
 
     fireEvent.click(reopen)
     expect(invokeMock).toHaveBeenCalledWith('update_restart')
+  })
+})
+
+// SPEC: projects (PROJ-19, PROJ-20) — criar e editar projeto a partir de
+// Configurações, com o mesmo formulário que o wizard usa.
+describe('SettingsShell — criar e editar projeto (PROJ-19, PROJ-20)', () => {
+  const PROJETO = {
+    id: 'p1',
+    name: 'SwarmDeck',
+    path: 'D:/dev/swarmdeck',
+    color: '#f5b700',
+    last_used: null,
+  }
+
+  function mockShell(overrides: Record<string, unknown> = {}) {
+    invokeMock.mockReset()
+    invokeMock.mockImplementation((command: string) => {
+      if (command in overrides) {
+        const value = overrides[command]
+        return typeof value === 'function' ? (value as () => unknown)() : Promise.resolve(value)
+      }
+      if (command === 'agent_catalog') return Promise.resolve([])
+      if (command === 'agent_default') return Promise.resolve(null)
+      if (command === 'project_list') return Promise.resolve([PROJETO])
+      if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
+      if (command === 'update_status') return Promise.resolve({ status: 'idle' })
+      return Promise.resolve(undefined)
+    })
+  }
+
+  async function openProjects() {
+    render(<SettingsShell />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('project_list'))
+    fireEvent.click(screen.getByRole('button', { name: /Projetos/ }))
+    await screen.findByText('SwarmDeck')
+  }
+
+  it('"Criar projeto" abre o formulário em modo create e confirma com project_create_in', async () => {
+    mockShell()
+    await openProjects()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Criar projeto' }))
+    const form = await screen.findByRole('dialog', { name: 'novo projeto' })
+
+    fireEvent.change(within(form).getByLabelText('Nome'), { target: { value: 'Novo' } })
+    fireEvent.click(within(form).getByRole('button', { name: 'escolher pasta' }))
+    await waitFor(() => expect(within(form).getByLabelText('Diretório base')).toHaveValue('/home/user/dev'))
+    fireEvent.click(within(form).getByRole('button', { name: 'criar' }))
+
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith('project_create_in', {
+        name: 'Novo',
+        baseDir: '/home/user/dev',
+        color: expect.any(String),
+        gitInit: false,
+      }),
+    )
+    // PROJ-19: a lista é relida depois de criar.
+    await waitFor(() =>
+      expect(invokeMock.mock.calls.filter(([c]) => c === 'project_list').length).toBeGreaterThan(1),
+    )
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'novo projeto' })).not.toBeInTheDocument(),
+    )
+  })
+
+  it('editar chama project_update só com nome e cor, e recarrega a lista', async () => {
+    mockShell()
+    await openProjects()
+
+    fireEvent.click(screen.getByLabelText('editar SwarmDeck'))
+    const form = await screen.findByRole('dialog', { name: 'editar projeto' })
+
+    expect(within(form).getByLabelText('Nome')).toHaveValue('SwarmDeck')
+    expect(within(form).queryByLabelText('Diretório base')).not.toBeInTheDocument()
+
+    fireEvent.change(within(form).getByLabelText('Nome'), { target: { value: 'SwarmDeck 2' } })
+    fireEvent.click(within(form).getByRole('button', { name: 'salvar' }))
+
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith('project_update', {
+        id: 'p1',
+        name: 'SwarmDeck 2',
+        color: '#f5b700',
+      }),
+    )
+    await waitFor(() =>
+      expect(invokeMock.mock.calls.filter(([c]) => c === 'project_list').length).toBeGreaterThan(1),
+    )
+  })
+
+  it('erro do backend aparece no formulário e ele continua aberto', async () => {
+    mockShell({ project_update: () => Promise.reject('nome já usado') })
+    await openProjects()
+
+    fireEvent.click(screen.getByLabelText('editar SwarmDeck'))
+    const form = await screen.findByRole('dialog', { name: 'editar projeto' })
+    fireEvent.click(within(form).getByRole('button', { name: 'salvar' }))
+
+    expect(await within(form).findByRole('alert')).toHaveTextContent('nome já usado')
+    expect(screen.getByRole('dialog', { name: 'editar projeto' })).toBeInTheDocument()
   })
 })

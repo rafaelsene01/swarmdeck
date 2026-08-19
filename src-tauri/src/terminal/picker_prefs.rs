@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-11)
+// SPEC: multi-terminal (TERM-11 — REVOKED by AD-019, no caller left)
 
 //! Persists the last directory chosen in the terminal folder picker, across
 //! app restarts.

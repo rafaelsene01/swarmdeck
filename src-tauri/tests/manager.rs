@@ -1,3 +1,5 @@
+// SPEC: projects (PROJ-14)
+
 //! Testes de integração do TerminalManager (T5).
 //!
 //! Spawnam shells reais via PtySession — mesmo motivo de `session.rs`: mock
@@ -6,6 +8,9 @@
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::time::{Duration, Instant};
 
+use swarmdeck_lib::commands::terminal::kill_and_touch;
+use swarmdeck_lib::db::Db;
+use swarmdeck_lib::projects::service;
 use swarmdeck_lib::terminal::{ManagerError, SessionConfig, TerminalManager};
 
 /// Serializa os testes de PTY — ver `session.rs` para a explicação completa
@@ -176,6 +181,33 @@ fn kill_remove_da_lista_e_encerra_processo() {
     );
 }
 
+// SPEC: projects (PROJ-14) — o `cwd` da sessão encerrada é o que alimenta a
+// gravação de `last_used` do projeto correspondente.
+#[test]
+fn kill_devolve_o_cwd_da_sessao_e_falha_na_segunda_vez() {
+    let _g = serial();
+    let manager = TerminalManager::new();
+    let cwd = std::env::temp_dir().join("swarmdeck-kill-cwd");
+    std::fs::create_dir_all(&cwd).expect("criar cwd da sessão");
+
+    let config = SessionConfig {
+        cwd: cwd.clone(),
+        ..default_config()
+    };
+    let id = manager.spawn(config).expect("spawn");
+
+    let devolvido = manager.kill(id).expect("kill deve funcionar");
+
+    assert_eq!(
+        devolvido, cwd,
+        "kill deve devolver o diretório que a sessão usava"
+    );
+    assert!(
+        matches!(manager.kill(id), Err(ManagerError::UnknownId(erro)) if erro == id),
+        "matar o mesmo id duas vezes deve falhar na segunda como id desconhecido"
+    );
+}
+
 #[test]
 fn shutdown_encerra_tudo_sem_orfao() {
     let _g = serial();
@@ -199,4 +231,180 @@ fn shutdown_encerra_tudo_sem_orfao() {
         manager.write(id2, b"x"),
         Err(ManagerError::UnknownId(_))
     ));
+}
+
+// --- projects/T8: fechar terminal escreve `last_used` ---------------------
+//
+// Os testes chamam `kill_and_touch`, o núcleo de `pty_kill`:
+// `State<TerminalManager>`/`State<Mutex<Db>>` exigem um app Tauri montado.
+// O corpo do comando é exatamente esta chamada.
+
+fn temp_db() -> (tempfile::TempDir, Mutex<Db>) {
+    let dir = tempfile::tempdir().expect("criar diretório temporário do banco");
+    let db = Db::open(dir.path().join("swarmdeck.db")).expect("abrir banco novo");
+    (dir, Mutex::new(db))
+}
+
+fn last_used_de(db: &Mutex<Db>, id: &str) -> Option<i64> {
+    let guard = db.lock().expect("db mutex");
+    service::get(guard.conn(), id)
+        .expect("reler o projeto")
+        .last_used
+}
+
+// P1 AC16: encerrar um terminal grava `last_used` do projeto cujo `path` é
+// o `cwd` da sessão.
+#[test]
+fn pty_kill_grava_last_used_do_projeto_do_cwd() {
+    let _g = serial();
+    let manager = TerminalManager::new();
+    let (_db_dir, db) = temp_db();
+    let projeto_dir = tempfile::tempdir().expect("diretório do projeto");
+
+    let projeto = {
+        let guard = db.lock().expect("db mutex");
+        service::create(guard.conn(), "Projeto", projeto_dir.path()).expect("create")
+    };
+    assert_eq!(projeto.last_used, None, "precondição: nunca usado");
+
+    let id = manager
+        .spawn(SessionConfig {
+            cwd: projeto_dir.path().to_path_buf(),
+            ..default_config()
+        })
+        .expect("spawn");
+
+    kill_and_touch(&manager, &db, &id.to_string()).expect("pty_kill deve devolver Ok");
+
+    assert!(
+        last_used_de(&db, &projeto.id).is_some(),
+        "fechar o terminal deve gravar last_used do projeto"
+    );
+}
+
+// PROJ-14 via `resolve`: o `cwd` numa subpasta do projeto conta como uso do
+// projeto que a contém.
+#[test]
+fn pty_kill_com_cwd_em_subpasta_grava_last_used_do_projeto() {
+    let _g = serial();
+    let manager = TerminalManager::new();
+    let (_db_dir, db) = temp_db();
+    let projeto_dir = tempfile::tempdir().expect("diretório do projeto");
+    let subpasta = projeto_dir.path().join("src");
+    std::fs::create_dir_all(&subpasta).expect("criar subpasta");
+
+    let projeto = {
+        let guard = db.lock().expect("db mutex");
+        service::create(guard.conn(), "Projeto", projeto_dir.path()).expect("create")
+    };
+
+    let id = manager
+        .spawn(SessionConfig {
+            cwd: subpasta,
+            ..default_config()
+        })
+        .expect("spawn");
+
+    kill_and_touch(&manager, &db, &id.to_string()).expect("pty_kill deve devolver Ok");
+
+    assert!(
+        last_used_de(&db, &projeto.id).is_some(),
+        "o cwd em subpasta deve resolver para o projeto que a contém"
+    );
+}
+
+// Edge cases da spec: `cwd` que não casa com projeto nenhum — a pasta-
+// sandbox do "No Project" é justamente esse caso, porque nunca vira linha
+// em `projects` — fecha normalmente e não grava nada.
+#[test]
+fn pty_kill_na_pasta_sandbox_devolve_ok_sem_gravar_nada() {
+    let _g = serial();
+    let manager = TerminalManager::new();
+    let (_db_dir, db) = temp_db();
+    let data_dir = tempfile::tempdir().expect("diretório de dados");
+    let sandbox = data_dir.path().join("sandbox");
+    std::fs::create_dir_all(&sandbox).expect("criar a pasta-sandbox");
+    let projeto_dir = tempfile::tempdir().expect("diretório do projeto");
+
+    let projeto = {
+        let guard = db.lock().expect("db mutex");
+        service::create(guard.conn(), "Projeto", projeto_dir.path()).expect("create")
+    };
+
+    let id = manager
+        .spawn(SessionConfig {
+            cwd: sandbox,
+            ..default_config()
+        })
+        .expect("spawn");
+
+    kill_and_touch(&manager, &db, &id.to_string()).expect("pty_kill deve devolver Ok");
+
+    assert_eq!(
+        last_used_de(&db, &projeto.id),
+        None,
+        "nenhum projeto pode ter sido tocado por um terminal fora de projeto"
+    );
+}
+
+// A gravação é best-effort: banco quebrado não pode impedir o terminal de
+// fechar.
+#[test]
+fn pty_kill_com_falha_de_banco_na_gravacao_ainda_devolve_ok() {
+    let _g = serial();
+    let manager = TerminalManager::new();
+    let (_db_dir, db) = temp_db();
+    let projeto_dir = tempfile::tempdir().expect("diretório do projeto");
+
+    {
+        let guard = db.lock().expect("db mutex");
+        service::create(guard.conn(), "Projeto", projeto_dir.path()).expect("create");
+        guard
+            .conn()
+            .execute("DROP TABLE projects", [])
+            .expect("derrubar a tabela para simular banco corrompido");
+    }
+
+    let id = manager
+        .spawn(SessionConfig {
+            cwd: projeto_dir.path().to_path_buf(),
+            ..default_config()
+        })
+        .expect("spawn");
+
+    kill_and_touch(&manager, &db, &id.to_string())
+        .expect("falha de gravação não pode impedir o pty_kill de devolver Ok");
+
+    assert!(
+        !manager.list().iter().any(|s| s.id == id),
+        "a sessão deve ter sido encerrada mesmo com o banco quebrado"
+    );
+}
+
+// Id desconhecido continua sendo erro, e nada é gravado — não há `cwd`.
+#[test]
+fn pty_kill_com_id_desconhecido_falha_sem_gravar_nada() {
+    let _g = serial();
+    let manager = TerminalManager::new();
+    let (_db_dir, db) = temp_db();
+    let projeto_dir = tempfile::tempdir().expect("diretório do projeto");
+
+    let projeto = {
+        let guard = db.lock().expect("db mutex");
+        service::create(guard.conn(), "Projeto", projeto_dir.path()).expect("create")
+    };
+
+    let desconhecido = uuid::Uuid::now_v7().to_string();
+    let erro = kill_and_touch(&manager, &db, &desconhecido)
+        .expect_err("id desconhecido deve continuar falhando");
+
+    assert!(
+        erro.contains(&desconhecido),
+        "o erro precisa nomear o id desconhecido, veio: {erro}"
+    );
+    assert_eq!(
+        last_used_de(&db, &projeto.id),
+        None,
+        "um kill que falhou não pode gravar last_used"
+    );
 }

@@ -1,4 +1,4 @@
-// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10), silent-update (SILENT-09, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-42)
+// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10), silent-update (SILENT-09, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-42), projects (PROJ-19, PROJ-20)
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -9,6 +9,7 @@ import { CircleDot, Download, FolderOpen, SlidersHorizontal, Users, X } from 'lu
 import AgentPanel, { type AgentDescriptor } from './AgentPanel'
 import GeneralPanel, { type QuotaPrefs } from './GeneralPanel'
 import ProjectsPanel, { type ProjectRow } from './ProjectsPanel'
+import ProjectFormModal, { type ProjectFormValues } from '../../components/project/ProjectFormModal'
 import StatusesPanel, { type StatusRow } from './StatusesPanel'
 import UpdateSettings, { type UpdateState } from '../../components/settings/UpdateSettings'
 
@@ -40,7 +41,7 @@ const SECTIONS: ReadonlyArray<{ id: SectionId; label: string; icon: typeof Users
 
 /** Espelha `AgentCatalogEntry` de `src-tauri/src/commands/agents.rs` (T5 de
  * `agent-selection`), já registrado no `invoke_handler!` — mesma forma que
- * `App.tsx` já consome para `NewTerminalDialog`. */
+ * `App.tsx` já consome para o `PaneWizard`. */
 interface AgentCatalogEntry extends AgentDescriptor {
   installed: boolean
 }
@@ -91,6 +92,12 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
 
   // Projetos (PROJ-05): dado real, via `project_list`, já registrado.
   const [projects, setProjects] = useState<ProjectRow[]>([])
+  /** SPEC: projects (PROJ-19, PROJ-20) — formulário aberto: `create` sem
+   * projeto, `edit` com o projeto da linha. `null` = fechado. */
+  const [projectForm, setProjectForm] = useState<
+    { mode: 'create' | 'edit'; project?: ProjectRow } | null
+  >(null)
+  const [projectFormError, setProjectFormError] = useState<string | null>(null)
 
   // Status de terminal (STAT-02/03): NENHUM `#[tauri::command]` expõe o CRUD
   // de `status_catalog` (create/update/disable/delete/reorder/
@@ -122,6 +129,50 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
   // consultas, só a de rede pode falhar.
   const lastKnownVersionRef = useRef('')
 
+  /** SPEC: projects (PROJ-19, PROJ-20) — a lista é relida do backend depois
+   * de criar ou editar: é o backend que canonicaliza caminho e cor. */
+  const loadProjects = () =>
+    invoke<ProjectRecord[]>('project_list').then((records) => {
+      setProjects(
+        records.map((record) => ({
+          id: record.id,
+          name: record.name,
+          path: record.path,
+          color: record.color,
+          lastUsed: record.last_used,
+        })),
+      )
+    })
+
+  const submitProjectForm = async (values: ProjectFormValues) => {
+    const form = projectForm
+    if (!form) return
+
+    try {
+      if (form.mode === 'create') {
+        await invoke('project_create_in', {
+          name: values.name,
+          baseDir: values.baseDir ?? '',
+          color: values.color,
+          gitInit: values.gitInit ?? false,
+        })
+      } else {
+        // PROJ-20: só nome e cor — o caminho é imutável depois de registrado.
+        await invoke('project_update', {
+          id: form.project?.id,
+          name: values.name,
+          color: values.color,
+        })
+      }
+      await loadProjects()
+      setProjectForm(null)
+      setProjectFormError(null)
+    } catch (error: unknown) {
+      // O formulário continua aberto com a mensagem.
+      setProjectFormError(String(error))
+    }
+  }
+
   useEffect(() => {
     let cancelled = false
 
@@ -135,21 +186,7 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
       if (!cancelled) setDefaultAgentId(id)
     })
 
-    void invoke<ProjectRecord[]>('project_list').then((records) => {
-      if (cancelled) return
-      setProjects(
-        records.map((record) => ({
-          id: record.id,
-          name: record.name,
-          path: record.path,
-          color: record.color,
-          lastUsed: record.last_used,
-          // `project_list` não junta contagem de tarefas — nenhum comando
-          // expõe isso hoje (mesma limitação documentada acima).
-          taskCount: 0,
-        })),
-      )
-    })
+    void loadProjects()
 
     // SILENT-33: a versão instalada não depende da rede — `getVersion()` lê o
     // `package_info` do próprio app. Buscada no mount para que a seção
@@ -529,7 +566,19 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
             />
           )}
 
-          {section === 'projects' && <ProjectsPanel projects={projects} />}
+          {section === 'projects' && (
+            <ProjectsPanel
+              projects={projects}
+              onCreate={() => {
+                setProjectFormError(null)
+                setProjectForm({ mode: 'create' })
+              }}
+              onEdit={(project) => {
+                setProjectFormError(null)
+                setProjectForm({ mode: 'edit', project })
+              }}
+            />
+          )}
 
           {section === 'statuses' && (
             <StatusesPanel
@@ -565,6 +614,20 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
           Fechar
         </button>
       </div>
+
+      {/* SPEC: projects (PROJ-19, PROJ-20) — o mesmo formulário do wizard. */}
+      {projectForm && (
+        <ProjectFormModal
+          mode={projectForm.mode}
+          project={projectForm.project}
+          error={projectFormError}
+          onSubmit={(values) => void submitProjectForm(values)}
+          onCancel={() => {
+            setProjectForm(null)
+            setProjectFormError(null)
+          }}
+        />
+      )}
     </div>
   )
 }

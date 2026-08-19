@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-06, TERM-10, TERM-11), terminal-layout-options (LAYOUT-26), session-restore (SESS-12, SESS-13)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-06, TERM-11 — REVOKED by AD-019: the two `terminal_picker_*` commands have no caller left), terminal-layout-options (LAYOUT-26), session-restore (SESS-12, SESS-13), projects (PROJ-14)
 
 //! Comandos Tauri que expõem `TerminalManager`, `picker_prefs` e
 //! `TerminalMetaService` ao frontend.
@@ -19,6 +19,7 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State};
 
 use crate::db::Db;
+use crate::projects::service;
 use crate::terminal::layout::{self, TabEntry};
 use crate::terminal::throttle::FLUSH_INTERVAL_MS;
 use crate::terminal::{
@@ -82,10 +83,35 @@ pub fn pty_resize(
     manager.resize(id, rows, cols).map_err(|e| e.to_string())
 }
 
+/// SPEC: projects (PROJ-14) — núcleo testável de `pty_kill`: recebe
+/// `&TerminalManager` e `&Mutex<Db>` diretos em vez de `State<...>`, que
+/// exige um app Tauri montado (mesmo motivo de `workspace_get` acima).
+///
+/// Todo fechamento de terminal converge para cá (`TerminalPane` chama
+/// `pty_kill` na limpeza do efeito), então é aqui que o `cwd` da sessão
+/// encerrada vira `last_used` do projeto correspondente (P1 AC16) — sem
+/// repetir a resolução nos três handlers de fechamento do `App.tsx`.
+///
+/// A gravação é best-effort: o `Result` é descartado porque uma falha de
+/// banco não pode impedir o terminal de fechar. O único efeito é a
+/// ordenação da lista de recentes ficar desatualizada.
+pub fn kill_and_touch(manager: &TerminalManager, db: &Mutex<Db>, id: &str) -> Result<(), String> {
+    let id = parse_id(id)?;
+    let cwd = manager.kill(id).map_err(|e| e.to_string())?;
+
+    let db = db.lock().expect("db mutex poisoned");
+    let _ = service::touch_from_cwds(db.conn(), &[cwd]);
+
+    Ok(())
+}
+
 #[tauri::command]
-pub fn pty_kill(manager: State<'_, TerminalManager>, id: String) -> Result<(), String> {
-    let id = parse_id(&id)?;
-    manager.kill(id).map_err(|e| e.to_string())
+pub fn pty_kill(
+    manager: State<'_, TerminalManager>,
+    db: State<'_, Mutex<Db>>,
+    id: String,
+) -> Result<(), String> {
+    kill_and_touch(manager.inner(), db.inner(), &id)
 }
 
 /// Invólucro fino sobre `picker_prefs::last_dir` (T13) — o diálogo de pasta

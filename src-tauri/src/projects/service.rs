@@ -1,4 +1,4 @@
-// SPEC: projects (PROJ-01, PROJ-02, PROJ-09)
+// SPEC: projects (PROJ-01, PROJ-02, PROJ-09, PROJ-13, PROJ-14, PROJ-18)
 
 //! `ProjectService`: create/update/delete for the `projects` table created
 //! by migration `003_tasks.sql` (mcp-task-server/T1).
@@ -13,14 +13,18 @@
 //! service's `delete` only counts how many tasks were linked *before* the
 //! delete, since the count is gone once the FK clears `project_id`.
 
+use std::collections::HashSet;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusqlite::{params, Connection, OptionalExtension, Row};
 
 use crate::db::DbError;
+
+use super::resolve::{self, Resolution};
 
 /// Fixed color palette assigned round-robin (least-used-first) at creation.
 ///
@@ -62,11 +66,6 @@ pub enum ProjectError {
     NotFound(String),
     /// Explicit color override (T5) is not one of `PALETTE`'s values.
     ColorNotInPalette(String),
-    /// Explicit color override (T5) is already assigned to another project —
-    /// same uniqueness rule `pick_least_used_color` enforces for the
-    /// automatic pick, applied strictly to a caller-chosen color instead of
-    /// scanned across the whole palette.
-    ColorAlreadyUsed(String),
     /// Subfolder creation or `git init` spawn failed at the OS level (T5).
     Io(std::io::Error),
     /// `git init` (T5, PROJ-09) ran but exited with a non-zero status.
@@ -95,9 +94,6 @@ impl fmt::Display for ProjectError {
             ProjectError::NotFound(id) => write!(f, "project not found: {id}"),
             ProjectError::ColorNotInPalette(color) => {
                 write!(f, "color {color} is not in the palette")
-            }
-            ProjectError::ColorAlreadyUsed(color) => {
-                write!(f, "color {color} is already used by another project")
             }
             ProjectError::Io(err) => write!(f, "filesystem error: {err}"),
             ProjectError::GitInitFailed(msg) => write!(f, "git init failed: {msg}"),
@@ -199,22 +195,39 @@ pub fn create_with_options(
     }
 
     let color = match color {
-        Some(chosen) => validate_explicit_color(conn, &chosen)?,
+        Some(chosen) => validate_explicit_color(&chosen)?,
         None => pick_least_used_color(conn)?,
     };
 
     fs::create_dir(&target)?;
 
-    if git_init {
-        run_git_init(&target)?;
-    }
+    // Everything after the folder exists can still fail, and a failure that
+    // left the folder behind would strand the user: the row is missing, so
+    // the project is not listed, and retrying the same name dies in
+    // `AlreadyExists` (PROJ-18 AC11). Removal is recursive because a
+    // successful `git init` leaves `.git` inside.
+    let created = (|| -> Result<String, ProjectError> {
+        if git_init {
+            run_git_init(&target)?;
+        }
 
-    let id = uuid::Uuid::now_v7().to_string();
+        let id = uuid::Uuid::now_v7().to_string();
 
-    conn.execute(
-        "INSERT INTO projects (id, name, path, color, last_used) VALUES (?1, ?2, ?3, ?4, NULL)",
-        params![id, name, target_str, color],
-    )?;
+        conn.execute(
+            "INSERT INTO projects (id, name, path, color, last_used) VALUES (?1, ?2, ?3, ?4, NULL)",
+            params![id, name, target_str, color],
+        )?;
+
+        Ok(id)
+    })();
+
+    let id = match created {
+        Ok(id) => id,
+        Err(err) => {
+            let _ = fs::remove_dir_all(&target);
+            return Err(err);
+        }
+    };
 
     Ok(Project {
         id,
@@ -316,6 +329,58 @@ pub fn delete(conn: &Connection, id: &str) -> Result<usize, ProjectError> {
     Ok(affected as usize)
 }
 
+/// Stamps the current instant (epoch milliseconds) on `projects.last_used`
+/// and returns the updated project (PROJ-14). The project's directory has
+/// to still be on disk: a project whose folder is gone cannot be opened, so
+/// nothing is written and the missing path comes back in the error
+/// (PROJ-13 AC15).
+pub fn touch_last_used(conn: &Connection, id: &str) -> Result<Project, ProjectError> {
+    let mut project = get(conn, id)?;
+    require_existing_dir(Path::new(&project.path))?;
+
+    let now = now_millis();
+    conn.execute(
+        "UPDATE projects SET last_used = ?1 WHERE id = ?2",
+        params![now, id],
+    )?;
+
+    project.last_used = Some(now);
+    Ok(project)
+}
+
+/// Touches `last_used` for every distinct project that `resolve` matches
+/// against one of `cwds`, returning how many projects were touched
+/// (PROJ-14). Shared by the three triggers that only know a `cwd`: session
+/// restore, closing a terminal and closing the app. Two `cwd`s under the
+/// same project produce a single `UPDATE`. A `cwd` matching no project —
+/// the sandbox directory, which is never a row in `projects` — touches
+/// nothing.
+pub fn touch_from_cwds(conn: &Connection, cwds: &[PathBuf]) -> Result<usize, ProjectError> {
+    if cwds.is_empty() {
+        return Ok(0);
+    }
+
+    let projects = list_all(conn)?;
+    let mut touched: HashSet<String> = HashSet::new();
+
+    for cwd in cwds {
+        if let Resolution::Matched(project) = resolve::resolve(cwd, &projects) {
+            if touched.insert(project.id.clone()) {
+                touch_last_used(conn, &project.id)?;
+            }
+        }
+    }
+
+    Ok(touched.len())
+}
+
+fn now_millis() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_millis() as i64)
+        .unwrap_or(0)
+}
+
 fn require_name(name: &str) -> Result<&str, ProjectError> {
     let trimmed = name.trim();
     if trimmed.is_empty() {
@@ -410,23 +475,14 @@ fn pick_least_used_color(conn: &Connection) -> Result<String, ProjectError> {
     Ok(best_color.to_string())
 }
 
-/// Validates an explicit color override (T5): must be one of `PALETTE`'s
-/// values and not already assigned to another project — same `COUNT(*)
-/// FROM projects WHERE color = ?1` query `pick_least_used_color` runs per
-/// palette entry, applied here to the single caller-picked color instead of
-/// scanned across all eight to find the least-used one.
-fn validate_explicit_color(conn: &Connection, color: &str) -> Result<String, ProjectError> {
+/// Validates an explicit color override: the only rule is belonging to
+/// `PALETTE`. Colors are not exclusive between projects (PROJ-18 AC12) —
+/// with eight of them, exclusivity made the ninth project impossible to
+/// create with a chosen color, and the color exists only to tell projects
+/// apart at a glance.
+fn validate_explicit_color(color: &str) -> Result<String, ProjectError> {
     if !PALETTE.contains(&color) {
         return Err(ProjectError::ColorNotInPalette(color.to_string()));
-    }
-
-    let count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM projects WHERE color = ?1",
-        params![color],
-        |row| row.get(0),
-    )?;
-    if count > 0 {
-        return Err(ProjectError::ColorAlreadyUsed(color.to_string()));
     }
 
     Ok(color.to_string())
@@ -524,32 +580,44 @@ mod tests {
         assert_eq!(project.color, escolhida);
     }
 
+    // SPEC: projects (PROJ-18 AC12) — a cor deixou de ser exclusiva.
     #[test]
-    fn cor_explicita_ja_usada_recusa() {
+    fn nove_projetos_com_a_mesma_cor_explicita_sao_criados() {
         let db = Db::open_in_memory().expect("abrir banco em memória");
         let base = tempfile::tempdir().expect("criar diretório base");
         let cor = PALETTE[2];
 
-        create_with_options(
-            db.conn(),
-            "Primeiro",
-            base.path(),
-            Some(cor.to_string()),
-            false,
-        )
-        .expect("primeiro create_with_options deve funcionar");
+        for i in 1..=9 {
+            let project = create_with_options(
+                db.conn(),
+                &format!("Projeto{i}"),
+                base.path(),
+                Some(cor.to_string()),
+                false,
+            )
+            .unwrap_or_else(|e| panic!("criar o projeto {i} com cor repetida deve passar: {e}"));
+            assert_eq!(project.color, cor);
+        }
+
+        assert_eq!(list_all(db.conn()).expect("listar projetos").len(), 9);
+    }
+
+    #[test]
+    fn cor_fora_da_paleta_recusa() {
+        let db = Db::open_in_memory().expect("abrir banco em memória");
+        let base = tempfile::tempdir().expect("criar diretório base");
 
         let result = create_with_options(
             db.conn(),
-            "Segundo",
+            "ForaDaPaleta",
             base.path(),
-            Some(cor.to_string()),
+            Some("#123456".to_string()),
             false,
         );
 
         match result {
-            Err(ProjectError::ColorAlreadyUsed(color)) => assert_eq!(color, cor),
-            other => panic!("esperava ColorAlreadyUsed, veio {other:?}"),
+            Err(ProjectError::ColorNotInPalette(color)) => assert_eq!(color, "#123456"),
+            other => panic!("esperava ColorNotInPalette, veio {other:?}"),
         }
     }
 
@@ -565,5 +633,240 @@ mod tests {
             PathBuf::from(&project.path).join(".git").is_dir(),
             ".git deve existir na subpasta criada"
         );
+    }
+
+    // --- T1: `last_used` writes (PROJ-14, PROJ-13 AC15) ---
+
+    fn projeto_de_teste(db: &Db, nome: &str) -> (tempfile::TempDir, Project) {
+        let dir = tempfile::tempdir().expect("criar diretório do projeto");
+        let project = create(db.conn(), nome, dir.path()).expect("create do projeto de teste");
+        (dir, project)
+    }
+
+    #[test]
+    fn touch_last_used_grava_epoch_em_milissegundos_e_devolve_o_projeto_atualizado() {
+        let db = Db::open_in_memory().expect("abrir banco em memória");
+        let (_dir, project) = projeto_de_teste(&db, "Recente");
+
+        let antes = now_millis();
+        let tocado = touch_last_used(db.conn(), &project.id).expect("touch_last_used deve gravar");
+        let depois = now_millis();
+
+        let gravado = tocado.last_used.expect("last_used não pode voltar nulo");
+        assert!(
+            gravado >= antes && gravado <= depois,
+            "last_used deve ser o instante atual em milissegundos;              recebido {gravado}, janela [{antes}, {depois}]"
+        );
+        assert_eq!(
+            get(db.conn(), &project.id)
+                .expect("reler projeto")
+                .last_used,
+            Some(gravado),
+            "o valor devolvido deve ser o que ficou gravado na linha"
+        );
+    }
+
+    #[test]
+    fn touch_last_used_com_id_inexistente_devolve_not_found() {
+        let db = Db::open_in_memory().expect("abrir banco em memória");
+
+        match touch_last_used(db.conn(), "id-que-nao-existe") {
+            Err(ProjectError::NotFound(id)) => assert_eq!(id, "id-que-nao-existe"),
+            other => panic!("esperava NotFound, veio {other:?}"),
+        }
+    }
+
+    #[test]
+    fn touch_last_used_com_path_ausente_no_disco_nao_grava_nada() {
+        let db = Db::open_in_memory().expect("abrir banco em memória");
+        let dir = tempfile::tempdir().expect("criar diretório do projeto");
+        let project = create(db.conn(), "Sumido", dir.path()).expect("create do projeto");
+        let caminho = PathBuf::from(&project.path);
+        dir.close().expect("remover o diretório do projeto");
+
+        match touch_last_used(db.conn(), &project.id) {
+            Err(ProjectError::PathNotFound(path)) => assert_eq!(path, caminho),
+            other => panic!("esperava PathNotFound, veio {other:?}"),
+        }
+
+        assert_eq!(
+            get(db.conn(), &project.id)
+                .expect("reler projeto")
+                .last_used,
+            None,
+            "nada pode ser gravado quando o diretório do projeto não existe mais"
+        );
+    }
+
+    #[test]
+    fn touch_last_used_duas_vezes_avanca_o_instante() {
+        let db = Db::open_in_memory().expect("abrir banco em memória");
+        let (_dir, project) = projeto_de_teste(&db, "Duas Vezes");
+
+        let primeiro = touch_last_used(db.conn(), &project.id)
+            .expect("primeiro touch")
+            .last_used
+            .expect("primeiro last_used");
+        let segundo = touch_last_used(db.conn(), &project.id)
+            .expect("segundo touch")
+            .last_used
+            .expect("segundo last_used");
+
+        assert!(
+            segundo >= primeiro,
+            "o segundo instante não pode ser anterior ao primeiro; {segundo} < {primeiro}"
+        );
+    }
+
+    #[test]
+    fn touch_from_cwds_toca_por_cwd_exato_e_por_subpasta() {
+        let db = Db::open_in_memory().expect("abrir banco em memória");
+        let (dir_a, projeto_a) = projeto_de_teste(&db, "Exato");
+        let (dir_b, projeto_b) = projeto_de_teste(&db, "Subpasta");
+        let subpasta = dir_b.path().join("src").join("projects");
+
+        let tocados = touch_from_cwds(db.conn(), &[dir_a.path().to_path_buf(), subpasta])
+            .expect("touch_from_cwds deve funcionar");
+
+        assert_eq!(tocados, 2);
+        assert!(
+            get(db.conn(), &projeto_a.id)
+                .expect("reler A")
+                .last_used
+                .is_some(),
+            "o cwd igual ao path do projeto deve tocar o projeto"
+        );
+        assert!(
+            get(db.conn(), &projeto_b.id)
+                .expect("reler B")
+                .last_used
+                .is_some(),
+            "o cwd em subpasta do projeto deve tocar o projeto"
+        );
+    }
+
+    #[test]
+    fn touch_from_cwds_com_dois_cwds_do_mesmo_projeto_grava_uma_vez_so() {
+        let db = Db::open_in_memory().expect("abrir banco em memória");
+        let (dir, projeto) = projeto_de_teste(&db, "Um Update");
+        let subpasta = dir.path().join("src");
+
+        let antes = db.conn().total_changes();
+        let tocados = touch_from_cwds(db.conn(), &[dir.path().to_path_buf(), subpasta])
+            .expect("touch_from_cwds deve funcionar");
+
+        assert_eq!(tocados, 1, "dois cwds do mesmo projeto contam como um");
+        assert_eq!(
+            db.conn().total_changes() - antes,
+            1,
+            "só uma linha pode ter sido atualizada"
+        );
+        assert!(get(db.conn(), &projeto.id)
+            .expect("reler projeto")
+            .last_used
+            .is_some());
+    }
+
+    #[test]
+    fn touch_from_cwds_com_cwd_sem_projeto_devolve_zero() {
+        let db = Db::open_in_memory().expect("abrir banco em memória");
+        let (_dir, projeto) = projeto_de_teste(&db, "Intocado");
+        let fora = tempfile::tempdir().expect("criar diretório fora de qualquer projeto");
+
+        let tocados = touch_from_cwds(db.conn(), &[fora.path().to_path_buf()])
+            .expect("cwd sem projeto não pode falhar");
+
+        assert_eq!(tocados, 0);
+        assert_eq!(
+            get(db.conn(), &projeto.id)
+                .expect("reler projeto")
+                .last_used,
+            None
+        );
+    }
+
+    #[test]
+    fn touch_from_cwds_com_a_pasta_sandbox_devolve_zero() {
+        let db = Db::open_in_memory().expect("abrir banco em memória");
+        let (_dir, projeto) = projeto_de_teste(&db, "Com Projeto");
+        // A sandbox mora no diretório de dados do app e nunca vira linha em
+        // `projects` (PROJ-07), então nenhum cwd dentro dela casa.
+        let data_dir = tempfile::tempdir().expect("criar diretório de dados");
+        let sandbox = data_dir.path().join("sandbox");
+        fs::create_dir(&sandbox).expect("criar a pasta sandbox");
+
+        let tocados =
+            touch_from_cwds(db.conn(), &[sandbox]).expect("sandbox não pode fazer falhar");
+
+        assert_eq!(tocados, 0);
+        assert_eq!(
+            get(db.conn(), &projeto.id)
+                .expect("reler projeto")
+                .last_used,
+            None
+        );
+    }
+
+    #[test]
+    fn touch_from_cwds_com_lista_vazia_nao_consulta_o_banco() {
+        // Conexão sem migração nenhuma: qualquer consulta a `projects`
+        // falharia, então um `Ok(0)` prova que o banco não foi consultado.
+        let conn = Connection::open_in_memory().expect("abrir conexão crua");
+
+        assert_eq!(
+            touch_from_cwds(&conn, &[]).expect("lista vazia não pode falhar"),
+            0
+        );
+    }
+
+    // --- T3: nenhuma pasta órfã quando a criação falha (PROJ-18 AC11) ---
+
+    /// Faz o `INSERT` em `projects` falhar sem quebrar os `SELECT` que
+    /// `create_with_options` roda antes de criar a pasta.
+    fn bloquear_insert(db: &Db) {
+        db.conn()
+            .execute_batch(
+                "CREATE TRIGGER bloqueia_insert BEFORE INSERT ON projects                  BEGIN SELECT RAISE(ABORT, 'insert bloqueado'); END;",
+            )
+            .expect("criar trigger de bloqueio");
+    }
+
+    #[test]
+    fn falha_depois_de_criar_a_pasta_remove_a_pasta_e_propaga_o_erro() {
+        let db = Db::open_in_memory().expect("abrir banco em memória");
+        let base = tempfile::tempdir().expect("criar diretório base");
+        bloquear_insert(&db);
+
+        // `git_init: true` deixa `.git` dentro da subpasta antes da falha,
+        // então a remoção precisa ser recursiva.
+        let result = create_with_options(db.conn(), "Orfao", base.path(), None, true);
+
+        assert!(
+            matches!(result, Err(ProjectError::Db(_))),
+            "o erro precisa ser propagado, não engolido; veio {result:?}"
+        );
+        assert!(
+            !base.path().join("Orfao").exists(),
+            "a subpasta recém-criada não pode ficar no disco depois da falha"
+        );
+    }
+
+    #[test]
+    fn repetir_a_criacao_com_o_mesmo_nome_depois_da_falha_funciona() {
+        let db = Db::open_in_memory().expect("abrir banco em memória");
+        let base = tempfile::tempdir().expect("criar diretório base");
+        bloquear_insert(&db);
+
+        create_with_options(db.conn(), "Retentado", base.path(), None, false)
+            .expect_err("a primeira tentativa deve falhar");
+
+        db.conn()
+            .execute_batch("DROP TRIGGER bloqueia_insert;")
+            .expect("liberar o insert");
+
+        let project = create_with_options(db.conn(), "Retentado", base.path(), None, false)
+            .expect("a segunda tentativa com o mesmo nome deve funcionar");
+
+        assert!(PathBuf::from(&project.path).is_dir());
     }
 }

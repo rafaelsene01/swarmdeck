@@ -1,3 +1,5 @@
+// SPEC: projects (PROJ-01, PROJ-14, PROJ-18)
+
 //! Integration tests for `ProjectService` (projects/T1).
 //!
 //! Run against a real SQLite file, not in-memory — same reason as
@@ -6,6 +8,7 @@
 //! (`tempfile::tempdir()`), since `create`/`update` validate existence on
 //! disk. Not parallel-safe — see `.specs/codebase/TESTING.md`.
 
+use swarmdeck_lib::commands::projects as project_commands;
 use swarmdeck_lib::db::Db;
 use swarmdeck_lib::projects::service::{self, ProjectError};
 
@@ -245,5 +248,263 @@ fn delete_de_projeto_com_2_tasks_conta_2_e_desvincula_sem_apagar() {
     assert_eq!(
         com_project_id_nulo, 2,
         "as 2 tarefas devem ficar com project_id NULL após o delete"
+    );
+}
+
+// --- projects/T5: comandos `project_touch` e `project_touch_cwds` ---------
+//
+// Os testes chamam os núcleos testáveis (`touch`, `touch_cwds`) em vez dos
+// `#[tauri::command]`: `State<Mutex<Db>>` exige um app Tauri montado. O
+// corpo do comando é a chamada a esses núcleos, então o que sobra sem
+// cobertura é só o `db.lock()`.
+
+// P1 AC9: confirmar o wizard com um projeto grava o instante atual em
+// `projects.last_used` daquele projeto.
+#[test]
+fn project_touch_grava_last_used_e_devolve_o_projeto() {
+    let (_db_dir, db_path) = temp_db_path();
+    let db = Db::open(&db_path).expect("abrir banco novo");
+    let dir = tempfile::tempdir().expect("dir do projeto");
+
+    let projeto = service::create(db.conn(), "Tocado", dir.path()).expect("create");
+    assert_eq!(projeto.last_used, None, "precondição: nunca usado");
+
+    let tocado = project_commands::touch(db.conn(), &projeto.id).expect("project_touch");
+
+    assert_eq!(tocado.id, projeto.id);
+    let gravado = tocado.last_used.expect("last_used deve ter sido gravado");
+    let relido = service::get(db.conn(), &projeto.id).expect("reler o projeto");
+    assert_eq!(
+        relido.last_used,
+        Some(gravado),
+        "o valor devolvido deve ser o que ficou no banco"
+    );
+}
+
+// A tradução de `ProjectError::NotFound` para a `String` que a IPC
+// transporta precisa nomear o id recusado.
+#[test]
+fn project_touch_com_id_inexistente_devolve_a_mensagem_de_not_found() {
+    let (_db_dir, db_path) = temp_db_path();
+    let db = Db::open(&db_path).expect("abrir banco novo");
+
+    let erro = project_commands::touch(db.conn(), "id-que-nao-existe")
+        .expect_err("project_touch em id inexistente deve falhar");
+
+    assert_eq!(erro, "project not found: id-que-nao-existe");
+}
+
+// P1 AC10: restaurar terminais grava `last_used` de cada projeto que casa
+// com o `cwd` de um terminal restaurado.
+#[test]
+fn project_touch_cwds_toca_os_projetos_casados_e_devolve_a_contagem() {
+    let (_db_dir, db_path) = temp_db_path();
+    let db = Db::open(&db_path).expect("abrir banco novo");
+    let dir_a = tempfile::tempdir().expect("dir a");
+    let dir_b = tempfile::tempdir().expect("dir b");
+
+    let a = service::create(db.conn(), "A", dir_a.path()).expect("create A");
+    let b = service::create(db.conn(), "B", dir_b.path()).expect("create B");
+
+    let cwds = vec![a.path.clone(), b.path.clone()];
+    let tocados = project_commands::touch_cwds(db.conn(), &cwds).expect("project_touch_cwds");
+
+    assert_eq!(tocados, 2, "os dois projetos casados devem ser tocados");
+    assert!(
+        service::get(db.conn(), &a.id)
+            .expect("reler A")
+            .last_used
+            .is_some(),
+        "A deve ter last_used gravado"
+    );
+    assert!(
+        service::get(db.conn(), &b.id)
+            .expect("reler B")
+            .last_used
+            .is_some(),
+        "B deve ter last_used gravado"
+    );
+}
+
+// Edge case: `cwd` que não casa com projeto nenhum (a pasta-sandbox, por
+// exemplo) devolve 0 e não falha.
+#[test]
+fn project_touch_cwds_sem_nenhum_casamento_devolve_zero_sem_falhar() {
+    let (_db_dir, db_path) = temp_db_path();
+    let db = Db::open(&db_path).expect("abrir banco novo");
+    let dir_projeto = tempfile::tempdir().expect("dir do projeto");
+    let dir_solto = tempfile::tempdir().expect("dir fora de qualquer projeto");
+
+    let projeto = service::create(db.conn(), "Projeto", dir_projeto.path()).expect("create");
+
+    let cwds = vec![dir_solto.path().to_string_lossy().into_owned()];
+    let tocados = project_commands::touch_cwds(db.conn(), &cwds).expect("project_touch_cwds");
+
+    assert_eq!(tocados, 0);
+    assert_eq!(
+        service::get(db.conn(), &projeto.id)
+            .expect("reler o projeto")
+            .last_used,
+        None,
+        "nenhum projeto pode ter sido tocado"
+    );
+}
+
+// --- projects/T6: comando `project_create_in` -----------------------------
+
+// P2 AC7: a subpasta nasce dentro do diretório-base e é ela que fica
+// registrada como `path` do projeto.
+#[test]
+fn project_create_in_cria_a_subpasta_e_registra_o_path_dela() {
+    let (_db_dir, db_path) = temp_db_path();
+    let db = Db::open(&db_path).expect("abrir banco novo");
+    let base = tempfile::tempdir().expect("diretório-base");
+
+    let projeto = project_commands::create_in(
+        db.conn(),
+        "novo-projeto",
+        &base.path().to_string_lossy(),
+        None,
+        false,
+    )
+    .expect("project_create_in");
+
+    let esperada = base.path().join("novo-projeto");
+    assert!(esperada.is_dir(), "a subpasta deve existir no disco");
+    assert!(
+        std::path::Path::new(&projeto.path).ends_with("novo-projeto"),
+        "o path registrado deve ser o da subpasta, veio: {}",
+        projeto.path
+    );
+    assert_eq!(
+        service::get(db.conn(), &projeto.id).expect("reler").path,
+        projeto.path
+    );
+}
+
+// P2 AC8: com a opção marcada, `git init` roda na subpasta criada.
+#[test]
+fn project_create_in_com_git_init_deixa_git_na_subpasta() {
+    let (_db_dir, db_path) = temp_db_path();
+    let db = Db::open(&db_path).expect("abrir banco novo");
+    let base = tempfile::tempdir().expect("diretório-base");
+
+    project_commands::create_in(
+        db.conn(),
+        "com-git",
+        &base.path().to_string_lossy(),
+        None,
+        true,
+    )
+    .expect("project_create_in com git_init");
+
+    assert!(
+        base.path().join("com-git").join(".git").exists(),
+        "git init deve ter deixado .git dentro da subpasta"
+    );
+}
+
+// P2 AC9: nome vazio ou só com espaços não cria pasta nenhuma.
+#[test]
+fn project_create_in_com_nome_em_branco_devolve_name_required_sem_criar_pasta() {
+    let (_db_dir, db_path) = temp_db_path();
+    let db = Db::open(&db_path).expect("abrir banco novo");
+    let base = tempfile::tempdir().expect("diretório-base");
+
+    let erro = project_commands::create_in(
+        db.conn(),
+        "   ",
+        &base.path().to_string_lossy(),
+        None,
+        false,
+    )
+    .expect_err("nome em branco deve falhar");
+
+    assert_eq!(erro, "project name is required");
+    assert_eq!(
+        std::fs::read_dir(base.path())
+            .expect("ler diretório-base")
+            .count(),
+        0,
+        "nada pode ter sido criado no diretório-base"
+    );
+}
+
+// P2 AC10: a subpasta que já pertence a outro projeto é recusada nomeando
+// o projeto que ocupa o caminho.
+#[test]
+fn project_create_in_com_subpasta_ja_registrada_nomeia_o_projeto_existente() {
+    let (_db_dir, db_path) = temp_db_path();
+    let db = Db::open(&db_path).expect("abrir banco novo");
+    let base = tempfile::tempdir().expect("diretório-base");
+
+    project_commands::create_in(
+        db.conn(),
+        "duplicado",
+        &base.path().to_string_lossy(),
+        None,
+        false,
+    )
+    .expect("primeira criação");
+
+    let erro = project_commands::create_in(
+        db.conn(),
+        "duplicado",
+        &base.path().to_string_lossy(),
+        None,
+        false,
+    )
+    .expect_err("segunda criação com o mesmo nome deve falhar");
+
+    assert!(
+        erro.contains("already used by project 'duplicado'"),
+        "a mensagem deve nomear o projeto que já ocupa o caminho, veio: {erro}"
+    );
+}
+
+// Edge case da spec: diretório-base que não existe mais no momento da
+// confirmação devolve o caminho ausente.
+#[test]
+fn project_create_in_com_base_inexistente_devolve_path_not_found_com_o_caminho() {
+    let (_db_dir, db_path) = temp_db_path();
+    let db = Db::open(&db_path).expect("abrir banco novo");
+    let base = tempfile::tempdir().expect("diretório temporário");
+    let sumido = base.path().join("base-que-sumiu");
+
+    let erro = project_commands::create_in(
+        db.conn(),
+        "qualquer",
+        &sumido.to_string_lossy(),
+        None,
+        false,
+    )
+    .expect_err("diretório-base inexistente deve falhar");
+
+    assert!(
+        erro.starts_with("directory does not exist:") && erro.contains("base-que-sumiu"),
+        "a mensagem deve trazer o caminho ausente, veio: {erro}"
+    );
+}
+
+// PROJ-17: `project_create` de 3 argumentos continua sendo o Import — pasta
+// que já existe, registrada como está, sem criar subpasta nenhuma.
+#[test]
+fn project_create_de_tres_argumentos_continua_registrando_a_pasta_recebida() {
+    let (_db_dir, db_path) = temp_db_path();
+    let db = Db::open(&db_path).expect("abrir banco novo");
+    let dir = tempfile::tempdir().expect("pasta existente");
+
+    let projeto = service::create(db.conn(), "Importado", dir.path()).expect("create");
+
+    assert!(
+        std::path::Path::new(&projeto.path)
+            .ends_with(dir.path().file_name().expect("nome da última pasta")),
+        "o path registrado deve ser a própria pasta escolhida, veio: {}",
+        projeto.path
+    );
+    assert_eq!(
+        std::fs::read_dir(dir.path()).expect("ler a pasta").count(),
+        0,
+        "o import não pode criar subpasta nenhuma"
     );
 }
