@@ -1,4 +1,4 @@
-// SPEC: projects (PROJ-13, PROJ-16, PROJ-17, PROJ-18)
+// SPEC: projects (PROJ-13, PROJ-16, PROJ-17, PROJ-18, PROJ-21)
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -90,6 +90,18 @@ describe('PaneWizard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
 
     expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/alpha', 'codex-cli', 'a')
+  })
+
+  it('"Terminal limpo" emite onConfirm com agente nulo, mesmo com agente padrão (P1 AC20)', async () => {
+    const onConfirm = vi.fn()
+    renderWizard({ onConfirm })
+    await waitForList()
+
+    fireEvent.click(screen.getByRole('button', { name: /alpha/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /Terminal limpo/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
+
+    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/alpha', null, 'a')
   })
 
   it('"No Project" avança com o caminho da sandbox e projectId nulo (P2 AC1)', async () => {

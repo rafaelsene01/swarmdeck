@@ -1,4 +1,4 @@
-// SPEC: projects (PROJ-13)
+// SPEC: projects (PROJ-13, PROJ-21)
 
 import ProviderIcon from '../shell/ProviderIcon'
 import type { AgentDescriptor } from '../../routes/settings/AgentPanel'
@@ -15,6 +15,7 @@ export interface AgentStepProps {
   agents: AgentDescriptor[]
   /** Ids com comando resolvido no PATH, como `AgentPanel` lê (AGT-04). */
   installedIds: Set<string>
+  /** `null` = terminal limpo: shell puro na pasta, sem agente (PROJ-21). */
   selectedAgentId: string | null
   onSelectAgent: (id: string | null) => void
   onBack: () => void
@@ -26,7 +27,9 @@ export interface AgentStepProps {
  * que abre o terminal. Apresentacional — a seleção mora em `PaneWizard`.
  *
  * "Nova sessão" nunca desabilita: sem nenhum agente resolvido no PATH o
- * terminal ainda sobe no shell puro (edge case da spec).
+ * terminal ainda sobe no shell puro (edge case da spec). "Terminal limpo" é
+ * a escolha explícita desse shell puro (PROJ-21) e nunca desabilita — não
+ * depende de comando nenhum no PATH.
  */
 export default function AgentStep({
   selection,
@@ -68,7 +71,11 @@ export default function AgentStep({
         .agent-step__swatch { width: 20px; height: 20px; border-radius: 6px; }
         .agent-step__card-name { font-size: 0.8rem; }
         .agent-step__card-path { font-size: 0.7rem; color: var(--muted, #8a8a92); }
+        .agent-step__choices { display: flex; gap: 0.5rem; overflow: hidden; }
+        .agent-step__plain { flex: 0 0 130px; align-self: flex-start; flex-direction: column; align-items: flex-start; gap: 0.15rem; }
+        .agent-step__plain-hint { font-size: 0.65rem; color: var(--muted, #8a8a92); }
         .agent-step__grid {
+          flex: 1;
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
           gap: 0.4rem;
@@ -111,24 +118,36 @@ export default function AgentStep({
         <span className="agent-step__card-path">{selection.path}</span>
       </div>
 
-      <div className="agent-step__grid">
-        {agents.map((agent) => {
-          const installed = installedIds.has(agent.id)
+      <div className="agent-step__choices">
+        <button
+          type="button"
+          className="agent-step__agent agent-step__plain"
+          aria-pressed={selectedAgentId === null}
+          onClick={() => onSelectAgent(null)}
+        >
+          Terminal limpo
+          <span className="agent-step__plain-hint">sem agente</span>
+        </button>
 
-          return (
-            <button
-              key={agent.id}
-              type="button"
-              className="agent-step__agent"
-              aria-pressed={agent.id === selectedAgentId}
-              disabled={!installed}
-              onClick={() => onSelectAgent(agent.id)}
-            >
-              <ProviderIcon id={agent.id} />
-              {agent.name}
-            </button>
-          )
-        })}
+        <div className="agent-step__grid">
+          {agents.map((agent) => {
+            const installed = installedIds.has(agent.id)
+
+            return (
+              <button
+                key={agent.id}
+                type="button"
+                className="agent-step__agent"
+                aria-pressed={agent.id === selectedAgentId}
+                disabled={!installed}
+                onClick={() => onSelectAgent(agent.id)}
+              >
+                <ProviderIcon id={agent.id} />
+                {agent.name}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       <div className="agent-step__actions">

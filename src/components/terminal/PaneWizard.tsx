@@ -1,4 +1,4 @@
-// SPEC: projects (PROJ-13, PROJ-14, PROJ-16, PROJ-17, PROJ-18)
+// SPEC: projects (PROJ-13, PROJ-14, PROJ-16, PROJ-17, PROJ-18, PROJ-21)
 
 import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -77,9 +77,11 @@ export default function PaneWizard({
   const [selection, setSelection] = useState<Selection | null>(null)
   /** `null` = o usuário ainda não escolheu; o padrão vale enquanto isso. O
    * catálogo chega por IPC depois do mount (`App.tsx`), então guardar o
-   * `defaultAgentId` em estado congelaria um `null` inicial. */
-  const [chosenAgentId, setChosenAgentId] = useState<string | null>(null)
-  const selectedAgentId = chosenAgentId ?? defaultAgentId
+   * `defaultAgentId` em estado congelaria um `null` inicial. O envelope
+   * `{ id }` separa "não escolheu" de "escolheu terminal limpo" (PROJ-21),
+   * que também é um `id` nulo. */
+  const [chosen, setChosen] = useState<{ id: string | null } | null>(null)
+  const selectedAgentId = chosen === null ? defaultAgentId : chosen.id
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -185,7 +187,7 @@ export default function PaneWizard({
         agents={agents}
         installedIds={installedIds}
         selectedAgentId={selectedAgentId}
-        onSelectAgent={setChosenAgentId}
+        onSelectAgent={(id) => setChosen({ id })}
         onBack={() => setSelection(null)}
         onConfirm={() => onConfirm(selection.path, selectedAgentId, selection.id)}
       />

@@ -1,4 +1,4 @@
-// SPEC: projects (PROJ-13)
+// SPEC: projects (PROJ-13, PROJ-21)
 
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -29,7 +29,14 @@ function renderStep(props: Partial<Parameters<typeof AgentStep>[0]> = {}) {
 }
 
 const agentButtons = () =>
-  screen.getAllByRole('button').filter((b) => b.classList.contains('agent-step__agent'))
+  screen
+    .getAllByRole('button')
+    .filter(
+      (b) =>
+        b.classList.contains('agent-step__agent') && !b.classList.contains('agent-step__plain'),
+    )
+
+const plainButton = () => screen.getByRole('button', { name: /Terminal limpo/ })
 
 describe('AgentStep', () => {
   it('os agentes aparecem na ordem recebida, com o padrão pré-selecionado (P1 AC7)', () => {
@@ -86,6 +93,25 @@ describe('AgentStep', () => {
     expect(screen.getByText('alpha')).toBeInTheDocument()
     expect(screen.getByText('/home/user/dev/alpha')).toBeInTheDocument()
     expect(screen.getByTestId('agent-step-swatch').style.backgroundColor).toBe('rgb(239, 68, 68)')
+  })
+
+  it('"Terminal limpo" chama onSelectAgent com null e nunca desabilita (P1 AC20)', () => {
+    const onSelectAgent = vi.fn()
+    renderStep({ installedIds: new Set<string>(), onSelectAgent })
+
+    const plain = plainButton()
+    expect(plain).toBeEnabled()
+
+    fireEvent.click(plain)
+
+    expect(onSelectAgent).toHaveBeenCalledWith(null)
+  })
+
+  it('selectedAgentId nulo marca "Terminal limpo" e nenhum agente (P1 AC20)', () => {
+    renderStep({ selectedAgentId: null })
+
+    expect(plainButton()).toHaveAttribute('aria-pressed', 'true')
+    expect(agentButtons().every((b) => b.getAttribute('aria-pressed') === 'false')).toBe(true)
   })
 
   it('com zero agentes instalados, "Nova sessão" continua habilitada (edge case)', () => {
