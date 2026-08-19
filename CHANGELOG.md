@@ -1,11 +1,25 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.25] - 2026-08-19
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.24] - 2026-08-18
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Refactor terminal creation process and integrate project management features
+
+- Replaced NewTerminalDialog with PaneWizard for terminal creation, enhancing user experience by allowing project selection.
+- Updated App component to manage terminal drafts and integrate project-related functionalities, ensuring a seamless workflow.
+- Enhanced EmptyState component to initiate terminal creation through the new wizard.
+- Updated tests across App, TerminalHeader, and ProjectsPanel to reflect changes in terminal management and project handling.
+- Improved specifications to include new project-related features and ensure comprehensive coverage of the updated functionalities.
 
 ## [0.1.23] - 2026-08-18
 
