@@ -1,11 +1,24 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.32] - 2026-08-20
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.31] - 2026-08-20
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Enhance terminal project management and header display
+
+- Introduced functionality to fetch and display project names in the terminal header, allowing each terminal to show the associated project name based on the current working directory.
+- Updated the PaneWizard component to include new utility functions for path normalization and segment extraction.
+- Removed inline renaming capability from the TerminalHeader, making the project name display read-only.
+- Adjusted tests to reflect the new behavior of the TerminalHeader, ensuring it no longer opens an editing field when clicked.
 
 ## [0.1.30] - 2026-08-20
 
