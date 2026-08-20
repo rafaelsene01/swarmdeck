@@ -86,23 +86,25 @@ describe('PaneWizard', () => {
 
   it('"Nova sessão" emite onConfirm com caminho do projeto, agente e id do projeto (P1 AC8)', async () => {
     const onConfirm = vi.fn()
-    renderWizard({ onConfirm })
+    // Sem padrão, para o `claude-code` do resultado provar que veio do
+    // clique e não da pré-seleção.
+    renderWizard({ onConfirm, defaultAgentId: null })
     await waitForList()
 
     fireEvent.click(screen.getByRole('button', { name: /alpha/ }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Codex CLI' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Claude Code' }))
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
 
-    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/alpha', 'codex-cli', 'a')
+    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/alpha', 'claude-code', 'a')
   })
 
-  it('"Terminal limpo" emite onConfirm com agente nulo, mesmo com agente padrão (P1 AC20)', async () => {
+  it('"Terminal" emite onConfirm com agente nulo, mesmo com agente padrão (P1 AC20)', async () => {
     const onConfirm = vi.fn()
     renderWizard({ onConfirm })
     await waitForList()
 
     fireEvent.click(screen.getByRole('button', { name: /alpha/ }))
-    fireEvent.click(await screen.findByRole('button', { name: /Terminal limpo/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Terminal$/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
 
     expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/alpha', null, 'a')

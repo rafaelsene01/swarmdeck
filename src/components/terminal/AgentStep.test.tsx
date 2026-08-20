@@ -36,7 +36,7 @@ const agentButtons = () =>
         b.classList.contains('agent-step__agent') && !b.classList.contains('agent-step__plain'),
     )
 
-const plainButton = () => screen.getByRole('button', { name: /Terminal limpo/ })
+const plainButton = () => screen.getByRole('button', { name: /^Terminal$/ })
 
 describe('AgentStep', () => {
   it('os agentes aparecem na ordem recebida, com o padrão pré-selecionado (P1 AC7)', () => {
@@ -60,23 +60,36 @@ describe('AgentStep', () => {
 
   it('agente não instalado fica desabilitado e clicar nele não seleciona nada (P1 AC7)', () => {
     const onSelectAgent = vi.fn()
-    renderStep({ installedIds: new Set(['claude-code']), onSelectAgent })
+    renderStep({ installedIds: new Set<string>(), onSelectAgent })
 
-    const codex = screen.getByRole('button', { name: 'Codex CLI' })
-    expect(codex).toBeDisabled()
+    const claude = screen.getByRole('button', { name: 'Claude Code' })
+    expect(claude).toBeDisabled()
 
-    fireEvent.click(codex)
+    fireEvent.click(claude)
 
     expect(onSelectAgent).not.toHaveBeenCalled()
   })
 
-  it('clicar num agente instalado chama onSelectAgent com o id dele', () => {
+  it('clicar num agente habilitado chama onSelectAgent com o id dele', () => {
     const onSelectAgent = vi.fn()
     renderStep({ onSelectAgent })
 
+    fireEvent.click(screen.getByRole('button', { name: 'Claude Code' }))
+
+    expect(onSelectAgent).toHaveBeenCalledWith('claude-code')
+  })
+
+  it('só Claude é escolhível: os demais ficam desabilitados mesmo instalados', () => {
+    const onSelectAgent = vi.fn()
+    renderStep({ onSelectAgent })
+
+    expect(screen.getByRole('button', { name: 'Claude Code' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Codex CLI' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'opencode' })).toBeDisabled()
+
     fireEvent.click(screen.getByRole('button', { name: 'Codex CLI' }))
 
-    expect(onSelectAgent).toHaveBeenCalledWith('codex-cli')
+    expect(onSelectAgent).not.toHaveBeenCalled()
   })
 
   it('"Voltar" chama onBack (P1 AC6)', () => {
@@ -93,10 +106,12 @@ describe('AgentStep', () => {
 
     expect(screen.getByText('alpha')).toBeInTheDocument()
     expect(screen.getByText('/home/user/dev/alpha')).toBeInTheDocument()
-    expect(screen.getByTestId('agent-step-swatch').style.backgroundColor).toBe('rgb(239, 68, 68)')
+    const swatch = screen.getByTestId('agent-step-swatch')
+    expect(swatch.style.backgroundColor).toBe('rgb(239, 68, 68)')
+    expect(swatch).toHaveTextContent('A')
   })
 
-  it('"Terminal limpo" chama onSelectAgent com null e nunca desabilita (P1 AC20)', () => {
+  it('"Terminal" chama onSelectAgent com null e nunca desabilita (P1 AC20)', () => {
     const onSelectAgent = vi.fn()
     renderStep({ installedIds: new Set<string>(), onSelectAgent })
 
@@ -108,7 +123,7 @@ describe('AgentStep', () => {
     expect(onSelectAgent).toHaveBeenCalledWith(null)
   })
 
-  it('selectedAgentId nulo marca "Terminal limpo" e nenhum agente (P1 AC20)', () => {
+  it('selectedAgentId nulo marca "Terminal" e nenhum agente (P1 AC20)', () => {
     renderStep({ selectedAgentId: null })
 
     expect(plainButton()).toHaveAttribute('aria-pressed', 'true')

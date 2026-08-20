@@ -26,10 +26,15 @@ export interface AgentStepProps {
   counter?: string
 }
 
-/** Id sintético do ladrilho "Terminal limpo": a escolha é `null`, mas o
- *  estado de hover precisa distinguir "nada sob o cursor" de "cursor no
- *  terminal limpo". */
+/** Id sintético do ladrilho "Terminal": a escolha é `null`, mas o estado de
+ *  hover precisa distinguir "nada sob o cursor" de "cursor no terminal
+ *  puro". */
 const PLAIN = '__plain__'
+
+/** Agentes que o wizard deixa escolher hoje. Os outros aparecem na grade
+ *  (o catálogo é o mesmo), mas desabilitados: só Claude está integrado de
+ *  ponta a ponta. */
+const SELECTABLE = new Set(['claude-code'])
 
 /**
  * Etapa 2 do wizard: cartão do lugar escolhido, grade de agentes e o botão
@@ -42,8 +47,8 @@ const PLAIN = '__plain__'
  * nome mesmo sem texto visível.
  *
  * "Nova sessão" nunca desabilita: sem nenhum agente resolvido no PATH o
- * terminal ainda sobe no shell puro (edge case da spec). "Terminal limpo" é
- * a escolha explícita desse shell puro (PROJ-21) e nunca desabilita — não
+ * terminal ainda sobe no shell puro (edge case da spec). "Terminal" é a
+ * escolha explícita desse shell puro (PROJ-21) e nunca desabilita — não
  * depende de comando nenhum no PATH.
  */
 export default function AgentStep({
@@ -62,13 +67,15 @@ export default function AgentStep({
   const focusedAgent = agents.find((agent) => agent.id === focusedId) ?? null
   const caption =
     focusedId === PLAIN
-      ? { name: 'Terminal limpo', meta: 'shell puro · sem agente' }
+      ? { name: 'Terminal', meta: 'shell puro · sem agente' }
       : focusedAgent !== null
         ? {
             name: focusedAgent.name,
-            meta: installedIds.has(focusedAgent.id)
-              ? focusedAgent.vendor
-              : `${focusedAgent.vendor} · não encontrado no PATH`,
+            meta: !SELECTABLE.has(focusedAgent.id)
+              ? `${focusedAgent.vendor} · em breve`
+              : installedIds.has(focusedAgent.id)
+                ? focusedAgent.vendor
+                : `${focusedAgent.vendor} · não encontrado no PATH`,
           }
         : null
 
@@ -121,6 +128,9 @@ export default function AgentStep({
           width: 34px;
           height: 34px;
           border-radius: 9px;
+          color: #0a0a0c;
+          font-size: 0.85rem;
+          font-weight: 700;
         }
         .agent-step__card-meta {
           display: flex;
@@ -260,11 +270,6 @@ export default function AgentStep({
           box-shadow: 0 0 0 3px rgba(245, 183, 0, 0.1);
         }
         .agent-step__confirm-name { font-size: 0.85rem; font-weight: 700; }
-        .agent-step__confirm-hint {
-          font-size: 0.62rem;
-          letter-spacing: 0.12em;
-          color: var(--muted, #8a8a92);
-        }
       `}</style>
 
       <div className="agent-step__inner">
@@ -278,7 +283,9 @@ export default function AgentStep({
                 style={{ backgroundColor: selection.color }}
                 data-testid="agent-step-swatch"
                 aria-hidden="true"
-              />
+              >
+                {selection.name.charAt(0).toUpperCase()}
+              </span>
             )}
             <span className="agent-step__card-meta">
               <span className="agent-step__card-name">{selection.name}</span>
@@ -309,8 +316,8 @@ export default function AgentStep({
             <button
               type="button"
               className="agent-step__agent agent-step__plain"
-              aria-label="Terminal limpo"
-              title="Terminal limpo"
+              aria-label="Terminal"
+              title="Terminal"
               aria-pressed={selectedAgentId === null}
               onClick={() => onSelectAgent(null)}
               onMouseEnter={() => setHovered(PLAIN)}
@@ -337,7 +344,7 @@ export default function AgentStep({
             </button>
 
             {agents.map((agent) => {
-              const installed = installedIds.has(agent.id)
+              const enabled = SELECTABLE.has(agent.id) && installedIds.has(agent.id)
 
               return (
                 <button
@@ -347,7 +354,7 @@ export default function AgentStep({
                   aria-label={agent.name}
                   title={agent.name}
                   aria-pressed={agent.id === selectedAgentId}
-                  disabled={!installed}
+                  disabled={!enabled}
                   onClick={() => onSelectAgent(agent.id)}
                   onMouseEnter={() => setHovered(agent.id)}
                   onMouseLeave={() => setHovered(null)}
@@ -395,10 +402,7 @@ export default function AgentStep({
               <line x1="12" y1="8" x2="12" y2="16" />
               <line x1="8" y1="12" x2="16" y2="12" />
             </svg>
-            <span>
-              <span className="agent-step__confirm-name">Nova sessão</span>{' '}
-              <span className="agent-step__confirm-hint">COMEÇAR DO ZERO</span>
-            </span>
+            <span className="agent-step__confirm-name">Nova sessão</span>
           </button>
         </div>
       </div>

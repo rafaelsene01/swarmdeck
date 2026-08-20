@@ -1,14 +1,14 @@
 // SPEC: projects (PROJ-10, PROJ-13)
 
 /**
- * Cabeçalho comum às duas etapas do wizard de novo terminal: marca, trilha
- * "① PROJECT › ② AGENT" e o contador de projetos. Mora à parte porque as
+ * Cabeçalho comum às duas etapas do wizard de novo terminal: a trilha
+ * "① Projeto › ② Agente" e o contador. Mora à parte porque as
  * duas etapas precisam do mesmo bloco pixel a pixel — cada uma renderizando
  * o seu produziria dois cabeçalhos que divergem no primeiro ajuste.
  */
 
 export interface WizardHeaderProps {
-  /** Etapa em foco: 1 = PROJECT, 2 = AGENT. */
+  /** Etapa em foco: 1 = Projeto, 2 = Agente. */
   step: 1 | 2
   /** Texto pronto do contador, no formato "N / M projects". */
   counter: string
@@ -25,14 +25,13 @@ export default function WizardHeader({ step, counter }: WizardHeaderProps) {
           gap: 0.75rem;
         }
         .wizard-head__trail { display: flex; align-items: center; gap: 0.45rem; }
-        .wizard-head__mark { color: var(--accent, #f5b700); display: block; }
         .wizard-head__step {
           display: flex;
           align-items: center;
           gap: 0.35rem;
-          font-size: 0.68rem;
+          font-size: 0.72rem;
           font-weight: 600;
-          letter-spacing: 0.14em;
+          letter-spacing: 0.06em;
           color: var(--muted, #8a8a92);
         }
         .wizard-head__step[data-active='true'] { color: var(--accent, #f5b700); }
@@ -58,32 +57,16 @@ export default function WizardHeader({ step, counter }: WizardHeaderProps) {
       `}</style>
 
       <div className="wizard-head__trail">
-        <svg
-          className="wizard-head__mark"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          aria-hidden="true"
-          focusable="false"
-        >
-          <circle cx="8" cy="8" r="4" />
-          <circle cx="16" cy="8" r="4" />
-          <circle cx="12" cy="16" r="4" />
-        </svg>
-
         <span className="wizard-head__step" data-active={step === 1}>
           <span className="wizard-head__bullet">1</span>
-          PROJECT
+          Projeto
         </span>
         <span className="wizard-head__sep" aria-hidden="true">
           ›
         </span>
         <span className="wizard-head__step" data-active={step === 2}>
           <span className="wizard-head__bullet">2</span>
-          AGENT
+          Agente
         </span>
       </div>
 
