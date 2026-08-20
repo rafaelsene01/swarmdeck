@@ -1,11 +1,44 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.30] - 2026-08-20
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.29] - 2026-08-20
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Remove StatusesPanel component and related tests from SettingsShell
+
+- Deleted the StatusesPanel component and its associated test file, streamlining the SettingsShell component.
+- Updated SettingsShell to remove references to the statuses section, adjusting sidebar items and related tests accordingly.
+- Ensured that the sidebar now correctly reflects the remaining sections: General, Agents, Projects, and Updates.
+
+- Enhance GeneralPanel to support complete agent catalog and improve provider management
+
+- Updated GeneralPanel to include a new `agentIds` prop, allowing the display of a complete agent catalog.
+- Modified rendering logic to differentiate between providers with real quotas and those without, ensuring only relevant providers are interactive.
+- Added tests to validate the new functionality, including the handling of locked rows and the preservation of provider states.
+- Adjusted related components and styles to accommodate the new features and improve user experience.
+
+- Implement clipboard paste functionality in TerminalPane for multi-terminal support (TERM-14)
+
+- Enhanced TerminalPane to handle Ctrl+V and Ctrl+Shift+V for pasting text from the clipboard, preventing default behavior to avoid sending literal control characters to the shell.
+- Updated tests to validate the new paste functionality, ensuring correct behavior with both non-empty and empty clipboard scenarios.
+- Adjusted the component's key event handling to integrate clipboard reading and pasting seamlessly into the terminal experience.
+
+- Implement agent permission mode functionality across terminal components
+
+- Introduced agent permission modes to the application, allowing users to select and manage permissions for agents during terminal sessions.
+- Updated the AgentStep component to display available permission modes and handle user selection.
+- Enhanced the PaneWizard to pass the selected permission mode to the terminal session, ensuring it is correctly applied during agent launches.
+- Modified the TerminalPane and TerminalHeader components to reflect the current permission mode in use, improving user awareness of session permissions.
+- Added tests to validate the new permission mode functionality, ensuring correct behavior across various scenarios and agent configurations.
 
 ## [0.1.28] - 2026-08-20
 
