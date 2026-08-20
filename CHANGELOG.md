@@ -1,11 +1,27 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.33] - 2026-08-20
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Improve IPC contract documentation in terminal command
+
+- Added comments to clarify the purpose of the parameters in the `pty_spawn` function, emphasizing the importance of maintaining the current structure for readability.
+- Included a note on the implications of grouping parameters into a struct, highlighting the trade-off between payload size and code clarity.
+
 ## [0.1.32] - 2026-08-20
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Refactor resolve_with calls for improved readability in tests
+
+- Updated the formatting of `resolve_with` function calls in test cases to enhance code clarity and maintainability.
+- Adjusted the indentation and line breaks for better visual structure, making it easier to understand the parameters being passed.
 
 ## [0.1.31] - 2026-08-20
 
