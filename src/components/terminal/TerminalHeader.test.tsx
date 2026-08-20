@@ -1,4 +1,4 @@
-// SPEC: terminal-chrome (CHROME-02, CHROME-04), minimized-tray (MIN-13), multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01), projects (PROJ-11, PROJ-12)
+// SPEC: terminal-chrome (CHROME-02, CHROME-04), minimized-tray (MIN-13), multi-terminal (TERM-05, TERM-12, TERM-13), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01), projects (PROJ-11, PROJ-12)
 
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -16,8 +16,7 @@ describe('TerminalHeader — barra de título da janela (CHROME-02)', () => {
   it('expõe abrir-no-editor, capturar, maximizar, minimizar, clonar, reiniciar e fechar como botões rotulados, nessa ordem', () => {
     const { container } = render(<TerminalHeader index={1} title={null} />)
 
-    // Escopado à barra de ações: o próprio título também é um `role="button"`
-    // desde que ganhou o clique-para-renomear.
+    // Escopado à barra de ações — o título não é botão (AD-020).
     const labels = [...container.querySelectorAll('.terminal-header__actions button')].map(
       (button) => button.getAttribute('aria-label'),
     )
@@ -142,57 +141,16 @@ describe('TerminalHeader — barra de título da janela (CHROME-02)', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  // TERM-06: renomeação inline por clique, com confirmar/cancelar explícitos.
-  it('clicar no título abre o campo com confirmar e cancelar', () => {
-    render(<TerminalHeader index={1} title="build" />)
+  // AD-020: o título é o nome do projeto e não é mais editável — clicar nele
+  // não abre campo nenhum.
+  it('mostra o nome do projeto e não abre campo de edição ao clicar', () => {
+    render(<TerminalHeader index={1} title="swarmdeck" />)
 
-    fireEvent.click(screen.getByText('build'))
+    const titulo = screen.getByText('swarmdeck')
+    fireEvent.click(titulo)
 
-    expect(screen.getByLabelText('renomear terminal')).toHaveValue('build')
-    expect(screen.getByLabelText('confirmar renomear terminal')).toBeInTheDocument()
-    expect(screen.getByLabelText('cancelar renomear terminal')).toBeInTheDocument()
-  })
-
-  it('confirmar aplica o novo nome; cancelar mantém o antigo', () => {
-    render(<TerminalHeader index={1} title="build" />)
-
-    fireEvent.click(screen.getByText('build'))
-    fireEvent.change(screen.getByLabelText('renomear terminal'), { target: { value: 'deploy' } })
-    fireEvent.click(screen.getByLabelText('confirmar renomear terminal'))
-
-    expect(screen.getByText('deploy')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('deploy'))
-    fireEvent.change(screen.getByLabelText('renomear terminal'), { target: { value: 'lixo' } })
-    fireEvent.click(screen.getByLabelText('cancelar renomear terminal'))
-
-    expect(screen.getByText('deploy')).toBeInTheDocument()
-    expect(screen.queryByText('lixo')).not.toBeInTheDocument()
-  })
-
-  it('Enter confirma e Escape cancela', () => {
-    render(<TerminalHeader index={1} title="build" />)
-
-    fireEvent.click(screen.getByText('build'))
-    const input = screen.getByLabelText('renomear terminal')
-    fireEvent.change(input, { target: { value: 'deploy' } })
-    fireEvent.keyDown(input, { key: 'Enter' })
-    expect(screen.getByText('deploy')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('deploy'))
-    fireEvent.change(screen.getByLabelText('renomear terminal'), { target: { value: 'lixo' } })
-    fireEvent.keyDown(screen.getByLabelText('renomear terminal'), { key: 'Escape' })
-    expect(screen.getByText('deploy')).toBeInTheDocument()
-  })
-
-  it('nome só com espaços é tratado como cancelamento', () => {
-    render(<TerminalHeader index={1} title="build" />)
-
-    fireEvent.click(screen.getByText('build'))
-    fireEvent.change(screen.getByLabelText('renomear terminal'), { target: { value: '   ' } })
-    fireEvent.click(screen.getByLabelText('confirmar renomear terminal'))
-
-    expect(screen.getByText('build')).toBeInTheDocument()
+    expect(screen.queryByLabelText('renomear terminal')).not.toBeInTheDocument()
+    expect(titulo).not.toHaveAttribute('role', 'button')
   })
 })
 

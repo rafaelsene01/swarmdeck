@@ -28,17 +28,22 @@ function toRow(record: ProjectRecord): ProjectRow {
   }
 }
 
-/** Última pasta do caminho — o nome do projeto no "Import Project" (P2 AC4). */
-function lastSegment(path: string): string {
+/** Última pasta do caminho — o nome do projeto no "Import Project" (P2 AC4),
+ *  e o rótulo de fallback do cabeçalho quando o `cwd` não é projeto conhecido. */
+export function lastSegment(path: string): string {
   const parts = path.split(/[\\/]/).filter(Boolean)
   return parts[parts.length - 1] ?? path
 }
 
-/** Compara caminhos ignorando separador e caixa: o seletor do SO devolve o
- *  caminho como o usuário navegou, o banco guarda o canonicalizado. */
+/** Normaliza para comparação: sem barra final, separador único, minúsculas —
+ *  o seletor do SO devolve o caminho como o usuário navegou, o banco guarda o
+ *  canonicalizado. */
+export function normalizePath(p: string): string {
+  return p.replace(/[\\/]+$/, '').replace(/\\/g, '/').toLowerCase()
+}
+
 function samePath(a: string, b: string): boolean {
-  const norm = (p: string) => p.replace(/[\\/]+$/, '').replace(/\\/g, '/').toLowerCase()
-  return norm(a) === norm(b)
+  return normalizePath(a) === normalizePath(b)
 }
 
 export interface PaneWizardProps {

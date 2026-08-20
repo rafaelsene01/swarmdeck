@@ -1,9 +1,6 @@
-// SPEC: multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02, CHROME-04), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01, SHOT-23), minimized-tray (MIN-13), projects (PROJ-11, PROJ-12), agent-permission-mode (PERM-07)
+// SPEC: multi-terminal (TERM-05, TERM-12, TERM-13), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02, CHROME-04), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01, SHOT-23), minimized-tray (MIN-13), projects (PROJ-11, PROJ-12), agent-permission-mode (PERM-07)
 
-import { useState } from 'react'
-import { invoke } from '@tauri-apps/api/core'
 import { Camera, CopyPlus, GripVertical, Maximize2, Minimize2, Moon, RotateCcw, X } from 'lucide-react'
-import InlineRename from '../shell/InlineRename'
 import EditorMenu from './EditorMenu'
 import { PERMISSION_MODE_INFO, permissionModeLabel } from './AgentStep'
 import StatusBadge from './StatusBadge'
@@ -12,16 +9,9 @@ import ActivityLog, { type ActivityEntry, sortByMostRecent } from './ActivityLog
 export interface TerminalHeaderProps {
   /** Número sequencial exibido (#1..#4). */
   index: number
-  /**
-   * Id real da sessão do backend (o `TerminalId`/Uuid devolvido por
-   * `pty_spawn`) — é a chave que `terminal_set_title` (T16) usa para
-   * persistir um rename manual em `TerminalMetaService`. `undefined`
-   * enquanto quem monta este header ainda não tiver esse id à mão (hoje
-   * `App.tsx` não expõe o id real da sessão até o painel montar o próprio
-   * `TerminalPane` — ver DESVIO no relatório de T16): o campo de edição
-   * ainda abre, mas o rename fica só local, sem persistir.
-   */
-  id?: string
+  /** SPEC: projects (PROJ-11) — nome do projeto deste terminal, mostrado como
+   * identidade do painel. `null` cai em `Terminal <n>`. Só leitura: o rename
+   * manual do cabeçalho saiu (AD-020). */
   title: string | null
   agent?: string | null
   /**
@@ -83,17 +73,12 @@ export interface TerminalHeaderProps {
 }
 
 /**
- * Identidade e ações de um terminal — apresentacional (recebe dados prontos
- * via props, não busca nada sozinho), com uma exceção pontual: o rename
- * manual (TERM-06) chama `terminal_set_title` diretamente, no mesmo padrão
- * já usado por outros componentes para suas próprias ações locais — não é
- * uma regra de negócio, é só a ponte
- * para `TerminalMetaService::set_title` (mcp-task-server, já testado). Ver
- * `.specs/codebase/TESTING.md` → matriz de cobertura.
+ * Identidade e ações de um terminal — apresentacional: recebe tudo pronto via
+ * props e não busca nem grava nada. O título é o nome do projeto, só leitura
+ * (AD-020 revogou o gesto de rename manual no cabeçalho).
  */
 export default function TerminalHeader({
   index,
-  id,
   title,
   agent,
   permissionMode,
@@ -114,14 +99,6 @@ export default function TerminalHeader({
   draft = false,
 }: TerminalHeaderProps) {
   const draggable = Boolean(onDragStartReorder)
-  const [isEditingTitle, setIsEditingTitle] = useState(false)
-  // Sobrepõe `title` depois de um rename bem-sucedido: `App.tsx` hoje não
-  // realimenta um título atualizado de volta nesta prop (gap de integração,
-  // ver relatório de T16), então o header precisa lembrar sozinho do último
-  // valor que o próprio usuário confirmou.
-  const [renamedTitle, setRenamedTitle] = useState<string | null>(null)
-
-  const displayTitle = renamedTitle ?? title
 
   // STAT-06: a mesma ordenação usada por `ActivityLog` decide qual atividade
   // aparece no tooltip nativo do header (hover sobre o terminal inteiro,
@@ -151,28 +128,6 @@ export default function TerminalHeader({
     onReset?.()
   }
 
-  const startEditingTitle = () => {
-    setIsEditingTitle(true)
-  }
-
-  const cancelEditingTitle = () => {
-    setIsEditingTitle(false)
-  }
-
-  const commitEditingTitle = (trimmed: string) => {
-    setIsEditingTitle(false)
-    if (trimmed === displayTitle) return
-
-    setRenamedTitle(trimmed)
-    if (id) {
-      // TERM-06: `TitleSource::User` sempre vence sobre uma chamada seguinte
-      // do agente — regra já implementada e testada em
-      // `TerminalMetaService::set_title` (meta.rs); este comando só expõe
-      // essa chamada ao header.
-      void invoke('terminal_set_title', { id, title: trimmed }).catch(() => {})
-    }
-  }
-
   return (
     <header className="terminal-header" title={latestActivity}>
       {/* Alça de arrasto. Com `onDragStartReorder` ela é a origem do arrasto
@@ -190,30 +145,7 @@ export default function TerminalHeader({
       >
         <GripVertical className="terminal-header__grip" size={14} aria-hidden="true" />
       </span>
-      {isEditingTitle ? (
-        <InlineRename
-          value={displayTitle ?? ''}
-          label="renomear terminal"
-          onCommit={commitEditingTitle}
-          onCancel={cancelEditingTitle}
-        />
-      ) : (
-        <span
-          className="terminal-header__title"
-          role="button"
-          tabIndex={0}
-          onClick={startEditingTitle}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-              startEditingTitle()
-            }
-          }}
-          title="clique para renomear"
-        >
-          {displayTitle ?? `Terminal ${index}`}
-        </span>
-      )}
+      <span className="terminal-header__title">{title ?? `Terminal ${index}`}</span>
       {agent && (
         <span className="terminal-header__agent-icon" aria-label={agent}>
           {agent}

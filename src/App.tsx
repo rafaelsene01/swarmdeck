@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), editor-launch (EDITOR-02), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), settings-shell (SET-01, SET-04, SET-05), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), window-chrome (WIN-01, WIN-02, WIN-03), minimized-tray (MIN-01, MIN-02, MIN-04, MIN-05, MIN-06, MIN-07), projects (PROJ-11, PROJ-12, PROJ-13, PROJ-14, PROJ-16)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), editor-launch (EDITOR-02), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), settings-shell (SET-01, SET-04, SET-05), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), window-chrome (WIN-01, WIN-02, WIN-03), minimized-tray (MIN-01, MIN-02, MIN-04, MIN-05, MIN-06, MIN-07), projects (PROJ-11, PROJ-12, PROJ-13, PROJ-14, PROJ-16)
 
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -36,7 +36,7 @@ import RestoreSessionDialog, {
 } from './components/shell/RestoreSessionDialog'
 import TerminalPane from './components/terminal/TerminalPane'
 import TerminalHeader from './components/terminal/TerminalHeader'
-import PaneWizard from './components/terminal/PaneWizard'
+import PaneWizard, { lastSegment, normalizePath } from './components/terminal/PaneWizard'
 import type { AgentDescriptor } from './routes/settings/AgentPanel'
 import SettingsShell from './routes/settings/SettingsShell'
 import {
@@ -160,6 +160,17 @@ function evenWidths(terminals: TerminalState[]): TerminalState[] {
   return terminals.map((t) => ({ ...t, fracW }))
 }
 
+/** SPEC: projects (PROJ-11) — lê o cadastro de projetos para o cabeçalho poder
+ * chamar cada terminal pelo nome do projeto. Falha só custa o rótulo: o
+ * cabeçalho cai no último segmento do `cwd`. */
+function fetchProjectNames(apply: (byPath: Record<string, string>) => void) {
+  void invoke<{ name: string; path: string }[]>('project_list')
+    .then((records) =>
+      apply(Object.fromEntries(records.map((record) => [normalizePath(record.path), record.name]))),
+    )
+    .catch((error) => console.error('falha ao ler os projetos', error))
+}
+
 export default function App() {
   // SPEC: shell-chrome (EMPTY-03) — boots with zero terminals so EmptyState
   // is reachable on fresh launch, not just after closing the last terminal.
@@ -210,14 +221,11 @@ export default function App() {
   const [permissionModeByTerminalId, setPermissionModeByTerminalId] = useState<
     Record<string, string | null>
   >({})
-  // SPEC: multi-terminal (TERM-06)
-  // Id REAL da sessão (o que `pty_spawn` devolve), reportado por
-  // `TerminalPane` via `onSessionId` quando a promise resolve — chaveado
-  // pelo `terminal.id` (UUID gerado no front, só identidade de painel/grid).
-  // É ESTE id, não `terminal.id`, que precisa ir para `TerminalHeader`: é a
-  // chave que `terminal_set_title` grava e que o agente usa via MCP — sem
-  // isto o rename manual nunca colide com a escrita do agente (TERM-06).
-  const [sessionIdByTerminalId, setSessionIdByTerminalId] = useState<Record<string, string>>({})
+  /** SPEC: projects (PROJ-11) — nome do projeto por caminho normalizado, para
+   * o cabeçalho de cada terminal mostrar o projeto em que ele roda. O `cwd` é
+   * o que o terminal guarda; o nome cadastrado pode diferir da pasta, por isso
+   * vem de `project_list` e não do último segmento. */
+  const [projectNameByPath, setProjectNameByPath] = useState<Record<string, string>>({})
   // Contador de reinícios por terminal. Entra na `key` do `TerminalPane`:
   // incrementar remonta o painel, e é a limpeza do próprio efeito que chama
   // `pty_kill` e o mount seguinte que chama `pty_spawn` com o mesmo `cwd` e
@@ -457,6 +465,8 @@ export default function App() {
   useEffect(() => {
     let cancelled = false
 
+    fetchProjectNames(setProjectNameByPath)
+
     void invoke<AgentCatalogEntry[]>('agent_catalog').then((entries) => {
       if (cancelled) return
       setAgents(
@@ -653,10 +663,6 @@ export default function App() {
       ),
     )
     setResetNonceByTerminalId((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }))
-    setSessionIdByTerminalId((prev) => {
-      const { [id]: _removed, ...rest } = prev
-      return rest
-    })
   }
 
   /** Fecha `id` em qualquer aba — não só na ativa. A bandeja de minimizados
@@ -671,10 +677,6 @@ export default function App() {
       ),
     )
     setAgentByTerminalId((prev) => {
-      const { [id]: _removed, ...rest } = prev
-      return rest
-    })
-    setSessionIdByTerminalId((prev) => {
       const { [id]: _removed, ...rest } = prev
       return rest
     })
@@ -705,6 +707,10 @@ export default function App() {
   // na seleção do projeto — lá o `project_touch` também é o que valida que o
   // caminho ainda existe (PROJ-13 AC15), e validar depois de o painel virar
   // terminal vivo seria tarde demais.
+  /** Nome do projeto deste `cwd`; pasta sem projeto cadastrado (a sandbox do
+   * "Sem projeto", por exemplo) cai no último segmento do caminho. */
+  const projectNameFor = (cwd: string) => projectNameByPath[normalizePath(cwd)] ?? lastSegment(cwd)
+
   const handleWizardConfirm = (
     id: string,
     cwd: string,
@@ -715,6 +721,9 @@ export default function App() {
       prev.map((t) => (t.id === id ? { ...t, cwd: cwd.trim() || '.', draft: false } : t)),
     )
     setAgentByTerminalId((prev) => ({ ...prev, [id]: agentId }))
+    // O wizard pode ter acabado de criar/importar um projeto: relê o cadastro
+    // para o cabeçalho já mostrar o nome certo (PROJ-11).
+    fetchProjectNames(setProjectNameByPath)
     // SPEC: agent-permission-mode (PERM-01) — guardado antes de `TerminalPane`
     // montar, porque é o mount que dispara `pty_spawn`.
     setPermissionModeByTerminalId((prev) => ({ ...prev, [id]: permissionMode }))
@@ -793,8 +802,7 @@ export default function App() {
                     // ações do cabeçalho: não há PTY para capturar, clonar,
                     // reiniciar nem minimizar.
                     draft={terminal.draft}
-                    id={sessionIdByTerminalId[terminal.id]}
-                    title={null}
+                    title={projectNameFor(terminal.cwd)}
                     // SPEC: agent-permission-mode (PERM-07)
                     permissionMode={permissionModeByTerminalId[terminal.id] ?? null}
                     cwd={terminal.cwd}
@@ -839,9 +847,6 @@ export default function App() {
                         permissionMode={permissionModeByTerminalId[terminal.id] ?? null}
                         sessionId={terminal.agentSessionId ?? null}
                         resume={terminal.resumeSession ?? false}
-                        onSessionId={(sessionId) =>
-                          setSessionIdByTerminalId((prev) => ({ ...prev, [terminal.id]: sessionId }))
-                        }
                         // SPEC: terminal-screenshot (SHOT-13)
                         onTerminal={(term) => {
                           if (term) terminalsRef.current.set(terminal.id, term)
@@ -1000,8 +1005,7 @@ export default function App() {
           border-color: rgba(245, 183, 0, 0.4);
           color: var(--accent);
         }
-        .terminal-header__title,
-        .terminal-header__title-input {
+        .terminal-header__title {
           flex: 1 1 auto;
           min-width: 0;
           overflow: hidden;
@@ -1012,16 +1016,6 @@ export default function App() {
           font-weight: 600;
           color: #d7d7dd;
         }
-        .terminal-header__title-input {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid var(--border);
-          border-radius: 4px;
-          padding: 0.15rem 0.35rem;
-          font: inherit;
-          font-weight: 600;
-          outline: none;
-        }
-        .terminal-header__title-input:focus { border-color: var(--accent); }
         .terminal-header__actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
         /* Filho direto de propósito: os itens do popover do EditorMenu são
            botões descendentes deste contêiner e não podem herdar a caixa
