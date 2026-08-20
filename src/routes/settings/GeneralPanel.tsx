@@ -1,4 +1,4 @@
-// SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-26)
+// SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-26, QUOTA-31)
 
 import { ChevronDown, ChevronUp, Gauge } from 'lucide-react'
 import ProviderIcon, { providerMeta } from '../../components/shell/ProviderIcon'
@@ -23,6 +23,14 @@ export interface GeneralPanelProps {
   /** Quem persiste é o `SettingsShell` (T14) — aqui só noticia a intenção,
    * mesmo contrato que `UpdateSettings` já segue. */
   onChange: (next: QuotaPrefs) => void
+  /**
+   * SPEC: quota-indicator (QUOTA-31) — ids de `agents::catalog::CATALOG`, na
+   * ordem do catálogo. A lista persistida (semente da migração 007) só tem os
+   * três provedores de então; os que faltam entram como linhas travadas, do
+   * mesmo jeito que o passo 2 do wizard mostra o catálogo inteiro e só deixa
+   * escolher quem está integrado (`AgentStep.tsx`). Ausente = só as prefs.
+   */
+  agentIds?: string[]
 }
 
 const WINDOW_OPTIONS: ReadonlyArray<{ value: QuotaPrefs['window']; label: string }> = [
@@ -37,12 +45,32 @@ const WINDOW_OPTIONS: ReadonlyArray<{ value: QuotaPrefs['window']; label: string
  * QUOTA-26). Puramente apresentacional, mesmo molde de `UpdateSettings.tsx`
  * — não chama `invoke` diretamente.
  */
-export default function GeneralPanel({ prefs, onChange }: GeneralPanelProps) {
+export default function GeneralPanel({ prefs, onChange, agentIds = [] }: GeneralPanelProps) {
   const providerList = prefs.providers ?? []
 
-  const move = (index: number, delta: number) => {
+  /**
+   * SPEC: quota-indicator (QUOTA-31) — as prefs persistidas primeiro, na ordem
+   * gravada, e depois os agentes do catálogo que ainda não estão nelas. As
+   * linhas extras são só de exibição: nunca entram no vetor que vai para
+   * `onChange`, então nada fora das prefs é gravado.
+   *
+   * `locked` acompanha `hasQuota`: só o provedor com endpoint de consumo real
+   * (Claude, hoje) tem o que ligar, desligar ou reordenar — para os demais o
+   * popover já rende só o selo e a frase do motivo, e um controle sem efeito
+   * observável seria interface que mente. Quando o segundo provedor ganhar
+   * cota, `hasQuota` vira `true` e a linha destrava sozinha.
+   */
+  const rows = [
+    ...providerList.map((provider) => ({ id: provider.id, enabled: provider.enabled })),
+    ...agentIds
+      .filter((id) => !providerList.some((provider) => provider.id === id))
+      .map((id) => ({ id, enabled: false })),
+  ].map((row) => ({ ...row, locked: !providerMeta(row.id).hasQuota }))
+
+  const move = (id: string, delta: number) => {
+    const index = providerList.findIndex((provider) => provider.id === id)
     const target = index + delta
-    if (target < 0 || target >= providerList.length) return
+    if (index === -1 || target < 0 || target >= providerList.length) return
     const providers = [...providerList]
     const [moved] = providers.splice(index, 1)
     if (!moved) return
@@ -50,9 +78,9 @@ export default function GeneralPanel({ prefs, onChange }: GeneralPanelProps) {
     onChange({ ...prefs, providers })
   }
 
-  const toggleProvider = (index: number) => {
-    const providers = providerList.map((provider, i) =>
-      i === index ? { ...provider, enabled: !provider.enabled } : provider,
+  const toggleProvider = (id: string) => {
+    const providers = providerList.map((provider) =>
+      provider.id === id ? { ...provider, enabled: !provider.enabled } : provider,
     )
     onChange({ ...prefs, providers })
   }
@@ -172,6 +200,10 @@ export default function GeneralPanel({ prefs, onChange }: GeneralPanelProps) {
         .general-panel__reorder button:disabled { opacity: 0.35; cursor: default; }
         .general-panel__provider-name { display: flex; align-items: baseline; gap: 0.5rem; }
         .general-panel__provider-hint { color: var(--muted); font-size: 0.75rem; }
+        /* Linha travada: o mesmo esmaecido que o passo 2 do wizard usa nos
+           agentes ainda nao integrados (.agent-step__agent:disabled). */
+        .general-panel__row--locked { opacity: 0.45; }
+        .general-panel__switch input:disabled { cursor: default; }
       `}</style>
 
       <h2 className="general-panel__title">
@@ -234,42 +266,51 @@ export default function GeneralPanel({ prefs, onChange }: GeneralPanelProps) {
       </p>
 
       <div className="general-panel__card">
-        {providerList.map((provider, index) => {
-          const meta = providerMeta(provider.id)
+        {rows.map((row) => {
+          const meta = providerMeta(row.id)
+          const index = providerList.findIndex((provider) => provider.id === row.id)
           return (
-            <div className="general-panel__row" key={provider.id} data-provider={provider.id}>
+            <div
+              className={`general-panel__row${row.locked ? ' general-panel__row--locked' : ''}`}
+              key={row.id}
+              data-provider={row.id}
+              data-locked={row.locked ? 'true' : undefined}
+            >
               <div className="general-panel__reorder">
                 <button
                   type="button"
                   aria-label={`Subir ${meta.name}`}
-                  disabled={index === 0}
-                  onClick={() => move(index, -1)}
+                  disabled={row.locked || index <= 0}
+                  onClick={() => move(row.id, -1)}
                 >
                   <ChevronUp size={12} />
                 </button>
                 <button
                   type="button"
                   aria-label={`Descer ${meta.name}`}
-                  disabled={index === providerList.length - 1}
-                  onClick={() => move(index, 1)}
+                  disabled={row.locked || index === providerList.length - 1}
+                  onClick={() => move(row.id, 1)}
                 >
                   <ChevronDown size={12} />
                 </button>
               </div>
 
-              <ProviderIcon id={provider.id} size={18} />
+              <ProviderIcon id={row.id} size={18} />
 
               <div className="general-panel__row-text general-panel__provider-name">
                 <span className="general-panel__row-title">{meta.name}</span>
-                {meta.hint && <span className="general-panel__provider-hint">{meta.hint}</span>}
+                <span className="general-panel__provider-hint">
+                  {row.locked ? (meta.hint ?? 'sem cota') : meta.hint}
+                </span>
               </div>
 
               <span className="general-panel__switch">
                 <input
                   type="checkbox"
                   aria-label={`Mostrar ${meta.name} no popover`}
-                  checked={provider.enabled}
-                  onChange={() => toggleProvider(index)}
+                  checked={row.enabled}
+                  disabled={row.locked}
+                  onChange={() => toggleProvider(row.id)}
                 />
               </span>
             </div>

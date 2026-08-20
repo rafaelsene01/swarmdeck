@@ -1,4 +1,4 @@
-// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10), silent-update (SILENT-09, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-42), projects (PROJ-19, PROJ-23, PROJ-24)
+// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10, QUOTA-31), silent-update (SILENT-09, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-42), projects (PROJ-19, PROJ-23, PROJ-24)
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -520,7 +520,11 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
 
         <div className="settings-shell__content">
           {section === 'general' && (
-            <GeneralPanel prefs={quotaPrefs} onChange={handleChangeQuotaPrefs} />
+            <GeneralPanel
+              prefs={quotaPrefs}
+              onChange={handleChangeQuotaPrefs}
+              agentIds={agents.map((agent) => agent.id)}
+            />
           )}
 
           {section === 'agents' && (
