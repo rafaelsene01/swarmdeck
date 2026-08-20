@@ -275,7 +275,7 @@ mod tests {
         let terminal_id = manager
             .spawn(SessionConfig {
                 cwd: std::env::temp_dir(),
-                shell: None,
+                profile: crate::shells::TerminalProfile::Host,
                 agent: None,
                 session_id: None,
                 resume: false,

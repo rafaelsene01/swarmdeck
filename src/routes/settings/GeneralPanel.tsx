@@ -1,7 +1,15 @@
 // SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-26, QUOTA-31)
+// SPEC: wsl-terminal-profile (WSLP-01, WSLP-13, WSLP-19)
 
 import { ChevronDown, ChevronUp, Gauge } from 'lucide-react'
 import ProviderIcon, { providerMeta } from '../../components/shell/ProviderIcon'
+
+/** Espelha `ProfileEntry` de `src-tauri/src/shells/list.rs`. */
+export interface ProfileEntry {
+  id: string
+  label: string
+  wsl1: boolean
+}
 
 /** Espelha `QuotaProvider` de `src-tauri/src/db/quota_prefs.rs`. A ordem do
  * vetor **é** a ordem de exibição no popover — não há campo de índice. */
@@ -31,6 +39,17 @@ export interface GeneralPanelProps {
    * escolher quem está integrado (`AgentStep.tsx`). Ausente = só as prefs.
    */
   agentIds?: string[]
+  /** `Host` sempre primeiro, seguido de uma entrada por distro WSL. Um
+   * único item (host sem WSL, ou não-Windows) esconde o seletor — não há
+   * escolha a fazer (WSLP-01, WSLP-19). */
+  profiles?: ProfileEntry[]
+  /** Id bruto salvo (`shell_profile_get`), possivelmente ausente da lista
+   * atual — quando isso acontece o seletor não marca nenhuma opção e
+   * avisa que a preferência ficou indisponível (WSLP-13). */
+  selectedProfileId?: string | null
+  /** Quem persiste é o `SettingsShell` (T13) — aqui só noticia a
+   * intenção, mesmo contrato de `onChange` acima. */
+  onProfileChange?: (id: string) => void
 }
 
 const WINDOW_OPTIONS: ReadonlyArray<{ value: QuotaPrefs['window']; label: string }> = [
@@ -45,7 +64,14 @@ const WINDOW_OPTIONS: ReadonlyArray<{ value: QuotaPrefs['window']; label: string
  * QUOTA-26). Puramente apresentacional, mesmo molde de `UpdateSettings.tsx`
  * — não chama `invoke` diretamente.
  */
-export default function GeneralPanel({ prefs, onChange, agentIds = [] }: GeneralPanelProps) {
+export default function GeneralPanel({
+  prefs,
+  onChange,
+  agentIds = [],
+  profiles = [],
+  selectedProfileId = null,
+  onProfileChange = () => {},
+}: GeneralPanelProps) {
   const providerList = prefs.providers ?? []
 
   /**
@@ -204,6 +230,7 @@ export default function GeneralPanel({ prefs, onChange, agentIds = [] }: General
            agentes ainda nao integrados (.agent-step__agent:disabled). */
         .general-panel__row--locked { opacity: 0.45; }
         .general-panel__switch input:disabled { cursor: default; }
+        .general-panel__profile-unavailable { color: #e8a33d; font-size: 0.8125rem; }
       `}</style>
 
       <h2 className="general-panel__title">
@@ -317,6 +344,40 @@ export default function GeneralPanel({ prefs, onChange, agentIds = [] }: General
           )
         })}
       </div>
+
+      {profiles.length > 1 && (
+        <>
+          <div className="general-panel__group-label">Perfil de terminal</div>
+          <p className="general-panel__group-hint">
+            Onde os terminais, os agentes e o "git init" de novos projetos rodam.
+          </p>
+          <div className="general-panel__card">
+            <div className="general-panel__row">
+              <div className="general-panel__segmented" role="group" aria-label="Perfil de terminal">
+                {profiles.map((profile) => (
+                  <label key={profile.id} className="general-panel__segment">
+                    <input
+                      type="radio"
+                      name="terminal-profile"
+                      value={profile.id}
+                      checked={profile.id === selectedProfileId}
+                      onChange={() => onProfileChange(profile.id)}
+                    />
+                    {profile.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            {selectedProfileId != null && !profiles.some((profile) => profile.id === selectedProfileId) && (
+              <div className="general-panel__row">
+                <div className="general-panel__row-text general-panel__profile-unavailable">
+                  O perfil salvo não está mais disponível. Escolha outro.
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }

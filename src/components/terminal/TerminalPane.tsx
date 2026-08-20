@@ -1,4 +1,5 @@
 // SPEC: multi-terminal (TERM-01, TERM-02, TERM-06, TERM-14), terminal-chrome (CHROME-01), session-restore (SESS-12, SESS-13), terminal-screenshot (SHOT-13), agent-permission-mode (PERM-01)
+// SPEC: wsl-terminal-profile (WSLP-12)
 
 import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
@@ -9,8 +10,6 @@ import '@xterm/xterm/css/xterm.css'
 export interface TerminalPaneProps {
   /** Diretório de trabalho da sessão. */
   cwd: string
-  /** Shell a rodar; `undefined` deixa o backend resolver o padrão do SO. */
-  shell?: string
   agent?: string
   /**
    * SPEC: session-restore (SESS-12, SESS-13) — id da sessão do agente que
@@ -67,7 +66,6 @@ const RESIZE_DEBOUNCE_MS = 100
  */
 export default function TerminalPane({
   cwd,
-  shell,
   agent,
   sessionId,
   resume,
@@ -188,7 +186,6 @@ export default function TerminalPane({
 
     invoke<string>('pty_spawn', {
       cwd,
-      shell,
       agent,
       sessionId: sessionId ?? null,
       resume: resume ?? false,
@@ -232,7 +229,7 @@ export default function TerminalPane({
       terminal.dispose()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cwd, shell, agent])
+  }, [cwd, agent])
 
   return <div className="terminal-pane" ref={containerRef} />
 }

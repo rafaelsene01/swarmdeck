@@ -167,6 +167,10 @@ pub fn run() {
             commands::quota::quota_claude,
             // SPEC: terminal-screenshot (SHOT-16)
             commands::screenshot::screenshot_save,
+            // SPEC: wsl-terminal-profile (WSLP-01, WSLP-02)
+            commands::shells::shell_profiles_list,
+            commands::shells::shell_profile_get,
+            commands::shells::shell_profile_set,
         ])
         .build(tauri::generate_context!())
         .expect("erro ao iniciar o SwarmDeck");

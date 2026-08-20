@@ -10,10 +10,17 @@
 
 use std::path::Path;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+pub mod list;
+pub mod prefs;
+pub mod wrap;
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum TerminalProfile {
+    #[default]
     Host,
-    Wsl { distro: String },
+    Wsl {
+        distro: String,
+    },
 }
 
 impl TerminalProfile {

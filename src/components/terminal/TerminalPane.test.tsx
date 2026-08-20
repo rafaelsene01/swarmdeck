@@ -5,12 +5,14 @@ import { render } from '@testing-library/react'
 
 // Same `vi.hoisted` pattern as `App.test.tsx` — the `vi.mock` factories below
 // are hoisted above these imports by Vitest's transform.
-const { invokeMock, onDataHandlers, keyHandlers, pasteMock } = vi.hoisted(() => ({
+const { invokeMock, onDataHandlers, keyHandlers, pasteMock, writeMock } = vi.hoisted(() => ({
   invokeMock: vi.fn(),
   onDataHandlers: [] as Array<(data: string) => void>,
   /** TERM-14: os handlers passados a `attachCustomKeyEventHandler`. */
   keyHandlers: [] as Array<(event: KeyboardEvent) => boolean>,
   pasteMock: vi.fn(),
+  /** WSLP-12: o que o painel escreveu no terminal (ex.: erro de spawn). */
+  writeMock: vi.fn(),
 }))
 
 vi.mock('@tauri-apps/api/core', () => ({
@@ -26,7 +28,9 @@ vi.mock('@xterm/xterm', () => ({
     cols = 80
     loadAddon() {}
     open() {}
-    write() {}
+    write(data: string) {
+      writeMock(data)
+    }
     dispose() {}
     paste(text: string) {
       pasteMock(text)
@@ -107,6 +111,48 @@ describe('TerminalPane', () => {
     const { unmount } = render(<TerminalPane cwd="." />)
 
     expect(() => unmount()).not.toThrow()
+  })
+})
+
+// SPEC: wsl-terminal-profile (WSLP-12)
+describe('TerminalPane — falha de spawn (WSLP-12)', () => {
+  // O texto exato inclui o rótulo do perfil e o stderr do `wsl.exe` porque
+  // é isso que `ManagerError::Profile` devolve verbatim (WSLP-10, WSLP-11)
+  // — o painel só escreve a mensagem, não reformata nem resume nada.
+  it('spawn rejeitado escreve a mensagem verbatim, com rótulo do perfil e texto do wsl.exe', async () => {
+    writeMock.mockClear()
+    const mensagemDoBackend =
+      'perfil `wsl:Ubuntu-24.04` indisponível: Ubuntu-24.04 não está mais registrada'
+    invokeMock.mockImplementation((cmd: string) => {
+      if (cmd === 'pty_spawn') return Promise.reject(mensagemDoBackend)
+      return Promise.resolve()
+    })
+
+    render(<TerminalPane cwd="." />)
+
+    await vi.waitFor(() =>
+      expect(writeMock).toHaveBeenCalledWith(expect.stringContaining(mensagemDoBackend)),
+    )
+  })
+
+  it('spawn bem-sucedido não escreve erro nenhum, como antes', async () => {
+    writeMock.mockClear()
+    invokeMock.mockResolvedValue('term-1')
+
+    render(<TerminalPane cwd="." />)
+
+    await vi.waitFor(() => expect(invokeMock).toHaveBeenCalledWith('pty_spawn', expect.anything()))
+    expect(writeMock).not.toHaveBeenCalledWith(expect.stringContaining('falha ao iniciar'))
+  })
+
+  it('o payload de `pty_spawn` não manda mais o campo `shell`', async () => {
+    invokeMock.mockResolvedValue('term-1')
+
+    render(<TerminalPane cwd="." />)
+
+    await vi.waitFor(() => expect(invokeMock).toHaveBeenCalledWith('pty_spawn', expect.anything()))
+    const payload = invokeMock.mock.calls.find(([cmd]) => cmd === 'pty_spawn')?.[1]
+    expect(payload).not.toHaveProperty('shell')
   })
 })
 

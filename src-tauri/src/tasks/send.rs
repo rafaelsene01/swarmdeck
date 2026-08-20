@@ -178,7 +178,7 @@ mod tests {
         let terminal_id = manager
             .spawn(SessionConfig {
                 cwd: temp_cwd(),
-                shell: None,
+                profile: crate::shells::TerminalProfile::Host,
                 agent: None,
                 session_id: None,
                 resume: false,
@@ -239,7 +239,7 @@ mod tests {
         let terminal_id = manager
             .spawn(SessionConfig {
                 cwd: temp_cwd(),
-                shell: None,
+                profile: crate::shells::TerminalProfile::Host,
                 agent: None,
                 session_id: None,
                 resume: false,

@@ -2,6 +2,7 @@
 // SPEC: editor-launch (EDITOR-02) — `resolve_command_in_path` é a mesma
 // resolução de PATH, agora devolvendo o caminho resolvido: `editors.rs`
 // precisa dele para lançar `code.cmd`/`cursor.cmd` no Windows.
+// SPEC: wsl-terminal-profile (WSLP-06)
 
 //! Catálogo estático dos agentes de IA suportados e detecção de CLI no PATH.
 //!
@@ -12,7 +13,11 @@
 //! multiplexador de terminais mesmo sem nenhum CLI instalado (ver
 //! `spec.md`, "Casos de borda").
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
+
+use crate::shells::TerminalProfile;
 
 /// Uma entrada do catálogo: identidade estável + como resolver o CLI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -236,6 +241,94 @@ fn detect_installed_with(
         .collect()
 }
 
+/// Detecta os agentes instalados no perfil de terminal ativo. No host,
+/// idêntico a `detect_installed()`; numa distro WSL, sonda por dentro dela
+/// em vez de varrer o PATH do Windows.
+pub fn detect_installed_in(profile: &TerminalProfile) -> Vec<AgentStatus> {
+    match profile {
+        TerminalProfile::Host => detect_installed(),
+        TerminalProfile::Wsl { distro } => detect_installed_in_wsl(distro),
+    }
+}
+
+/// Extrai `(id do catálogo, caminho absoluto)` de uma saída de
+/// `type -P <comandos>`: uma linha por comando encontrado, na ordem em que
+/// o shell os reportou; nomes não reconhecidos são ignorados. Puro — não
+/// chama `wsl.exe`, só interpreta o texto já capturado.
+pub fn parse_type_p_output(raw: &str, catalog: &[AgentDescriptor]) -> Vec<(&'static str, String)> {
+    raw.lines()
+        .filter_map(|line| {
+            let line = line.trim();
+            if line.is_empty() {
+                return None;
+            }
+            let basename = Path::new(line).file_name()?.to_str()?;
+            catalog
+                .iter()
+                .find(|agent| agent.command == basename)
+                .map(|agent| (agent.id, line.to_string()))
+        })
+        .collect()
+}
+
+fn apply_installed(found: &[(&'static str, String)]) -> Vec<AgentStatus> {
+    CATALOG
+        .iter()
+        .map(|agent| AgentStatus {
+            agent: *agent,
+            installed: found.iter().any(|(id, _)| *id == agent.id),
+        })
+        .collect()
+}
+
+fn wsl_probe_cache() -> &'static Mutex<HashMap<String, Vec<AgentStatus>>> {
+    static CACHE: OnceLock<Mutex<HashMap<String, Vec<AgentStatus>>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn detect_installed_in_wsl(distro: &str) -> Vec<AgentStatus> {
+    detect_installed_in_wsl_with(distro, wsl_probe_cache(), real_wsl_probe)
+}
+
+/// Núcleo testável: cache e sonda injetáveis, sem depender de `wsl.exe`
+/// de verdade — mesmo desenho de `shells::wrap::login_path`.
+fn detect_installed_in_wsl_with(
+    distro: &str,
+    cache: &Mutex<HashMap<String, Vec<AgentStatus>>>,
+    probe: impl FnOnce(&str) -> String,
+) -> Vec<AgentStatus> {
+    if let Some(cached) = cache.lock().unwrap().get(distro) {
+        return cached.clone();
+    }
+    let raw = probe(distro);
+    let result = apply_installed(&parse_type_p_output(&raw, &CATALOG));
+    cache
+        .lock()
+        .unwrap()
+        .insert(distro.to_string(), result.clone());
+    result
+}
+
+/// Uma sonda por comando: `bash -lc` de login shell, requisito para
+/// resolver `~/.local/bin`, nvm e asdf — um shell não-login não os vê.
+/// A string é uma lista fixa de nomes literais do catálogo, sem
+/// interpolação nenhuma.
+#[cfg(windows)]
+fn real_wsl_probe(distro: &str) -> String {
+    let commands: Vec<&str> = CATALOG.iter().map(|agent| agent.command).collect();
+    let script = format!("type -P {}", commands.join(" "));
+    std::process::Command::new("wsl.exe")
+        .args(["-d", distro, "--", "bash", "-lc", &script])
+        .output()
+        .map(|out| String::from_utf8_lossy(&out.stdout).into_owned())
+        .unwrap_or_default()
+}
+
+#[cfg(not(windows))]
+fn real_wsl_probe(_distro: &str) -> String {
+    String::new()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -327,5 +420,55 @@ mod tests {
             &path_var,
             Some(".COM;.EXE;.BAT;.CMD"),
         ));
+    }
+
+    #[test]
+    fn parse_type_p_output_maps_by_basename_ignores_unknown_and_empty() {
+        let result = parse_type_p_output(
+            "/home/x/.local/bin/claude\n/usr/bin/unknown-cli\n",
+            &CATALOG,
+        );
+        assert_eq!(
+            result,
+            vec![("claude-code", "/home/x/.local/bin/claude".to_string())]
+        );
+        assert_eq!(parse_type_p_output("", &CATALOG), Vec::new());
+    }
+
+    #[test]
+    fn parse_type_p_output_handles_found_subset() {
+        // Três comandos seriam sondados (claude, codex, opencode); só um
+        // veio de volta — os outros dois não estavam instalados.
+        let result = parse_type_p_output("/usr/bin/codex\n", &CATALOG);
+        assert_eq!(result, vec![("codex-cli", "/usr/bin/codex".to_string())]);
+    }
+
+    #[test]
+    fn wsl_branch_probes_once_per_profile_and_caches() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let calls = AtomicUsize::new(0);
+        let cache: Mutex<HashMap<String, Vec<AgentStatus>>> = Mutex::new(HashMap::new());
+        let probe = |_: &str| {
+            calls.fetch_add(1, Ordering::SeqCst);
+            "/home/x/.local/bin/claude\n".to_string()
+        };
+
+        let first = detect_installed_in_wsl_with("Ubuntu-24.04", &cache, probe);
+        let second = detect_installed_in_wsl_with("Ubuntu-24.04", &cache, probe);
+
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        assert_eq!(first, second);
+        assert!(first
+            .iter()
+            .any(|status| status.agent.id == "claude-code" && status.installed));
+    }
+
+    #[test]
+    fn detect_installed_in_host_matches_detect_installed() {
+        assert_eq!(
+            detect_installed_in(&TerminalProfile::Host),
+            detect_installed()
+        );
     }
 }

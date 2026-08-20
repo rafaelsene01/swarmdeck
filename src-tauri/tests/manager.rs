@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 use swarmdeck_lib::commands::terminal::kill_and_touch;
 use swarmdeck_lib::db::Db;
 use swarmdeck_lib::projects::service;
+use swarmdeck_lib::shells::TerminalProfile;
 use swarmdeck_lib::terminal::{ManagerError, SessionConfig, TerminalManager};
 
 /// Serializa os testes de PTY — ver `session.rs` para a explicação completa
@@ -54,7 +55,7 @@ fn pump_until(
 fn default_config() -> SessionConfig {
     SessionConfig {
         cwd: std::env::temp_dir(),
-        shell: None,
+        profile: TerminalProfile::Host,
         agent: None,
         session_id: None,
         resume: false,

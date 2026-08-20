@@ -1,4 +1,5 @@
 // SPEC: agent-selection (AGT-01, AGT-03, AGT-04), session-restore (SESS-15), agent-permission-mode (PERM-03)
+// SPEC: wsl-terminal-profile (WSLP-06)
 
 //! Comandos Tauri que expõem `agents::catalog` e `agents::prefs` ao
 //! frontend.
@@ -14,8 +15,9 @@ use std::sync::Mutex;
 use serde::Serialize;
 use tauri::State;
 
-use crate::agents::{detect_installed, resolve_effective_default, PERMISSION_MODES};
+use crate::agents::{detect_installed_in, resolve_effective_default, PERMISSION_MODES};
 use crate::db::Db;
+use crate::shells::prefs::resolve_default;
 
 /// Forma serializável de uma entrada do catálogo já com o status de
 /// instalação — espelha `AgentDescriptor`
@@ -41,12 +43,17 @@ pub struct AgentCatalogEntry {
     pub permission_modes: Vec<String>,
 }
 
-/// Invólucro fino sobre `agents::catalog::detect_installed` (T1): o
-/// catálogo completo, cada entrada já com o status de instalação atual do
-/// PATH (AGT-04).
+/// Invólucro fino sobre `agents::catalog::detect_installed_in` (T1,
+/// wsl-terminal-profile): o catálogo completo, cada entrada já com o
+/// status de instalação atual do perfil ativo (PATH do host, ou dentro da
+/// distro WSL escolhida — WSLP-06).
 #[tauri::command]
-pub fn agent_catalog() -> Vec<AgentCatalogEntry> {
-    detect_installed()
+pub fn agent_catalog(db: State<'_, Mutex<Db>>) -> Vec<AgentCatalogEntry> {
+    let profile = {
+        let db = db.lock().expect("db mutex poisoned");
+        resolve_default(db.conn())
+    };
+    detect_installed_in(&profile)
         .into_iter()
         .map(|status| AgentCatalogEntry {
             id: status.agent.id.to_string(),

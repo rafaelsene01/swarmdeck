@@ -20,6 +20,7 @@ use interprocess::local_socket::{GenericFilePath, Stream, ToFsName};
 use swarmdeck_lib::db::Db;
 use swarmdeck_lib::ipc::server::{read_frame, write_frame, IpcServer};
 use swarmdeck_lib::ipc::transport::{socket_path, LocalSocketTransport};
+use swarmdeck_lib::shells::TerminalProfile;
 use swarmdeck_lib::terminal::{SessionConfig, TerminalManager, TerminalMetaService, TitleSource};
 
 /// Same serialization reasoning as `tests/manager.rs` / `tests/session.rs`:
@@ -35,7 +36,7 @@ fn serial() -> MutexGuard<'static, ()> {
 fn default_config() -> SessionConfig {
     SessionConfig {
         cwd: std::env::temp_dir(),
-        shell: None,
+        profile: TerminalProfile::Host,
         agent: None,
         session_id: None,
         resume: false,

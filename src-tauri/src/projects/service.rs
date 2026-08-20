@@ -1,4 +1,5 @@
 // SPEC: projects (PROJ-01, PROJ-02, PROJ-09, PROJ-13, PROJ-14, PROJ-18)
+// SPEC: wsl-terminal-profile (WSLP-14, WSLP-15)
 
 //! `ProjectService`: create/update/delete for the `projects` table created
 //! by migration `003_tasks.sql` (mcp-task-server/T1).
@@ -488,11 +489,35 @@ fn validate_explicit_color(color: &str) -> Result<String, ProjectError> {
     Ok(color.to_string())
 }
 
-/// Runs `git init` in `dir` (T5, PROJ-09 AC1/AC2). Spawn failure (e.g. `git`
-/// not on PATH) surfaces as `ProjectError::Io`; a non-zero exit surfaces as
-/// `ProjectError::GitInitFailed`.
+/// Monta o comando de `git init` para o perfil derivado de `dir` (WSLP-14,
+/// WSLP-15), sem executar nada — mesmo desenho de
+/// `terminal::manager::build_command`, testável sem rodar processo algum.
+/// Só o caminho decide o perfil aqui: `git init` não consulta a preferência
+/// padrão salva, a mesma regra de `profile_for_path`.
+fn git_init_command(dir: &Path) -> (crate::shells::TerminalProfile, portable_pty::CommandBuilder) {
+    let profile = crate::shells::profile_for_path(dir, &crate::shells::TerminalProfile::Host);
+    let cmd = crate::shells::wrap::wrap(&profile, Some("git"), &["init".to_string()], &[], dir);
+    (profile, cmd)
+}
+
+/// Runs `git init` in `dir` (T5, PROJ-09 AC1/AC2; wsl-terminal-profile
+/// WSLP-14, WSLP-15). Spawn failure (e.g. `git` not on PATH) surfaces as
+/// `ProjectError::Io`; a non-zero exit surfaces as
+/// `ProjectError::GitInitFailed` — unchanged from before this feature.
 fn run_git_init(dir: &Path) -> Result<(), ProjectError> {
-    let status = Command::new("git").arg("init").current_dir(dir).status()?;
+    let (profile, built) = git_init_command(dir);
+    let argv = built.get_argv();
+    let (program, args) = argv
+        .split_first()
+        .expect("wrap sempre inclui ao menos o programa no argv");
+
+    let mut cmd = Command::new(program);
+    cmd.args(args);
+    if matches!(profile, crate::shells::TerminalProfile::Host) {
+        cmd.current_dir(dir);
+    }
+
+    let status = cmd.status()?;
     if !status.success() {
         return Err(ProjectError::GitInitFailed(format!(
             "git init exited with {status}"
@@ -868,5 +893,69 @@ mod tests {
             .expect("a segunda tentativa com o mesmo nome deve funcionar");
 
         assert!(PathBuf::from(&project.path).is_dir());
+    }
+
+    fn argv(cmd: &portable_pty::CommandBuilder) -> Vec<String> {
+        cmd.get_argv()
+            .iter()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect()
+    }
+
+    // WSLP-15: caminho fora de WSL produz exatamente o `git init` de hoje.
+    #[test]
+    fn git_init_command_host_produz_argv_de_hoje() {
+        let (profile, cmd) = git_init_command(Path::new("/tmp/algum-repo"));
+        assert_eq!(profile, crate::shells::TerminalProfile::Host);
+        assert_eq!(argv(&cmd), vec!["git", "init"]);
+    }
+
+    // WSLP-14: um caminho `\\wsl.localhost\...` roda `git init` dentro da
+    // distro, pelo mesmo `wrap` que o terminal usa.
+    #[test]
+    fn git_init_command_wsl_roda_dentro_da_distro() {
+        let dir = Path::new(r"\\wsl.localhost\Ubuntu-24.04\home\x\novo-repo");
+        let (profile, cmd) = git_init_command(dir);
+        assert_eq!(
+            profile,
+            crate::shells::TerminalProfile::Wsl {
+                distro: "Ubuntu-24.04".to_string()
+            }
+        );
+        assert_eq!(
+            argv(&cmd),
+            vec![
+                "wsl.exe",
+                "-d",
+                "Ubuntu-24.04",
+                "--cd",
+                r"\\wsl.localhost\Ubuntu-24.04\home\x\novo-repo",
+                "--",
+                "env",
+                "git",
+                "init",
+            ]
+        );
+    }
+
+    // Uma falha de `git init` continua igual a antes desta feature: erro
+    // `GitInitFailed`, sem mudar o formato ou engolir o status. Sabota o
+    // `git init` de forma portável (sem tocar PATH): um arquivo comum
+    // chamado `.git` já ocupa o lugar onde o `git` tentaria criar o
+    // diretório `.git`.
+    #[test]
+    fn git_init_falho_devolve_erro_git_init_failed_como_antes() {
+        let base = tempfile::tempdir().expect("criar diretório temporário");
+        let target = base.path().join("sabotado");
+        fs::create_dir(&target).expect("criar subpasta alvo");
+        fs::write(target.join(".git"), b"nao sou um diretorio").expect("sabotar o .git");
+
+        let err =
+            run_git_init(&target).expect_err("git init deve falhar quando .git já é um arquivo");
+
+        assert!(
+            matches!(err, ProjectError::GitInitFailed(_)),
+            "esperava GitInitFailed, veio {err:?}"
+        );
     }
 }

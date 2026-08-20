@@ -9,6 +9,8 @@ pub mod projects;
 pub mod quota;
 // SPEC: terminal-screenshot (SHOT-16)
 pub mod screenshot;
+// SPEC: wsl-terminal-profile (WSLP-01, WSLP-02)
+pub mod shells;
 // SPEC: task-kanban (KAN-01, KAN-04)
 pub mod tasks;
 pub mod terminal;

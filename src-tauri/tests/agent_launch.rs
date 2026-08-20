@@ -22,6 +22,7 @@
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use swarmdeck_lib::agents::resolve_launch_command;
+use swarmdeck_lib::shells::TerminalProfile;
 use swarmdeck_lib::terminal::{SessionConfig, TerminalManager};
 
 /// Serializa os testes de PTY — mesmo motivo de `tests/manager.rs`.
@@ -69,7 +70,7 @@ impl Drop for PathIsoladoGuard {
 fn default_config() -> SessionConfig {
     SessionConfig {
         cwd: std::env::temp_dir(),
-        shell: None,
+        profile: TerminalProfile::Host,
         agent: None,
         session_id: None,
         resume: false,

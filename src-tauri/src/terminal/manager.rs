@@ -1,4 +1,5 @@
 // SPEC: multi-terminal (TERM-01, TERM-03), session-restore (SESS-12, SESS-13, SESS-14), projects (PROJ-14)
+// SPEC: wsl-terminal-profile (WSLP-03, WSLP-04, WSLP-10, WSLP-11)
 
 //! `TerminalManager`: registro das sessões PTY vivas.
 //!
@@ -8,7 +9,7 @@
 //! Pontos de integração).
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 
@@ -16,6 +17,7 @@ use portable_pty::{CommandBuilder, PtySize};
 use uuid::Uuid;
 
 use crate::agents::{resolve_launch_command, LaunchResolution, SessionLaunch};
+use crate::shells::{wrap::wrap, TerminalProfile};
 
 use super::session::{PtySession, SessionError, SessionState};
 use super::throttle::Chunk;
@@ -30,28 +32,73 @@ const TERMINAL_ID_ENV: &str = "SWARMDECK_TERMINAL_ID";
 /// shutdown do app fique bloqueado esperando um filho que ignora o sinal.
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(3);
 
-/// Monta o `CommandBuilder` a partir de uma resolução de lançamento.
+/// Monta o `CommandBuilder` a partir de uma resolução de lançamento e do
+/// perfil de execução ativo.
 ///
 /// Separado de `spawn` para ser testável sem abrir um PTY de verdade: é a
 /// única parte da criação de sessão que tem regra (programa + argumentos), e
-/// o resto de `spawn` é efeito colateral.
-fn build_command(resolution: &LaunchResolution, shell: Option<&str>) -> CommandBuilder {
-    match &resolution.command {
-        Some(agent_command) => {
-            let mut cmd = CommandBuilder::new(agent_command);
-            for arg in &resolution.args {
-                cmd.arg(arg);
-            }
-            cmd
-        }
-        // Fallback para shell puro: `resolution.args` é sempre vazio aqui
-        // (ver `agents::launch`), mas o shell nunca receberia argumento de
-        // agente de qualquer forma.
-        None => match shell {
-            Some(shell) => CommandBuilder::new(shell),
-            None => CommandBuilder::new_default_prog(),
-        },
+/// o resto de `spawn` é efeito colateral. Delega a `shells::wrap`, que é
+/// quem decide o argv de fato para cada combinação de perfil/programa
+/// (`design.md` → `shells::wrap`).
+///
+/// `SWARMDECK_TERMINAL_ID` só entra como entrada de `env` do argv numa
+/// distro WSL — a variável precisa existir *dentro* dela, e `cmd.env()`
+/// setaria o ambiente do `wsl.exe` no host, não o do processo lá dentro. No
+/// host, continua sendo uma variável de processo de verdade, como sempre.
+fn build_command(
+    resolution: &LaunchResolution,
+    profile: &TerminalProfile,
+    cwd: &Path,
+    terminal_id: TerminalId,
+) -> CommandBuilder {
+    let mut extra_env = Vec::new();
+    if matches!(profile, TerminalProfile::Wsl { .. }) {
+        extra_env.push((TERMINAL_ID_ENV.to_string(), terminal_id.to_string()));
     }
+    let mut cmd = wrap(
+        profile,
+        resolution.command.as_deref(),
+        &resolution.args,
+        &extra_env,
+        cwd,
+    );
+    if matches!(profile, TerminalProfile::Host) {
+        cmd.env(TERMINAL_ID_ENV, terminal_id.to_string());
+    }
+    cmd
+}
+
+/// Confere se o perfil ativo consegue rodar antes de abrir a sessão
+/// interativa. No host, sempre disponível. Numa distro WSL, um
+/// `wsl.exe -d <distro> --cd <cwd> -- true` síncrono: distro
+/// ausente/parada e `cwd` inexistente lá dentro dividem o mesmo status
+/// 255 (`WSLP-10`), então o texto de erro é o único jeito de diferenciar —
+/// por isso ele sobe verbatim, nunca reinterpretado.
+fn check_profile_available(profile: &TerminalProfile, cwd: &Path) -> Result<(), String> {
+    match profile {
+        TerminalProfile::Host => Ok(()),
+        TerminalProfile::Wsl { distro } => check_wsl_profile(distro, cwd),
+    }
+}
+
+#[cfg(windows)]
+fn check_wsl_profile(distro: &str, cwd: &Path) -> Result<(), String> {
+    let output = std::process::Command::new("wsl.exe")
+        .args(["-d", distro, "--cd"])
+        .arg(cwd)
+        .args(["--", "true"])
+        .output()
+        .map_err(|e| e.to_string())?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).into_owned())
+    }
+}
+
+#[cfg(not(windows))]
+fn check_wsl_profile(_distro: &str, _cwd: &Path) -> Result<(), String> {
+    Ok(())
 }
 
 fn default_size() -> PtySize {
@@ -67,8 +114,9 @@ fn default_size() -> PtySize {
 #[derive(Debug, Clone, Default)]
 pub struct SessionConfig {
     pub cwd: PathBuf,
-    /// `None` = resolve o shell padrão do SO (via `portable-pty`).
-    pub shell: Option<String>,
+    /// Máquina onde o terminal roda. `Host` resolve o shell padrão do SO
+    /// (via `portable-pty`), como sempre; `Wsl` roda dentro da distro.
+    pub profile: TerminalProfile,
     pub agent: Option<String>,
     /// SPEC: session-restore (SESS-12, SESS-13) — id de sessão que o app fixou
     /// para este painel. `None` só para terminal salvo antes da feature.
@@ -87,6 +135,10 @@ pub struct SessionConfig {
 pub enum ManagerError {
     #[error("terminal `{0}` não existe")]
     UnknownId(TerminalId),
+    /// WSLP-10, WSLP-11: perfil indisponível — nunca cai para o shell do
+    /// host. `stderr` é o texto bruto do `wsl.exe`, sem reinterpretação.
+    #[error("perfil `{label}` indisponível: {stderr}")]
+    Profile { label: String, stderr: String },
     #[error(transparent)]
     Session(#[from] SessionError),
 }
@@ -130,7 +182,28 @@ impl TerminalManager {
 
     /// Abre um PTY com um shell interativo e registra a sessão.
     pub fn spawn(&self, cfg: SessionConfig) -> Result<TerminalId, ManagerError> {
+        self.spawn_with(cfg, check_profile_available)
+    }
+
+    /// Núcleo testável de `spawn`: recebe a checagem de disponibilidade do
+    /// perfil como parâmetro em vez de chamar `wsl.exe` de verdade, para
+    /// provar a falha (`ManagerError::Profile`, nenhuma sessão inserida)
+    /// sem depender de uma distro real.
+    fn spawn_with(
+        &self,
+        cfg: SessionConfig,
+        check: impl FnOnce(&TerminalProfile, &Path) -> Result<(), String>,
+    ) -> Result<TerminalId, ManagerError> {
         let id = Uuid::now_v7();
+
+        // WSLP-10, WSLP-11: falha de perfil aborta antes de qualquer coisa
+        // ser montada ou registrada — nunca cai para o shell do host.
+        if let Err(stderr) = check(&cfg.profile, &cfg.cwd) {
+            return Err(ManagerError::Profile {
+                label: cfg.profile.id(),
+                stderr,
+            });
+        }
 
         // SPEC: agent-selection (AGT-03, AGT-04)
         // Sobrescrita por sessão (AGT-03): o agente lançado é o que esta
@@ -150,12 +223,11 @@ impl TerminalManager {
             session,
             cfg.permission_mode.as_deref(),
         );
-        let mut cmd = build_command(&resolution, cfg.shell.as_deref());
+        let mut cmd = build_command(&resolution, &cfg.profile, &cfg.cwd, id);
         cmd.cwd(&cfg.cwd);
         for (key, value) in &cfg.env {
             cmd.env(key, value);
         }
-        cmd.env(TERMINAL_ID_ENV, id.to_string());
 
         let session = PtySession::spawn(default_size(), cmd)?;
 
@@ -255,7 +327,12 @@ mod tests {
             warning: None,
         };
 
-        let cmd = build_command(&resolution, None);
+        let cmd = build_command(
+            &resolution,
+            &TerminalProfile::Host,
+            Path::new("/tmp"),
+            Uuid::now_v7(),
+        );
 
         assert_eq!(argv(&cmd), vec!["claude", "--resume", "abc-123"]);
     }
@@ -270,22 +347,143 @@ mod tests {
             warning: None,
         };
 
-        let cmd = build_command(&resolution, None);
+        let cmd = build_command(
+            &resolution,
+            &TerminalProfile::Host,
+            Path::new("/tmp"),
+            Uuid::now_v7(),
+        );
 
         assert_eq!(argv(&cmd), vec!["codex"]);
     }
 
-    // Fallback para shell puro: o shell nunca recebe argumento de agente.
+    // Sem agente resolvido e perfil host: programa padrão do SO, igual a
+    // antes desta feature (o parâmetro `shell` explícito nunca tinha
+    // chamador de verdade — ver design.md → Riscos).
     #[test]
-    fn build_command_cai_para_o_shell_pedido_sem_argumentos() {
+    fn build_command_host_sem_resolucao_lanca_programa_padrao_do_so() {
         let resolution = LaunchResolution {
             command: None,
             args: Vec::new(),
             warning: Some("CLI ausente".to_string()),
         };
 
-        let cmd = build_command(&resolution, Some("bash"));
+        let cmd = build_command(
+            &resolution,
+            &TerminalProfile::Host,
+            Path::new("/tmp"),
+            Uuid::now_v7(),
+        );
 
-        assert_eq!(argv(&cmd), vec!["bash"]);
+        assert_eq!(argv(&cmd), argv(&CommandBuilder::new_default_prog()));
+    }
+
+    // WSLP-03/04: mesmo argv que `shells::wrap` já prova sozinho — aqui a
+    // prova é que `build_command` de fato delega, não reimplementa.
+    #[test]
+    fn build_command_wsl_com_programa_produz_argv_com_env_prefixado() {
+        let resolution = LaunchResolution {
+            command: Some("/home/x/.local/bin/claude".to_string()),
+            args: vec!["--resume".to_string(), "abc-123".to_string()],
+            warning: None,
+        };
+        let profile = TerminalProfile::Wsl {
+            distro: "Ubuntu-24.04".to_string(),
+        };
+        let terminal_id = Uuid::now_v7();
+
+        let cmd = build_command(
+            &resolution,
+            &profile,
+            Path::new(r"\\wsl.localhost\Ubuntu-24.04\home\x"),
+            terminal_id,
+        );
+
+        assert_eq!(
+            argv(&cmd),
+            vec![
+                "wsl.exe",
+                "-d",
+                "Ubuntu-24.04",
+                "--cd",
+                r"\\wsl.localhost\Ubuntu-24.04\home\x",
+                "--",
+                "env",
+                &format!("{TERMINAL_ID_ENV}={terminal_id}"),
+                "/home/x/.local/bin/claude",
+                "--resume",
+                "abc-123",
+            ]
+        );
+    }
+
+    // WSLP-09: o id do terminal chega como entrada de argv (dentro da
+    // distro), nunca como variável de processo do `wsl.exe` no host.
+    #[test]
+    fn build_command_wsl_inclui_id_do_terminal_como_entrada_de_env() {
+        let resolution = LaunchResolution {
+            command: Some("claude".to_string()),
+            args: Vec::new(),
+            warning: None,
+        };
+        let profile = TerminalProfile::Wsl {
+            distro: "Ubuntu-24.04".to_string(),
+        };
+        let terminal_id = Uuid::now_v7();
+
+        let cmd = build_command(&resolution, &profile, Path::new("/home/x"), terminal_id);
+
+        assert!(argv(&cmd).contains(&format!("{TERMINAL_ID_ENV}={terminal_id}")));
+        assert_eq!(cmd.get_env(TERMINAL_ID_ENV), None);
+    }
+
+    // Perfil host: o id continua sendo variável de processo de verdade,
+    // exatamente como antes desta feature.
+    #[test]
+    fn build_command_host_inclui_id_do_terminal_como_variavel_de_processo() {
+        let resolution = LaunchResolution {
+            command: Some("claude".to_string()),
+            args: Vec::new(),
+            warning: None,
+        };
+        let terminal_id = Uuid::now_v7();
+
+        let cmd = build_command(
+            &resolution,
+            &TerminalProfile::Host,
+            Path::new("/tmp"),
+            terminal_id,
+        );
+
+        assert_eq!(
+            cmd.get_env(TERMINAL_ID_ENV),
+            Some(std::ffi::OsStr::new(terminal_id.to_string().as_str()))
+        );
+    }
+
+    // WSLP-10, WSLP-11: falha de perfil vira `ManagerError::Profile` com o
+    // rótulo do perfil e o stderr verbatim, e nenhuma sessão é registrada —
+    // sem fallback nenhum para o shell do host.
+    #[test]
+    fn spawn_with_falha_de_perfil_retorna_manager_error_sem_inserir_sessao() {
+        let manager = TerminalManager::new();
+        let cfg = SessionConfig {
+            cwd: PathBuf::from(r"\\wsl.localhost\Ubuntu-24.04\home\x"),
+            profile: TerminalProfile::Wsl {
+                distro: "Ubuntu-24.04".to_string(),
+            },
+            ..Default::default()
+        };
+
+        let result = manager.spawn_with(cfg, |_, _| Err("distro não encontrada".to_string()));
+
+        match result {
+            Err(ManagerError::Profile { label, stderr }) => {
+                assert_eq!(label, "wsl:Ubuntu-24.04");
+                assert_eq!(stderr, "distro não encontrada");
+            }
+            other => panic!("esperava ManagerError::Profile, veio {other:?}"),
+        }
+        assert!(manager.list().is_empty());
     }
 }
