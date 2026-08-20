@@ -49,6 +49,10 @@ function renderWizard(props: Partial<Parameters<typeof PaneWizard>[0]> = {}) {
 /** Espera a lista carregada — todos os testes partem da etapa "PROJECT". */
 const waitForList = () => waitFor(() => expect(screen.getByText(/projects$/)).toBeInTheDocument())
 
+/** As duas etapas mostram a trilha "PROJECT › AGENT" inteira; quem diz onde
+ *  o wizard está é o `data-step` do cabeçalho. */
+const activeStep = () => document.querySelector('.wizard-head')?.getAttribute('data-step')
+
 describe('PaneWizard', () => {
   beforeEach(() => {
     invokeMock.mockReset()
@@ -70,13 +74,13 @@ describe('PaneWizard', () => {
 
     // PROJ-14: a seleção passa pelo `project_touch`, então a etapa AGENT
     // aparece no tique seguinte.
-    expect(await screen.findByText('AGENT')).toBeInTheDocument()
+    await waitFor(() => expect(activeStep()).toBe('2'))
     expect(invokeMock).toHaveBeenCalledWith('project_touch', { id: 'a' })
     expect(screen.getByText('/home/user/dev/alpha')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Voltar' }))
 
-    expect(screen.getByText('PROJECT')).toBeInTheDocument()
+    expect(activeStep()).toBe('1')
     expect(screen.getByLabelText('Buscar projetos')).toHaveValue('alp')
   })
 
@@ -118,7 +122,7 @@ describe('PaneWizard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'No Project' }))
 
-    await waitFor(() => expect(screen.getByText('AGENT')).toBeInTheDocument())
+    await waitFor(() => expect(activeStep()).toBe('2'))
     expect(screen.getByText('/data/swarmdeck/sandbox')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
@@ -153,7 +157,7 @@ describe('PaneWizard', () => {
         path: '/home/user/dev/novo-projeto',
       }),
     )
-    await waitFor(() => expect(screen.getByText('AGENT')).toBeInTheDocument())
+    await waitFor(() => expect(activeStep()).toBe('2'))
 
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
     expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/novo-projeto', 'claude-code', 'n')
@@ -167,7 +171,7 @@ describe('PaneWizard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Import Project' }))
 
-    await waitFor(() => expect(screen.getByText('AGENT')).toBeInTheDocument())
+    await waitFor(() => expect(activeStep()).toBe('2'))
     expect(invokeMock).not.toHaveBeenCalledWith('project_create', expect.anything())
 
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
@@ -213,7 +217,7 @@ describe('PaneWizard', () => {
         gitInit: true,
       }),
     )
-    await waitFor(() => expect(screen.getByText('AGENT')).toBeInTheDocument())
+    await waitFor(() => expect(activeStep()).toBe('2'))
 
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
     expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/teste-git', 'claude-code', 'c')
@@ -229,7 +233,7 @@ describe('PaneWizard', () => {
     renderWizard()
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('banco indisponível'))
-    expect(screen.getByText('PROJECT')).toBeInTheDocument()
+    expect(activeStep()).toBe('1')
     expect(screen.getByText('0 / 0 projects')).toBeInTheDocument()
   })
 
@@ -249,8 +253,7 @@ describe('PaneWizard', () => {
     fireEvent.click(screen.getByRole('button', { name: /alpha/ }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('/home/user/dev/alpha')
-    expect(screen.getByText('PROJECT')).toBeInTheDocument()
-    expect(screen.queryByText('AGENT')).not.toBeInTheDocument()
+    expect(activeStep()).toBe('1')
     expect(onConfirm).not.toHaveBeenCalled()
     // O projeto continua listado: o caminho é que sumiu, não o registro.
     expect(screen.getByRole('button', { name: /alpha/ })).toBeInTheDocument()
@@ -273,7 +276,7 @@ describe('PaneWizard', () => {
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent('diretório de dados sem permissão'),
     )
-    expect(screen.getByText('PROJECT')).toBeInTheDocument()
+    expect(activeStep()).toBe('1')
   })
 
   it('falha de project_create_in deixa o formulário aberto com a mensagem e a etapa PROJECT (P2 AC10, AC11)', async () => {
@@ -303,7 +306,7 @@ describe('PaneWizard', () => {
       ),
     )
     expect(screen.getByRole('dialog', { name: 'novo projeto' })).toBeInTheDocument()
-    expect(screen.getByText('PROJECT')).toBeInTheDocument()
+    expect(activeStep()).toBe('1')
   })
 
   it('falha de project_create no Import mantém a etapa PROJECT e exibe a mensagem', async () => {
@@ -321,6 +324,6 @@ describe('PaneWizard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Import Project' }))
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('diretório não existe'))
-    expect(screen.getByText('PROJECT')).toBeInTheDocument()
+    expect(activeStep()).toBe('1')
   })
 })

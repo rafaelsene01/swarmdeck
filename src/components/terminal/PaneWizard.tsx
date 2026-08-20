@@ -7,7 +7,7 @@ import ProjectStep from './ProjectStep'
 import AgentStep from './AgentStep'
 import ProjectFormModal, { type ProjectFormValues } from '../project/ProjectFormModal'
 import type { AgentDescriptor } from '../../routes/settings/AgentPanel'
-import type { ProjectRow } from '../../routes/settings/ProjectsPanel'
+import { filterProjects, type ProjectRow } from '../../routes/settings/ProjectsPanel'
 
 /** Espelha `projects::service::Project` — o campo chega `last_used`. */
 interface ProjectRecord {
@@ -189,6 +189,7 @@ export default function PaneWizard({
         selectedAgentId={selectedAgentId}
         onSelectAgent={(id) => setChosen({ id })}
         onBack={() => setSelection(null)}
+        counter={`${filterProjects(projects, query).length} / ${projects.length} projects`}
         onConfirm={() => onConfirm(selection.path, selectedAgentId, selection.id)}
       />
     )

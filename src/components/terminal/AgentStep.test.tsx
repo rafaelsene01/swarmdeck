@@ -42,7 +42,8 @@ describe('AgentStep', () => {
   it('os agentes aparecem na ordem recebida, com o padrão pré-selecionado (P1 AC7)', () => {
     renderStep()
 
-    expect(agentButtons().map((b) => b.textContent)).toEqual([
+    // Ladrilhos são só ícone (P1 AC7): o nome vive em `aria-label`.
+    expect(agentButtons().map((b) => b.getAttribute('aria-label'))).toEqual([
       'Claude Code',
       'Codex CLI',
       'opencode',
