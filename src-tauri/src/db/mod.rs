@@ -35,6 +35,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
     (7, include_str!("migrations/007_quota_providers.sql")),
     (8, include_str!("migrations/008_terminal_workspace.sql")),
     (9, include_str!("migrations/009_terminal_session.sql")),
+    (10, include_str!("migrations/010_terminal_permission_mode.sql")),
 ];
 
 /// Versão que um banco recém-migrado alcança — a última de `MIGRATIONS`.

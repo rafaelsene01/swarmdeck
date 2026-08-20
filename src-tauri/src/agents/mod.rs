@@ -9,6 +9,9 @@ pub mod catalog;
 pub mod launch;
 pub mod prefs;
 
-pub use catalog::{catalog, detect_installed, AgentDescriptor, AgentStatus};
+pub use catalog::{
+    catalog, detect_installed, is_valid_permission_mode, AgentDescriptor, AgentStatus,
+    PERMISSION_MODES,
+};
 pub use launch::{resolve_launch_command, LaunchResolution, SessionLaunch};
 pub use prefs::{default_agent, resolve_effective_default, set_default_agent, EffectiveDefault};

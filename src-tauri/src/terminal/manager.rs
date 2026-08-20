@@ -75,6 +75,11 @@ pub struct SessionConfig {
     pub session_id: Option<String>,
     /// `true` reabre a conversa do agente (`--resume`); `false` fixa uma nova.
     pub resume: bool,
+    /// SPEC: agent-permission-mode (PERM-01) — modo de permissão escolhido no
+    /// passo AGENT do wizard (`claude --permission-mode <modo>`). `None` deixa
+    /// o CLI aplicar o padrão dele; valor desconhecido é descartado por
+    /// `agents::launch`, nunca repassado à linha de comando.
+    pub permission_mode: Option<String>,
     pub env: HashMap<String, String>,
 }
 
@@ -140,7 +145,8 @@ impl TerminalManager {
             id,
             resume: cfg.resume,
         });
-        let resolution = resolve_launch_command(cfg.agent.as_deref(), session);
+        let resolution =
+            resolve_launch_command(cfg.agent.as_deref(), session, cfg.permission_mode.as_deref());
         let mut cmd = build_command(&resolution, cfg.shell.as_deref());
         cmd.cwd(&cfg.cwd);
         for (key, value) in &cfg.env {

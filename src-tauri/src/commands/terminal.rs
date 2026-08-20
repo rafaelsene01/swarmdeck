@@ -43,6 +43,9 @@ pub fn pty_spawn(
     // (sem o campo) continue significando "sessão nova".
     session_id: Option<String>,
     resume: Option<bool>,
+    // SPEC: agent-permission-mode (PERM-01) — `None` numa chamada antiga
+    // significa "sem flag", que é o comportamento de antes desta feature.
+    permission_mode: Option<String>,
     channel: Channel<Vec<u8>>,
 ) -> Result<String, String> {
     let manager = app.state::<TerminalManager>();
@@ -52,6 +55,7 @@ pub fn pty_spawn(
         agent,
         session_id,
         resume: resume.unwrap_or(false),
+        permission_mode,
         env: Default::default(),
     };
     let id = manager.spawn(cfg).map_err(|e| e.to_string())?;
@@ -245,6 +249,7 @@ mod tests {
                 cwd: cwd.to_string(),
                 agent_id: Some("claude-code".to_string()),
                 agent_session_id: Some("0195d0f0-0000-7000-8000-000000000001".to_string()),
+                permission_mode: None,
                 title: None,
                 title_source: "agent".to_string(),
                 minimized: false,

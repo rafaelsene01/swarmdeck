@@ -260,3 +260,34 @@ describe('TerminalHeader — modo rascunho (PROJ-11, PROJ-12)', () => {
     expect(actionLabels(withoutProp)).toContain('capturar terminal')
   })
 })
+
+// SPEC: agent-permission-mode (PERM-07) — o cabeçalho diz sob qual regime de
+// permissão o agente daquele terminal está rodando.
+describe('TerminalHeader — modo de permissão (PERM-07)', () => {
+  it('mostra o rótulo do modo ativo, com a descrição no hover', () => {
+    const { container } = render(
+      <TerminalHeader index={1} title={null} permissionMode="bypassPermissions" />,
+    )
+
+    const badge = container.querySelector('.terminal-header__permission-mode')
+    expect(badge).toHaveTextContent('Sem verificação')
+    expect(badge?.getAttribute('title')).toContain('contêineres e VMs isolados')
+    expect(badge?.getAttribute('data-mode')).toBe('bypassPermissions')
+  })
+
+  it('sem modo (shell puro ou agente sem a flag) não renderiza selo', () => {
+    const { container } = render(<TerminalHeader index={1} title={null} />)
+
+    expect(container.querySelector('.terminal-header__permission-mode')).toBeNull()
+  })
+
+  it('modo desconhecido cai no próprio id em vez de sumir', () => {
+    const { container } = render(
+      <TerminalHeader index={1} title={null} permissionMode="modoNovoDoCli" />,
+    )
+
+    expect(container.querySelector('.terminal-header__permission-mode')).toHaveTextContent(
+      'modoNovoDoCli',
+    )
+  })
+})

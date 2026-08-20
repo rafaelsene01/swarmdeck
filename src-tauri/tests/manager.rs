@@ -58,6 +58,7 @@ fn default_config() -> SessionConfig {
         agent: None,
         session_id: None,
         resume: false,
+        permission_mode: None,
         env: Default::default(),
     }
 }

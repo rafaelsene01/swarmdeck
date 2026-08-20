@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import ProjectStep from './ProjectStep'
-import AgentStep from './AgentStep'
+import AgentStep, { DEFAULT_PERMISSION_MODE } from './AgentStep'
 import ProjectFormModal, { type ProjectFormValues } from '../project/ProjectFormModal'
 import type { AgentDescriptor } from '../../routes/settings/AgentPanel'
 import { filterProjects, type ProjectRow } from '../../routes/settings/ProjectsPanel'
@@ -45,7 +45,14 @@ export interface PaneWizardProps {
   agents: AgentDescriptor[]
   installedIds: Set<string>
   defaultAgentId: string | null
-  onConfirm: (cwd: string, agentId: string | null, projectId: string | null) => void
+  /** SPEC: agent-permission-mode (PERM-05) — `permissionMode` é `null`
+   * quando o agente escolhido não oferece modos (ou é terminal limpo). */
+  onConfirm: (
+    cwd: string,
+    agentId: string | null,
+    projectId: string | null,
+    permissionMode: string | null,
+  ) => void
   onCancel: () => void
 }
 
@@ -82,6 +89,10 @@ export default function PaneWizard({
    * que também é um `id` nulo. */
   const [chosen, setChosen] = useState<{ id: string | null } | null>(null)
   const selectedAgentId = chosen === null ? defaultAgentId : chosen.id
+  /** SPEC: agent-permission-mode (PERM-05) — escolha do passo AGENT. Nasce
+   * no padrão e sobrevive a trocar de agente e voltar para a etapa PROJECT:
+   * quem já disse "sem verificação" não quer redizer a cada ida e volta. */
+  const [permissionMode, setPermissionMode] = useState(DEFAULT_PERMISSION_MODE)
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -188,9 +199,24 @@ export default function PaneWizard({
         installedIds={installedIds}
         selectedAgentId={selectedAgentId}
         onSelectAgent={(id) => setChosen({ id })}
+        permissionMode={permissionMode}
+        onSelectPermissionMode={setPermissionMode}
         onBack={() => setSelection(null)}
         counter={`${filterProjects(projects, query).length} / ${projects.length} projects`}
-        onConfirm={() => onConfirm(selection.path, selectedAgentId, selection.id)}
+        onConfirm={() =>
+          onConfirm(
+            selection.path,
+            selectedAgentId,
+            selection.id,
+            // PERM-05: só vai modo se o agente escolhido declarar algum — o
+            // shell puro e os agentes sem a flag não têm o que receber.
+            (agents.find((agent) => agent.id === selectedAgentId)?.permissionModes ?? []).includes(
+              permissionMode,
+            )
+              ? permissionMode
+              : null,
+          )
+        }
       />
     )
   }

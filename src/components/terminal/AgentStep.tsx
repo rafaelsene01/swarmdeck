@@ -1,4 +1,4 @@
-// SPEC: projects (PROJ-13, PROJ-21)
+// SPEC: projects (PROJ-13, PROJ-21), agent-permission-mode (PERM-05, PERM-06)
 
 import { useState } from 'react'
 import ProviderIcon from '../shell/ProviderIcon'
@@ -12,6 +12,62 @@ export interface AgentStepSelection {
   color: string | null
 }
 
+/**
+ * SPEC: agent-permission-mode (PERM-05, PERM-06) — rótulo curto e descrição de
+ * cada modo, na hora de escolher.
+ *
+ * As descrições são as da documentação oficial (code.claude.com/docs/en/
+ * permission-modes, tabela "Available modes"): a coluna "What runs without
+ * asking" vira a primeira frase e "Best for" a segunda. Não são paráfrase
+ * livre — quem escolhe `bypassPermissions` precisa ler o que a Anthropic
+ * escreveu, não o que o app achou que aquilo significa.
+ *
+ * A **lista** de modos não mora aqui: vem de `agent.permissionModes`
+ * (`agent_catalog`, derivado de `PERMISSION_MODES` no Rust). Este mapa só
+ * traduz; um modo novo no CLI aparece mesmo sem entrada aqui, com o próprio
+ * id como rótulo.
+ */
+export const PERMISSION_MODE_INFO: Record<string, { label: string; description: string }> = {
+  manual: {
+    label: 'Manual',
+    description:
+      'Roda sem perguntar: só leitura. Para revisar cada ação você mesmo, em trabalho sensível.',
+  },
+  plan: {
+    label: 'Plano',
+    description:
+      'Roda sem perguntar: leitura, mais os comandos aprovados pelo classificador quando o modo automático está disponível. Para explorar o código antes de mudar.',
+  },
+  acceptEdits: {
+    label: 'Aceitar edições',
+    description:
+      'Roda sem perguntar: leitura, edição de arquivos e comandos comuns de sistema de arquivos (mkdir, touch, mv, cp). Para iterar em código que você está revisando.',
+  },
+  auto: {
+    label: 'Automático',
+    description:
+      'Roda sem perguntar: tudo, com verificações de segurança em segundo plano. Para tarefas longas, reduzindo a fadiga de aprovação.',
+  },
+  dontAsk: {
+    label: 'Não perguntar',
+    description:
+      'Roda sem perguntar: apenas as ferramentas pré-aprovadas. Para CI e scripts fechados.',
+  },
+  bypassPermissions: {
+    label: 'Sem verificação',
+    description:
+      'Roda sem perguntar: tudo, sem nenhuma verificação. Só para contêineres e VMs isolados.',
+  },
+}
+
+/** SPEC: agent-permission-mode (PERM-05) — o modo pré-marcado. */
+export const DEFAULT_PERMISSION_MODE = 'auto'
+
+/** Rótulo curto de um modo; um id sem entrada no mapa vira o próprio id. */
+export function permissionModeLabel(mode: string): string {
+  return PERMISSION_MODE_INFO[mode]?.label ?? mode
+}
+
 export interface AgentStepProps {
   selection: AgentStepSelection
   agents: AgentDescriptor[]
@@ -20,6 +76,12 @@ export interface AgentStepProps {
   /** `null` = terminal limpo: shell puro na pasta, sem agente (PROJ-21). */
   selectedAgentId: string | null
   onSelectAgent: (id: string | null) => void
+  /**
+   * SPEC: agent-permission-mode (PERM-05) — modo escolhido agora. `null`
+   * enquanto o agente selecionado não oferecer modos.
+   */
+  permissionMode?: string | null
+  onSelectPermissionMode?: (mode: string) => void
   onBack: () => void
   onConfirm: () => void
   /** "N / M projects" do passo anterior, para o cabeçalho não zerar aqui. */
@@ -57,11 +119,21 @@ export default function AgentStep({
   installedIds,
   selectedAgentId,
   onSelectAgent,
+  permissionMode,
+  onSelectPermissionMode,
   onBack,
   onConfirm,
   counter = '',
 }: AgentStepProps) {
   const [hovered, setHovered] = useState<string | null>(null)
+
+  /**
+   * SPEC: agent-permission-mode (PERM-05) — os modos vêm do agente
+   * **selecionado**, não do que está sob o cursor: o seletor governa o que
+   * vai subir, e piscar a cada passagem de mouse seria ruído.
+   */
+  const selectedAgent = agents.find((agent) => agent.id === selectedAgentId) ?? null
+  const permissionModes = selectedAgent?.permissionModes ?? []
 
   const focusedId = hovered ?? (selectedAgentId === null ? PLAIN : selectedAgentId)
   const focusedAgent = agents.find((agent) => agent.id === focusedId) ?? null
@@ -241,6 +313,32 @@ export default function AgentStep({
           font-weight: 700;
           letter-spacing: 0.06em;
         }
+        /* SPEC: agent-permission-mode (PERM-05) — a fileira de modos fica
+           entre a legenda do agente e o botão de abrir, porque é a última
+           decisão antes de subir a sessão. */
+        .agent-step__modes {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.35rem;
+          justify-content: center;
+        }
+        .agent-step__mode {
+          padding: 0.28rem 0.6rem;
+          border: 1px solid var(--border, #26262d);
+          border-radius: 999px;
+          background: var(--surface, #131318);
+          color: var(--muted, #8a8a92);
+          font-size: 0.7rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: border-color 120ms ease, color 120ms ease;
+        }
+        .agent-step__mode:hover { color: var(--fg, #e8e8ea); border-color: var(--muted, #8a8a92); }
+        .agent-step__mode[aria-pressed='true'] {
+          border-color: var(--accent, #f5b700);
+          background: rgba(245, 183, 0, 0.14);
+          color: var(--accent, #f5b700);
+        }
         .agent-step__caption {
           display: flex;
           gap: 0.5rem;
@@ -380,6 +478,33 @@ export default function AgentStep({
               </>
             )}
           </p>
+
+          {/* SPEC: agent-permission-mode (PERM-05, PERM-06) — só aparece
+              para agente que declara modos; o `title` de cada botão é a
+              descrição oficial daquele modo. */}
+          {permissionModes.length > 0 && (
+            <>
+              <span className="agent-step__legend">MODO DE PERMISSÃO</span>
+              <div
+                className="agent-step__modes"
+                role="group"
+                aria-label="Modo de permissão"
+              >
+                {permissionModes.map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className="agent-step__mode"
+                    aria-pressed={mode === permissionMode}
+                    title={PERMISSION_MODE_INFO[mode]?.description ?? mode}
+                    onClick={() => onSelectPermissionMode?.(mode)}
+                  >
+                    {permissionModeLabel(mode)}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           <button
             type="button"

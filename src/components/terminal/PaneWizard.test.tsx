@@ -14,7 +14,15 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke: invokeMock }))
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: openMock }))
 
 const CATALOG: AgentDescriptor[] = [
-  { id: 'claude-code', name: 'Claude Code', vendor: 'Anthropic', command: 'claude', beta: false },
+  {
+    id: 'claude-code',
+    name: 'Claude Code',
+    vendor: 'Anthropic',
+    command: 'claude',
+    beta: false,
+    // PERM-03: como `agent_catalog` devolve para o Claude.
+    permissionModes: ['manual', 'plan', 'acceptEdits', 'auto', 'dontAsk', 'bypassPermissions'],
+  },
   { id: 'codex-cli', name: 'Codex CLI', vendor: 'OpenAI', command: 'codex', beta: false },
 ]
 
@@ -95,7 +103,7 @@ describe('PaneWizard', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Claude Code' }))
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
 
-    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/alpha', 'claude-code', 'a')
+    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/alpha', 'claude-code', 'a', 'auto')
   })
 
   it('"Terminal" emite onConfirm com agente nulo, mesmo com agente padrão (P1 AC20)', async () => {
@@ -107,7 +115,7 @@ describe('PaneWizard', () => {
     fireEvent.click(await screen.findByRole('button', { name: /^Terminal$/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
 
-    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/alpha', null, 'a')
+    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/alpha', null, 'a', null)
   })
 
   it('"No Project" avança com o caminho da sandbox e projectId nulo (P2 AC1)', async () => {
@@ -128,7 +136,7 @@ describe('PaneWizard', () => {
     expect(screen.getByText('/data/swarmdeck/sandbox')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
-    expect(onConfirm).toHaveBeenCalledWith('/data/swarmdeck/sandbox', 'claude-code', null)
+    expect(onConfirm).toHaveBeenCalledWith('/data/swarmdeck/sandbox', 'claude-code', null, 'auto')
   })
 
   it('"Import Project" com pasta nova chama project_create com o nome da última pasta e avança (P2 AC4)', async () => {
@@ -162,7 +170,7 @@ describe('PaneWizard', () => {
     await waitFor(() => expect(activeStep()).toBe('2'))
 
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
-    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/novo-projeto', 'claude-code', 'n')
+    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/novo-projeto', 'claude-code', 'n', 'auto')
   })
 
   it('"Import Project" com pasta já registrada seleciona o projeto existente e avança (P2 AC5)', async () => {
@@ -177,7 +185,7 @@ describe('PaneWizard', () => {
     expect(invokeMock).not.toHaveBeenCalledWith('project_create', expect.anything())
 
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
-    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/alpha', 'claude-code', 'a')
+    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/alpha', 'claude-code', 'a', 'auto')
   })
 
   it('"New Project" abre o formulário; confirmar chama project_create_in e avança com o projeto criado (P2 AC7)', async () => {
@@ -222,7 +230,7 @@ describe('PaneWizard', () => {
     await waitFor(() => expect(activeStep()).toBe('2'))
 
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
-    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/teste-git', 'claude-code', 'c')
+    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/teste-git', 'claude-code', 'c', 'auto')
   })
 
   it('falha de project_list mantém a etapa PROJECT e exibe a mensagem', async () => {
@@ -327,5 +335,49 @@ describe('PaneWizard', () => {
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('diretório não existe'))
     expect(activeStep()).toBe('1')
+  })
+})
+
+// SPEC: agent-permission-mode (PERM-05) — o modo escolhido no passo AGENT
+// chega ao `onConfirm`, e só quando o agente selecionado declara modos.
+describe('PaneWizard — modo de permissão (PERM-05)', () => {
+  beforeEach(() => {
+    invokeMock.mockReset()
+    invokeMock.mockImplementation((command: string) => {
+      const touched = touchOk(command)
+      if (touched) return touched
+      if (command === 'project_list') return Promise.resolve([ALPHA])
+      return unexpected(command)
+    })
+  })
+
+  it('trocar o modo antes de "Nova sessão" é o que vai no onConfirm', async () => {
+    const onConfirm = vi.fn()
+    renderWizard({ onConfirm })
+
+    fireEvent.click(await screen.findByText('alpha'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Sem verificação' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
+
+    expect(onConfirm).toHaveBeenCalledWith(
+      '/home/user/dev/alpha',
+      'claude-code',
+      'a',
+      'bypassPermissions',
+    )
+  })
+
+  it('agente sem modos declarados não manda modo nenhum', async () => {
+    const onConfirm = vi.fn()
+    renderWizard({ onConfirm, defaultAgentId: 'codex-cli' })
+
+    fireEvent.click(await screen.findByText('alpha'))
+    const confirm = await screen.findByRole('button', { name: 'Nova sessão' })
+
+    expect(screen.queryByRole('group', { name: 'Modo de permissão' })).not.toBeInTheDocument()
+
+    fireEvent.click(confirm)
+
+    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/alpha', 'codex-cli', 'a', null)
   })
 })

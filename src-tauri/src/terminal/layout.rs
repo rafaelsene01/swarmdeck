@@ -48,6 +48,11 @@ pub struct LayoutEntry {
     /// há conversa para retomar.
     #[serde(default)]
     pub agent_session_id: Option<String>,
+    /// SPEC: agent-permission-mode (PERM-04) — modo de permissão escolhido no
+    /// passo AGENT (`claude --permission-mode <modo>`). `None` em linha
+    /// gravada antes da feature: o terminal restaurado sobe sem a flag.
+    #[serde(default)]
+    pub permission_mode: Option<String>,
     #[serde(default)]
     pub title: Option<String>,
     #[serde(default = "default_title_source")]
@@ -109,8 +114,8 @@ pub fn save(db: &Db, tabs: &[TabEntry]) -> Result<(), DbError> {
         for e in &tab.terminals {
             tx.execute(
                 "INSERT INTO terminal_layout
-                    (id, slot, frac_w, frac_h, cwd, agent_id, agent_session_id, title, title_source, minimized, updated_at, tab_id)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                    (id, slot, frac_w, frac_h, cwd, agent_id, agent_session_id, permission_mode, title, title_source, minimized, updated_at, tab_id)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
                 params![
                     e.id,
                     e.slot,
@@ -119,6 +124,7 @@ pub fn save(db: &Db, tabs: &[TabEntry]) -> Result<(), DbError> {
                     e.cwd,
                     e.agent_id,
                     e.agent_session_id,
+                    e.permission_mode,
                     e.title,
                     e.title_source,
                     e.minimized as i64,
@@ -167,7 +173,7 @@ pub fn restore(db: &Db, home: &Path) -> Result<Vec<TabEntry>, DbError> {
     // Os terminais são lidos por aba, então `tab_id` nulo ou órfão nunca
     // casa com nenhuma consulta e some sozinho (LAYOUT-25).
     let mut entry_stmt = conn.prepare(
-        "SELECT id, slot, frac_w, frac_h, cwd, agent_id, agent_session_id, title, title_source, minimized, updated_at
+        "SELECT id, slot, frac_w, frac_h, cwd, agent_id, agent_session_id, permission_mode, title, title_source, minimized, updated_at
          FROM terminal_layout WHERE tab_id = ?1 ORDER BY slot",
     )?;
 
@@ -181,10 +187,11 @@ pub fn restore(db: &Db, home: &Path) -> Result<Vec<TabEntry>, DbError> {
                 cwd: row.get(4)?,
                 agent_id: row.get(5)?,
                 agent_session_id: row.get(6)?,
-                title: row.get(7)?,
-                title_source: row.get(8)?,
-                minimized: row.get::<_, i64>(9)? != 0,
-                updated_at: row.get(10)?,
+                permission_mode: row.get(7)?,
+                title: row.get(8)?,
+                title_source: row.get(9)?,
+                minimized: row.get::<_, i64>(10)? != 0,
+                updated_at: row.get(11)?,
                 cwd_fallback_from: None,
             })
         })?;
@@ -244,6 +251,7 @@ mod tests {
             cwd: cwd.to_string(),
             agent_id: Some("claude-code".to_string()),
             agent_session_id: Some(format!("sessao-de-{id}")),
+            permission_mode: None,
             title: None,
             title_source: "agent".to_string(),
             minimized: false,

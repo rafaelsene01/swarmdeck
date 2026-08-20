@@ -12,6 +12,14 @@ export interface AgentDescriptor {
   vendor: string
   command: string
   beta: boolean
+  /**
+   * SPEC: agent-permission-mode (PERM-03) — modos que o CLI deste agente
+   * aceita em `--permission-mode`, na ordem de exibição. Vetor vazio (ou
+   * ausente) = o CLI não expõe esse controle, e o passo AGENT não mostra o
+   * seletor. Vem de `agent_catalog`, que o deriva de `permission_mode_flag`
+   * no catálogo Rust — o frontend nunca decide por id.
+   */
+  permissionModes?: string[]
 }
 
 export interface AgentPanelProps {

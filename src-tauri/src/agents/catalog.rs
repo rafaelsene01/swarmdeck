@@ -34,6 +34,32 @@ pub struct AgentDescriptor {
     /// fixada por `session_new_flag`. `None` = sem retomada possível; o
     /// switch do modal de restauração fica travado em "nova sessão".
     pub session_resume_flag: Option<&'static str>,
+    /// SPEC: agent-permission-mode (PERM-01) — flag que escolhe o modo de
+    /// permissão da sessão. `None` = o CLI não expõe esse controle, e o passo
+    /// AGENT do wizard não mostra o seletor para esse agente.
+    pub permission_mode_flag: Option<&'static str>,
+}
+
+/// SPEC: agent-permission-mode (PERM-01, PERM-02) — os modos que
+/// `claude --permission-mode` aceita, na ordem de exibição (do mais
+/// supervisionado ao menos). Conferidos contra `claude --help` da versão
+/// instalada; `manual` é o apelido de `default`, e é o que a CLI mostra.
+///
+/// Esta lista é a **fronteira de confiança**: o modo chega do frontend como
+/// string, e só passa para a linha de comando se estiver aqui. Modo
+/// desconhecido não vira argumento — nunca é repassado ao CLI.
+pub const PERMISSION_MODES: [&str; 6] = [
+    "manual",
+    "plan",
+    "acceptEdits",
+    "auto",
+    "dontAsk",
+    "bypassPermissions",
+];
+
+/// `true` quando `mode` é um dos valores aceitos por `PERMISSION_MODES`.
+pub fn is_valid_permission_mode(mode: &str) -> bool {
+    PERMISSION_MODES.contains(&mode)
 }
 
 /// Resultado da detecção para um agente: o agente e se o comando resolveu.
@@ -61,6 +87,7 @@ pub const CATALOG: [AgentDescriptor; 5] = [
         beta: false,
         session_new_flag: Some("--session-id"),
         session_resume_flag: Some("--resume"),
+        permission_mode_flag: Some("--permission-mode"),
     },
     AgentDescriptor {
         id: "codex-cli",
@@ -70,6 +97,7 @@ pub const CATALOG: [AgentDescriptor; 5] = [
         beta: false,
         session_new_flag: None,
         session_resume_flag: None,
+        permission_mode_flag: None,
     },
     AgentDescriptor {
         id: "antigravity-cli",
@@ -79,6 +107,7 @@ pub const CATALOG: [AgentDescriptor; 5] = [
         beta: false,
         session_new_flag: None,
         session_resume_flag: None,
+        permission_mode_flag: None,
     },
     AgentDescriptor {
         id: "opencode",
@@ -88,6 +117,7 @@ pub const CATALOG: [AgentDescriptor; 5] = [
         beta: false,
         session_new_flag: None,
         session_resume_flag: None,
+        permission_mode_flag: None,
     },
     AgentDescriptor {
         id: "kimi-code",
@@ -97,6 +127,7 @@ pub const CATALOG: [AgentDescriptor; 5] = [
         beta: true,
         session_new_flag: None,
         session_resume_flag: None,
+        permission_mode_flag: None,
     },
 ];
 

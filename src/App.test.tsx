@@ -908,6 +908,8 @@ describe('App - terminal-layout-options: gravar o workspace com debounce (LAYOUT
           cwd: '/a',
           minimized: false,
           agentId: 'claude-code',
+          // PERM-04: o modo persistido volta na restauração e é regravado.
+          permissionMode: 'auto',
         },
       ],
     },
@@ -1043,6 +1045,8 @@ describe('App - terminal-layout-options: gravar o workspace com debounce (LAYOUT
               // não `null`.
               agentSessionId: expect.any(String),
               agentId: 'claude-code',
+              // PERM-04: o modo escolhido no wizard vai junto do agente.
+              permissionMode: 'auto',
             },
           ],
         },

@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-06, TERM-14), terminal-chrome (CHROME-01), session-restore (SESS-12, SESS-13), terminal-screenshot (SHOT-13)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-06, TERM-14), terminal-chrome (CHROME-01), session-restore (SESS-12, SESS-13), terminal-screenshot (SHOT-13), agent-permission-mode (PERM-01)
 
 import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
@@ -23,6 +23,14 @@ export interface TerminalPaneProps {
    */
   sessionId?: string | null
   resume?: boolean
+  /**
+   * SPEC: agent-permission-mode (PERM-01) — modo escolhido no passo AGENT,
+   * repassado a `pty_spawn` como `--permission-mode <modo>`. Lido no mount,
+   * como `sessionId`/`resume`: trocar o modo de uma sessão viva não é o que
+   * esta feature promete — trocar exige reiniciar o terminal, que já remonta
+   * o painel (TERM-13).
+   */
+  permissionMode?: string | null
   /**
    * Reporta o id REAL da sessão (o `TerminalId` devolvido por `pty_spawn`,
    * o mesmo que o backend injeta no processo filho via `TERMINAL_ID_ENV` e
@@ -63,6 +71,7 @@ export default function TerminalPane({
   agent,
   sessionId,
   resume,
+  permissionMode,
   onSessionId,
   onTerminal,
 }: TerminalPaneProps) {
@@ -183,6 +192,7 @@ export default function TerminalPane({
       agent,
       sessionId: sessionId ?? null,
       resume: resume ?? false,
+      permissionMode: permissionMode ?? null,
       channel,
     })
       .then((id) => {

@@ -58,6 +58,10 @@ import { DEFAULT_LAYOUT, type TabLayout } from './state/layout'
  * front (é estado à parte, `agentByTerminalId`), então entra aqui. */
 interface WorkspaceTerminal extends LayoutEntry {
   agentId?: string | null
+  /** SPEC: agent-permission-mode (PERM-04) — mesmo tratamento de `agentId`:
+   * é coluna de `terminal_layout` no backend, mas estado à parte no front
+   * (`permissionModeByTerminalId`), então entra aqui na borda. */
+  permissionMode?: string | null
 }
 
 interface WorkspaceTab {
@@ -200,6 +204,12 @@ export default function App() {
   // Agente escolhido por sessão (AGT-03): sobrescreve o padrão só para o
   // terminal criado com aquela escolha, sem tocar a preferência global.
   const [agentByTerminalId, setAgentByTerminalId] = useState<Record<string, string | null>>({})
+  /** SPEC: agent-permission-mode (PERM-04) — modo com que cada terminal subiu.
+   * Espelha `agentByTerminalId`: chave é o id do painel no grid, e o valor
+   * acompanha o terminal por clonar, reiniciar e restaurar. */
+  const [permissionModeByTerminalId, setPermissionModeByTerminalId] = useState<
+    Record<string, string | null>
+  >({})
   // SPEC: multi-terminal (TERM-06)
   // Id REAL da sessão (o que `pty_spawn` devolve), reportado por
   // `TerminalPane` via `onSessionId` quando a promise resolve — chaveado
@@ -332,6 +342,13 @@ export default function App() {
         saved.flatMap((tab) => tab.terminals.map((t) => [t.id, t.agentId ?? null])),
       ),
     )
+    // PERM-04: o modo persistido volta junto, para o terminal restaurado subir
+    // sob o mesmo regime de permissão em que foi aberto.
+    setPermissionModeByTerminalId(
+      Object.fromEntries(
+        saved.flatMap((tab) => tab.terminals.map((t) => [t.id, t.permissionMode ?? null])),
+      ),
+    )
     hydrated.current = true
 
     // SPEC: projects (PROJ-14) — retomar o workspace é usar os projetos de
@@ -425,6 +442,7 @@ export default function App() {
         terminals: toLayoutEntries(tab.terminals).map((entry) => ({
           ...entry,
           agentId: agentByTerminalId[entry.id] ?? null,
+          permissionMode: permissionModeByTerminalId[entry.id] ?? null,
         })),
       }))
 
@@ -434,7 +452,7 @@ export default function App() {
     }, SAVE_DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
-  }, [tabs, agentByTerminalId])
+  }, [tabs, agentByTerminalId, permissionModeByTerminalId])
 
   useEffect(() => {
     let cancelled = false
@@ -614,6 +632,9 @@ export default function App() {
     const clone = { ...defaultTerminal(), cwd: source.cwd }
     setActiveTerminals((prev) => evenWidths([...prev, clone]))
     setAgentByTerminalId((prev) => ({ ...prev, [clone.id]: prev[id] ?? null }))
+    // PERM-04: TERM-12 pede mesmo `cwd` e mesmo provedor; o regime de
+    // permissão é parte de como aquele provedor roda, então acompanha.
+    setPermissionModeByTerminalId((prev) => ({ ...prev, [clone.id]: prev[id] ?? null }))
   }
 
   /** Reiniciar: mata a sessão e abre outra no mesmo painel, com o mesmo
@@ -684,11 +705,19 @@ export default function App() {
   // na seleção do projeto — lá o `project_touch` também é o que valida que o
   // caminho ainda existe (PROJ-13 AC15), e validar depois de o painel virar
   // terminal vivo seria tarde demais.
-  const handleWizardConfirm = (id: string, cwd: string, agentId: string | null) => {
+  const handleWizardConfirm = (
+    id: string,
+    cwd: string,
+    agentId: string | null,
+    permissionMode: string | null,
+  ) => {
     setActiveTerminals((prev) =>
       prev.map((t) => (t.id === id ? { ...t, cwd: cwd.trim() || '.', draft: false } : t)),
     )
     setAgentByTerminalId((prev) => ({ ...prev, [id]: agentId }))
+    // SPEC: agent-permission-mode (PERM-01) — guardado antes de `TerminalPane`
+    // montar, porque é o mount que dispara `pty_spawn`.
+    setPermissionModeByTerminalId((prev) => ({ ...prev, [id]: permissionMode }))
   }
 
   /** Conteúdo de uma aba. Toda aba é renderizada em todo quadro — a inativa
@@ -766,6 +795,8 @@ export default function App() {
                     draft={terminal.draft}
                     id={sessionIdByTerminalId[terminal.id]}
                     title={null}
+                    // SPEC: agent-permission-mode (PERM-07)
+                    permissionMode={permissionModeByTerminalId[terminal.id] ?? null}
                     cwd={terminal.cwd}
                     hasActiveProcess
                     // SPEC: terminal-chrome (CHROME-04)
@@ -795,7 +826,9 @@ export default function App() {
                         agents={agents}
                         installedIds={installedIds}
                         defaultAgentId={defaultAgentId}
-                        onConfirm={(cwd, agentId) => handleWizardConfirm(terminal.id, cwd, agentId)}
+                        onConfirm={(cwd, agentId, _projectId, permissionMode) =>
+                          handleWizardConfirm(terminal.id, cwd, agentId, permissionMode)
+                        }
                         onCancel={() => handleCloseTerminal(terminal.id)}
                       />
                     ) : (
@@ -803,6 +836,7 @@ export default function App() {
                         key={`${terminal.id}:${resetNonceByTerminalId[terminal.id] ?? 0}`}
                         cwd={terminal.cwd}
                         agent={agentByTerminalId[terminal.id] ?? undefined}
+                        permissionMode={permissionModeByTerminalId[terminal.id] ?? null}
                         sessionId={terminal.agentSessionId ?? null}
                         resume={terminal.resumeSession ?? false}
                         onSessionId={(sessionId) =>
@@ -940,6 +974,32 @@ export default function App() {
           user-select: none;
         }
         .terminal-header__grip { flex: 0 0 auto; opacity: 0.45; }
+        /* SPEC: agent-permission-mode (PERM-07) — selo do modo de permissão
+           da sessão. O modo bypassPermissions sai em vermelho porque é o único que
+           desliga toda verificação: no meio de quatro terminais, o cabeçalho
+           precisa gritar qual deles está sem rede de proteção. */
+        .terminal-header__permission-mode {
+          flex: 0 0 auto;
+          padding: 0.05rem 0.35rem;
+          border: 1px solid var(--border);
+          border-radius: 999px;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          white-space: nowrap;
+          color: var(--muted);
+        }
+        .terminal-header__permission-mode[data-mode='bypassPermissions'] {
+          border-color: rgba(248, 113, 113, 0.5);
+          background: rgba(248, 113, 113, 0.12);
+          color: var(--danger);
+        }
+        .terminal-header__permission-mode[data-mode='auto'],
+        .terminal-header__permission-mode[data-mode='dontAsk'] {
+          border-color: rgba(245, 183, 0, 0.4);
+          color: var(--accent);
+        }
         .terminal-header__title,
         .terminal-header__title-input {
           flex: 1 1 auto;

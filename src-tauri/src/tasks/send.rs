@@ -182,6 +182,7 @@ mod tests {
                 agent: None,
                 session_id: None,
                 resume: false,
+                permission_mode: None,
                 env: Default::default(),
             })
             .expect("spawn de terminal de teste");
@@ -242,6 +243,7 @@ mod tests {
                 agent: None,
                 session_id: None,
                 resume: false,
+                permission_mode: None,
                 env: Default::default(),
             })
             .expect("spawn de terminal de teste");

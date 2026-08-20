@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-14), terminal-screenshot (SHOT-13)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-14), terminal-screenshot (SHOT-13), agent-permission-mode (PERM-01)
 
 import { describe, expect, it, vi } from 'vitest'
 import { render } from '@testing-library/react'
@@ -192,5 +192,33 @@ describe('TerminalPane — colar com Ctrl+V (TERM-14)', () => {
     expect(handler(keyEvent({ ctrlKey: true, key: 'c' }))).toBe(true)
     expect(handler(keyEvent({ type: 'keyup', ctrlKey: true, key: 'v' }))).toBe(true)
     expect(pasteMock).not.toHaveBeenCalled()
+  })
+})
+
+// SPEC: agent-permission-mode (PERM-01) — o modo escolhido no wizard chega ao
+// `pty_spawn`, que é quem monta a linha de comando do agente.
+describe('TerminalPane — modo de permissão (PERM-01)', () => {
+  function spawnArgs() {
+    return invokeMock.mock.calls.find(([cmd]) => cmd === 'pty_spawn')?.[1] as
+      | Record<string, unknown>
+      | undefined
+  }
+
+  it('repassa o modo escolhido', () => {
+    invokeMock.mockReset()
+    invokeMock.mockResolvedValue('t1')
+
+    render(<TerminalPane cwd="." agent="claude-code" permissionMode="bypassPermissions" />)
+
+    expect(spawnArgs()?.permissionMode).toBe('bypassPermissions')
+  })
+
+  it('sem modo escolhido manda null, e o backend deixa o CLI decidir', () => {
+    invokeMock.mockReset()
+    invokeMock.mockResolvedValue('t1')
+
+    render(<TerminalPane cwd="." agent="codex-cli" />)
+
+    expect(spawnArgs()?.permissionMode).toBeNull()
   })
 })

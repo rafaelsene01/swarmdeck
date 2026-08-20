@@ -1,4 +1,4 @@
-// SPEC: agent-selection (AGT-01, AGT-03, AGT-04), session-restore (SESS-15)
+// SPEC: agent-selection (AGT-01, AGT-03, AGT-04), session-restore (SESS-15), agent-permission-mode (PERM-03)
 
 //! Comandos Tauri que expõem `agents::catalog` e `agents::prefs` ao
 //! frontend.
@@ -14,7 +14,7 @@ use std::sync::Mutex;
 use serde::Serialize;
 use tauri::State;
 
-use crate::agents::{detect_installed, resolve_effective_default};
+use crate::agents::{detect_installed, resolve_effective_default, PERMISSION_MODES};
 use crate::db::Db;
 
 /// Forma serializável de uma entrada do catálogo já com o status de
@@ -34,6 +34,11 @@ pub struct AgentCatalogEntry {
     /// uma sessão fixada pelo app. É o que decide se o switch do modal de
     /// restauração fica ativo ou travado em "nova sessão".
     pub supports_session_resume: bool,
+    /// SPEC: agent-permission-mode (PERM-03) — modos que este CLI aceita em
+    /// `--permission-mode`, na ordem de exibição. Vetor **vazio** quando o
+    /// agente não declara a flag: é o que faz o passo AGENT esconder o seletor
+    /// sem precisar de um `if id === 'claude-code'` no frontend.
+    pub permission_modes: Vec<String>,
 }
 
 /// Invólucro fino sobre `agents::catalog::detect_installed` (T1): o
@@ -51,6 +56,11 @@ pub fn agent_catalog() -> Vec<AgentCatalogEntry> {
             beta: status.agent.beta,
             installed: status.installed,
             supports_session_resume: status.agent.session_resume_flag.is_some(),
+            permission_modes: if status.agent.permission_mode_flag.is_some() {
+                PERMISSION_MODES.iter().map(|m| m.to_string()).collect()
+            } else {
+                Vec::new()
+            },
         })
         .collect()
 }

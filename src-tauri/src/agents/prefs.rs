@@ -117,6 +117,7 @@ mod tests {
                 beta: false,
                 session_new_flag: None,
                 session_resume_flag: None,
+                permission_mode_flag: None,
             },
             AgentDescriptor {
                 id: "agent-b",
@@ -126,6 +127,7 @@ mod tests {
                 beta: false,
                 session_new_flag: None,
                 session_resume_flag: None,
+                permission_mode_flag: None,
             },
         ]
     }

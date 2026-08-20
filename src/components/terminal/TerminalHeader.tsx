@@ -1,10 +1,11 @@
-// SPEC: multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02, CHROME-04), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01, SHOT-23), minimized-tray (MIN-13), projects (PROJ-11, PROJ-12)
+// SPEC: multi-terminal (TERM-05, TERM-06, TERM-12, TERM-13), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02, CHROME-04), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01, SHOT-23), minimized-tray (MIN-13), projects (PROJ-11, PROJ-12), agent-permission-mode (PERM-07)
 
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { Camera, CopyPlus, GripVertical, Maximize2, Minimize2, Moon, RotateCcw, X } from 'lucide-react'
 import InlineRename from '../shell/InlineRename'
 import EditorMenu from './EditorMenu'
+import { PERMISSION_MODE_INFO, permissionModeLabel } from './AgentStep'
 import StatusBadge from './StatusBadge'
 import ActivityLog, { type ActivityEntry, sortByMostRecent } from './ActivityLog'
 
@@ -23,6 +24,12 @@ export interface TerminalHeaderProps {
   id?: string
   title: string | null
   agent?: string | null
+  /**
+   * SPEC: agent-permission-mode (PERM-07) — modo de permissão com que o
+   * agente **desta** sessão foi lançado. `undefined`/`null` não renderiza
+   * nada: shell puro e agente sem a flag não têm modo a mostrar.
+   */
+  permissionMode?: string | null
   /** Rótulo do status ativo (STAT-01) — `undefined`/`null` não renderiza badge. */
   status?: string | null
   /** Cor do status ativo (STAT-01), repassada ao `StatusBadge`. */
@@ -89,6 +96,7 @@ export default function TerminalHeader({
   id,
   title,
   agent,
+  permissionMode,
   status,
   statusColor,
   activities,
@@ -209,6 +217,18 @@ export default function TerminalHeader({
       {agent && (
         <span className="terminal-header__agent-icon" aria-label={agent}>
           {agent}
+        </span>
+      )}
+      {/* SPEC: agent-permission-mode (PERM-07) — deixa explícito, no cabeçalho,
+          sob qual regime de permissão o agente está rodando. O `title` repete
+          a descrição do modo, a mesma que o passo AGENT mostra na escolha. */}
+      {permissionMode && (
+        <span
+          className="terminal-header__permission-mode"
+          data-mode={permissionMode}
+          title={PERMISSION_MODE_INFO[permissionMode]?.description ?? permissionMode}
+        >
+          {permissionModeLabel(permissionMode)}
         </span>
       )}
       <StatusBadge label={status} color={statusColor} />
