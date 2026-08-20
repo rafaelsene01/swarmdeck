@@ -1005,20 +1005,9 @@ export default function App() {
         }
         .grid-layout__divider:hover { background: rgba(245, 183, 0, 0.35); }
         .terminal-pane { width: 100%; height: 100%; }
-        /* Backdrop de diálogo modal — hoje só o RestoreSessionDialog
-           (SESS-01) o usa; o antigo diálogo de novo terminal virou o wizard
-           dentro do painel de rascunho (PROJ-11). Sem isto o cartão nasce
-           inline no fim da coluna, onde a camada de scroll do xterm.js (sem
-           clipping) fica por cima e intercepta cliques. */
-        .app-dialog-backdrop {
-          position: fixed;
-          inset: 0;
-          z-index: 1000;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(0, 0, 0, 0.6);
-        }
+        /* .app-dialog-backdrop mudou para src/styles.css (AD-024): a janela
+           "settings" não monta o App, e o diálogo de exclusão de projeto
+           precisa do mesmo backdrop lá. */
         /* SET-01: Settings overlays the whole main window instead of opening
            its own OS window. Margins follow print/modal_config.png: the card
            stops short of every edge so the app stays visible behind it, and

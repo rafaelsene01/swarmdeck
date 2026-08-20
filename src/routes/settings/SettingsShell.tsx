@@ -1,4 +1,4 @@
-// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10), silent-update (SILENT-09, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-42), projects (PROJ-19, PROJ-20)
+// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10), silent-update (SILENT-09, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-42), projects (PROJ-19, PROJ-23, PROJ-24)
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -8,7 +8,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 import { CircleDot, Download, FolderOpen, SlidersHorizontal, Users, X } from 'lucide-react'
 import AgentPanel, { type AgentDescriptor } from './AgentPanel'
 import GeneralPanel, { type QuotaPrefs } from './GeneralPanel'
-import ProjectsPanel, { type ProjectRow } from './ProjectsPanel'
+import ProjectsPanel, { countTerminalsByProject, type ProjectRow } from './ProjectsPanel'
 import ProjectFormModal, { type ProjectFormValues } from '../../components/project/ProjectFormModal'
 import StatusesPanel, { type StatusRow } from './StatusesPanel'
 import UpdateSettings, { type UpdateState } from '../../components/settings/UpdateSettings'
@@ -58,6 +58,16 @@ interface ProjectRecord {
   last_used: number | null
 }
 
+/** SPEC: projects (PROJ-23) — recorte de `TabEntry`
+ * (`src-tauri/src/terminal/layout.rs`) com o único campo que a contagem usa.
+ * O workspace persistido é a fonte que serve às duas montagens do shell: na
+ * janela `settings` não existe estado de terminais em memória para consultar.
+ * `App.tsx` grava com 500 ms de debounce, então a contagem pode ficar meio
+ * segundo atrás do estado vivo (AD-024). */
+interface WorkspaceTabCwds {
+  terminals: { cwd: string }[]
+}
+
 /** Espelha `UpdateStatus` de `src-tauri/src/update/check.rs` — sem
  * `rename_all`, então os campos chegam em snake_case. */
 interface UpdateStatusResult {
@@ -92,12 +102,13 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
 
   // Projetos (PROJ-05): dado real, via `project_list`, já registrado.
   const [projects, setProjects] = useState<ProjectRow[]>([])
-  /** SPEC: projects (PROJ-19, PROJ-20) — formulário aberto: `create` sem
-   * projeto, `edit` com o projeto da linha. `null` = fechado. */
-  const [projectForm, setProjectForm] = useState<
-    { mode: 'create' | 'edit'; project?: ProjectRow } | null
-  >(null)
+  /** SPEC: projects (PROJ-19) — o formulário de criação está aberto. Editar
+   * saiu da tela com PROJ-20 (AD-024), então o formulário só tem um modo. */
+  const [projectFormOpen, setProjectFormOpen] = useState(false)
   const [projectFormError, setProjectFormError] = useState<string | null>(null)
+  const [projectDeleteError, setProjectDeleteError] = useState<string | null>(null)
+  /** SPEC: projects (PROJ-23) — terminais abertos por projeto. */
+  const [terminalCwds, setTerminalCwds] = useState<string[]>([])
 
   // Status de terminal (STAT-02/03): NENHUM `#[tauri::command]` expõe o CRUD
   // de `status_catalog` (create/update/disable/delete/reorder/
@@ -129,8 +140,20 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
   // consultas, só a de rede pode falhar.
   const lastKnownVersionRef = useRef('')
 
-  /** SPEC: projects (PROJ-19, PROJ-20) — a lista é relida do backend depois
-   * de criar ou editar: é o backend que canonicaliza caminho e cor. */
+  /** SPEC: projects (PROJ-19, PROJ-24) — a lista é relida do backend depois
+   * de criar ou excluir: é o backend que canonicaliza caminho e cor. */
+  /** SPEC: projects (PROJ-23) — falha de leitura vira lista vazia: uma
+   * contagem ausente exibida como 0 é preferível a derrubar o painel, e o
+   * botão de excluir destravado é o mesmo estado de "nenhum terminal aberto",
+   * que o backend confirma na hora do delete. */
+  const loadTerminalCounts = () =>
+    invoke<WorkspaceTabCwds[]>('terminal_workspace_get')
+      .then((tabs) => setTerminalCwds((tabs ?? []).flatMap((tab) => tab.terminals.map((t) => t.cwd))))
+      .catch((error: unknown) => {
+        console.error('falha ao ler os terminais abertos', error)
+        setTerminalCwds([])
+      })
+
   const loadProjects = () =>
     invoke<ProjectRecord[]>('project_list').then((records) => {
       setProjects(
@@ -145,31 +168,32 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
     })
 
   const submitProjectForm = async (values: ProjectFormValues) => {
-    const form = projectForm
-    if (!form) return
-
     try {
-      if (form.mode === 'create') {
-        await invoke('project_create_in', {
-          name: values.name,
-          baseDir: values.baseDir ?? '',
-          color: values.color,
-          gitInit: values.gitInit ?? false,
-        })
-      } else {
-        // PROJ-20: só nome e cor — o caminho é imutável depois de registrado.
-        await invoke('project_update', {
-          id: form.project?.id,
-          name: values.name,
-          color: values.color,
-        })
-      }
+      await invoke('project_create_in', {
+        name: values.name,
+        baseDir: values.baseDir ?? '',
+        color: values.color,
+        gitInit: values.gitInit ?? false,
+      })
       await loadProjects()
-      setProjectForm(null)
+      setProjectFormOpen(false)
       setProjectFormError(null)
     } catch (error: unknown) {
       // O formulário continua aberto com a mensagem.
       setProjectFormError(String(error))
+    }
+  }
+
+  /** SPEC: projects (PROJ-24) — o painel só chama isto depois da confirmação;
+   * a lista é relida do backend, não podada localmente. */
+  const deleteProject = async (project: ProjectRow) => {
+    try {
+      await invoke('project_delete', { id: project.id })
+      await loadProjects()
+      await loadTerminalCounts()
+      setProjectDeleteError(null)
+    } catch (error: unknown) {
+      setProjectDeleteError(String(error))
     }
   }
 
@@ -187,6 +211,7 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
     })
 
     void loadProjects()
+    void loadTerminalCounts()
 
     // SILENT-33: a versão instalada não depende da rede — `getVersion()` lê o
     // `package_info` do próprio app. Buscada no mount para que a seção
@@ -569,14 +594,13 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
           {section === 'projects' && (
             <ProjectsPanel
               projects={projects}
+              terminalCountByProject={countTerminalsByProject(projects, terminalCwds)}
+              deleteError={projectDeleteError}
               onCreate={() => {
                 setProjectFormError(null)
-                setProjectForm({ mode: 'create' })
+                setProjectFormOpen(true)
               }}
-              onEdit={(project) => {
-                setProjectFormError(null)
-                setProjectForm({ mode: 'edit', project })
-              }}
+              onDelete={(project) => void deleteProject(project)}
             />
           )}
 
@@ -615,15 +639,13 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
         </button>
       </div>
 
-      {/* SPEC: projects (PROJ-19, PROJ-20) — o mesmo formulário do wizard. */}
-      {projectForm && (
+      {/* SPEC: projects (PROJ-19) — o mesmo formulário do wizard. */}
+      {projectFormOpen && (
         <ProjectFormModal
-          mode={projectForm.mode}
-          project={projectForm.project}
           error={projectFormError}
           onSubmit={(values) => void submitProjectForm(values)}
           onCancel={() => {
-            setProjectForm(null)
+            setProjectFormOpen(false)
             setProjectFormError(null)
           }}
         />

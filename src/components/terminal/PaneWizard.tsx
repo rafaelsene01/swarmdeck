@@ -214,7 +214,6 @@ export default function PaneWizard({
 
       {formOpen && (
         <ProjectFormModal
-          mode="create"
           onSubmit={(values) => void handleCreateProject(values)}
           onCancel={() => {
             setError(null)

@@ -1,4 +1,4 @@
-// SPEC: settings-shell (SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), projects (PROJ-19, PROJ-20)
+// SPEC: settings-shell (SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), projects (PROJ-19, PROJ-23, PROJ-24)
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -339,9 +339,10 @@ describe('SettingsShell — seção Atualizações ligada ao fluxo confirmado (S
   })
 })
 
-// SPEC: projects (PROJ-19, PROJ-20) — criar e editar projeto a partir de
-// Configurações, com o mesmo formulário que o wizard usa.
-describe('SettingsShell — criar e editar projeto (PROJ-19, PROJ-20)', () => {
+// SPEC: projects (PROJ-19, PROJ-23, PROJ-24) — criar e excluir projeto a partir
+// de Configurações, com o mesmo formulário que o wizard usa. Editar saiu com
+// PROJ-20 (AD-024).
+describe('SettingsShell — criar e excluir projeto (PROJ-19, PROJ-23, PROJ-24)', () => {
   const PROJETO = {
     id: 'p1',
     name: 'SwarmDeck',
@@ -402,40 +403,53 @@ describe('SettingsShell — criar e editar projeto (PROJ-19, PROJ-20)', () => {
     )
   })
 
-  it('editar chama project_update só com nome e cor, e recarrega a lista', async () => {
+  it('excluir chama project_delete depois da confirmação e recarrega a lista (PROJ-24)', async () => {
     mockShell()
     await openProjects()
 
-    fireEvent.click(screen.getByLabelText('editar SwarmDeck'))
-    const form = await screen.findByRole('dialog', { name: 'editar projeto' })
+    fireEvent.click(screen.getByLabelText('excluir SwarmDeck'))
+    const dialog = await screen.findByRole('dialog', { name: 'excluir projeto SwarmDeck' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'excluir' }))
 
-    expect(within(form).getByLabelText('Nome')).toHaveValue('SwarmDeck')
-    expect(within(form).queryByLabelText('Diretório base')).not.toBeInTheDocument()
-
-    fireEvent.change(within(form).getByLabelText('Nome'), { target: { value: 'SwarmDeck 2' } })
-    fireEvent.click(within(form).getByRole('button', { name: 'salvar' }))
-
-    await waitFor(() =>
-      expect(invokeMock).toHaveBeenCalledWith('project_update', {
-        id: 'p1',
-        name: 'SwarmDeck 2',
-        color: '#f5b700',
-      }),
-    )
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('project_delete', { id: 'p1' }))
     await waitFor(() =>
       expect(invokeMock.mock.calls.filter(([c]) => c === 'project_list').length).toBeGreaterThan(1),
     )
   })
 
-  it('erro do backend aparece no formulário e ele continua aberto', async () => {
-    mockShell({ project_update: () => Promise.reject('nome já usado') })
+  it('a linha conta os terminais abertos do projeto e trava a exclusão (PROJ-23, PROJ-24)', async () => {
+    mockShell({
+      terminal_workspace_get: [{ terminals: [{ cwd: 'D:/dev/swarmdeck/src' }] }],
+    })
     await openProjects()
 
-    fireEvent.click(screen.getByLabelText('editar SwarmDeck'))
-    const form = await screen.findByRole('dialog', { name: 'editar projeto' })
-    fireEvent.click(within(form).getByRole('button', { name: 'salvar' }))
+    await waitFor(() => expect(screen.getByText(/1 terminal/)).toBeInTheDocument())
+    expect(screen.getByLabelText('excluir SwarmDeck')).toBeDisabled()
+  })
+
+  it('erro do backend aparece no formulário e ele continua aberto', async () => {
+    mockShell({ project_create_in: () => Promise.reject('nome já usado') })
+    await openProjects()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Criar projeto' }))
+    const form = await screen.findByRole('dialog', { name: 'novo projeto' })
+    fireEvent.change(within(form).getByLabelText('Nome'), { target: { value: 'Novo' } })
+    fireEvent.click(within(form).getByRole('button', { name: 'criar' }))
 
     expect(await within(form).findByRole('alert')).toHaveTextContent('nome já usado')
-    expect(screen.getByRole('dialog', { name: 'editar projeto' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'novo projeto' })).toBeInTheDocument()
+  })
+
+  it('erro de project_delete aparece no painel e a linha continua (PROJ-24)', async () => {
+    mockShell({ project_delete: () => Promise.reject('banco travado') })
+    await openProjects()
+
+    fireEvent.click(screen.getByLabelText('excluir SwarmDeck'))
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'excluir' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('banco travado')
+    expect(screen.getByText('SwarmDeck')).toBeInTheDocument()
   })
 })

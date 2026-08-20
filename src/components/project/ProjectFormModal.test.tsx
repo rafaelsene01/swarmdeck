@@ -1,4 +1,4 @@
-// SPEC: projects (PROJ-18, PROJ-20)
+// SPEC: projects (PROJ-18, PROJ-19)
 
 // @ts-expect-error — o projeto não instala `@types/node` e `tsconfig.json`
 // restringe `types`; o módulo existe em tempo de execução, no runner Node do
@@ -7,23 +7,14 @@ import { readFileSync } from 'node:fs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ProjectFormModal, { PALETTE } from './ProjectFormModal'
-import type { ProjectRow } from '../../routes/settings/ProjectsPanel'
 
 const { openMock } = vi.hoisted(() => ({ openMock: vi.fn() }))
 
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: openMock }))
 
-const PROJECT: ProjectRow = {
-  id: 'p1',
-  name: 'swarmdeck',
-  path: 'C:\\dev\\swarmdeck',
-  color: '#3b82f6',
-  lastUsed: null,
-}
-
 function renderForm(props: Partial<Parameters<typeof ProjectFormModal>[0]> = {}) {
   return render(
-    <ProjectFormModal mode="create" onSubmit={vi.fn()} onCancel={vi.fn()} error={null} {...props} />,
+    <ProjectFormModal onSubmit={vi.fn()} onCancel={vi.fn()} error={null} {...props} />,
   )
 }
 
@@ -32,25 +23,13 @@ describe('ProjectFormModal', () => {
     openMock.mockReset()
   })
 
-  it('modo create renderiza nome, diretório-base, as 8 cores e a opção de git (P2 AC6)', () => {
+  it('renderiza nome, diretório-base, as 8 cores e a opção de git (P2 AC6)', () => {
     renderForm()
 
     expect(screen.getByLabelText('Nome')).toBeInTheDocument()
     expect(screen.getByLabelText('Diretório base')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /^cor #/ })).toHaveLength(8)
     expect(screen.getByLabelText('Inicializar como repositório git')).toBeInTheDocument()
-  })
-
-  it('modo edit renderiza nome e cor atuais e não renderiza caminho nem git (P3 AC4)', () => {
-    renderForm({ mode: 'edit', project: PROJECT })
-
-    expect(screen.getByLabelText('Nome')).toHaveValue('swarmdeck')
-    expect(screen.getByRole('button', { name: 'cor #3b82f6' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-    expect(screen.queryByLabelText('Diretório base')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Inicializar como repositório git')).not.toBeInTheDocument()
   })
 
   it('confirmar com nome em branco não dispara onSubmit e o formulário continua aberto (P2 AC9, P3 AC6)', () => {

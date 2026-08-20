@@ -54,3 +54,18 @@ body {
   margin: 0;
   color: var(--muted);
 }
+
+/* SPEC: projects (PROJ-24), session-restore (SESS-01)
+   Backdrop de diálogo modal. Global porque as duas montagens do
+   `SettingsShell` precisam dele: como overlay o CSS do `App` bastaria, mas na
+   janela `settings` (`main.tsx`) o `App` nunca é montado — o diálogo nascia
+   inline no fim da coluna. */
+.app-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}

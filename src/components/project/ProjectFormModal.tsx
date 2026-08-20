@@ -1,8 +1,7 @@
-// SPEC: projects (PROJ-18, PROJ-20)
+// SPEC: projects (PROJ-18, PROJ-19)
 
 import { useState } from 'react'
 import { open } from '@tauri-apps/plugin-dialog'
-import type { ProjectRow } from '../../routes/settings/ProjectsPanel'
 
 /**
  * As 8 cores de `PALETTE` em `src-tauri/src/projects/service.rs`. Duplicadas
@@ -23,16 +22,13 @@ export const PALETTE = [
 
 export interface ProjectFormValues {
   name: string
-  /** Só no modo `create`: diretório onde a subpasta do projeto é criada. */
-  baseDir?: string
+  /** Diretório onde a subpasta do projeto é criada. */
+  baseDir: string
   color: string
-  gitInit?: boolean
+  gitInit: boolean
 }
 
 export interface ProjectFormModalProps {
-  mode: 'create' | 'edit'
-  /** Semente do modo `edit`. */
-  project?: ProjectRow
   onSubmit: (values: ProjectFormValues) => void
   onCancel: () => void
   /** Erro do backend: aparece na tela e o formulário continua aberto. */
@@ -40,27 +36,18 @@ export interface ProjectFormModalProps {
 }
 
 /**
- * Formulário de projeto, apresentacional: quem chama decide o que fazer com
- * os valores (`project_create_in` no wizard e em Configurações,
- * `project_update` na edição).
+ * Formulário de criação de projeto, apresentacional: quem chama decide o que
+ * fazer com os valores (`project_create_in`, no wizard e em Configurações).
  *
- * O modo `edit` renderiza só nome e cor — trocar o `path` de um projeto
- * existente está fora de escopo (PROJ-20 AC4), e `git init` só faz sentido
- * numa pasta recém-criada.
+ * Só existe o modo de criação — o modo `edit` saiu junto com PROJ-20
+ * (AD-024), quando a linha de Configurações trocou o botão de editar pelo de
+ * excluir.
  */
-export default function ProjectFormModal({
-  mode,
-  project,
-  onSubmit,
-  onCancel,
-  error,
-}: ProjectFormModalProps) {
-  const [name, setName] = useState(project?.name ?? '')
+export default function ProjectFormModal({ onSubmit, onCancel, error }: ProjectFormModalProps) {
+  const [name, setName] = useState('')
   const [baseDir, setBaseDir] = useState('')
-  const [color, setColor] = useState<string>(project?.color ?? PALETTE[0])
+  const [color, setColor] = useState<string>(PALETTE[0])
   const [gitInit, setGitInit] = useState(false)
-
-  const creating = mode === 'create'
 
   const handleBrowse = async () => {
     const selected = await open({ directory: true })
@@ -73,7 +60,7 @@ export default function ProjectFormModal({
   const handleSubmit = () => {
     // Nome em branco não cria nada e não fecha o formulário (P2 AC9, P3 AC6).
     if (name.trim() === '') return
-    onSubmit(creating ? { name, baseDir, color, gitInit } : { name, color })
+    onSubmit({ name, baseDir, color, gitInit })
   }
 
   return (
@@ -120,9 +107,9 @@ export default function ProjectFormModal({
       <div
         className="project-form"
         role="dialog"
-        aria-label={creating ? 'novo projeto' : 'editar projeto'}
+        aria-label="novo projeto"
       >
-        <h2 className="project-form__title">{creating ? 'Novo projeto' : 'Editar projeto'}</h2>
+        <h2 className="project-form__title">Novo projeto</h2>
 
         <div className="project-form__field">
           <label htmlFor="project-form-name">Nome</label>
@@ -134,17 +121,15 @@ export default function ProjectFormModal({
           />
         </div>
 
-        {creating && (
-          <div className="project-form__field">
-            <label htmlFor="project-form-base-dir">Diretório base</label>
-            <div className="project-form__dir">
-              <input id="project-form-base-dir" type="text" value={baseDir} readOnly />
-              <button type="button" onClick={handleBrowse}>
-                escolher pasta
-              </button>
-            </div>
+        <div className="project-form__field">
+          <label htmlFor="project-form-base-dir">Diretório base</label>
+          <div className="project-form__dir">
+            <input id="project-form-base-dir" type="text" value={baseDir} readOnly />
+            <button type="button" onClick={handleBrowse}>
+              escolher pasta
+            </button>
           </div>
-        )}
+        </div>
 
         <div className="project-form__field">
           <span id="project-form-color-label">Cor</span>
@@ -163,16 +148,14 @@ export default function ProjectFormModal({
           </div>
         </div>
 
-        {creating && (
-          <label className="project-form__git">
-            <input
-              type="checkbox"
-              checked={gitInit}
-              onChange={(event) => setGitInit(event.target.checked)}
-            />
-            Inicializar como repositório git
-          </label>
-        )}
+        <label className="project-form__git">
+          <input
+            type="checkbox"
+            checked={gitInit}
+            onChange={(event) => setGitInit(event.target.checked)}
+          />
+          Inicializar como repositório git
+        </label>
 
         {error !== null && (
           <p className="project-form__error" role="alert">
@@ -185,7 +168,7 @@ export default function ProjectFormModal({
             cancelar
           </button>
           <button type="button" onClick={handleSubmit}>
-            {creating ? 'criar' : 'salvar'}
+            criar
           </button>
         </div>
       </div>
