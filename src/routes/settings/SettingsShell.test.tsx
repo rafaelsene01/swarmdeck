@@ -92,7 +92,7 @@ describe('SettingsShell — sidebar com ícones e trilho (SET-06/07/08)', () => 
     render(<SettingsShell />)
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
 
-    for (const label of ['Geral', 'Agentes', 'Projetos', 'Atualizações']) {
+    for (const label of ['Geral', 'Provedores', 'Projetos', 'Atualizações']) {
       const item = screen.getByRole('button', { name: new RegExp(label) })
       expect(item.querySelector('svg')).not.toBeNull()
     }
@@ -182,7 +182,7 @@ describe('SettingsShell — seção Geral do indicador de cota (QUOTA-08/09/10)'
 
     expect(screen.getByText('Configurações › Geral')).toBeInTheDocument()
     const navButtons = screen.getAllByRole('button', {
-      name: /Geral|Agentes|Projetos|Atualizações/,
+      name: /Geral|Provedores|Projetos|Atualizações/,
     })
     expect(navButtons[0]).toHaveAccessibleName(/Geral/)
     expect(navButtons[0]).toHaveAttribute('aria-current', 'page')

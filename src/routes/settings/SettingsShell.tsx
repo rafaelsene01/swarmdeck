@@ -32,7 +32,7 @@ const DEFAULT_QUOTA_PREFS: QuotaPrefs = {
 // padrão da janela.
 const SECTIONS: ReadonlyArray<{ id: SectionId; label: string; icon: typeof Users }> = [
   { id: 'general', label: 'Geral', icon: SlidersHorizontal },
-  { id: 'agents', label: 'Agentes', icon: Users },
+  { id: 'agents', label: 'Provedores', icon: Users },
   { id: 'projects', label: 'Projetos', icon: FolderOpen },
   { id: 'updates', label: 'Atualizações', icon: Download },
 ]
