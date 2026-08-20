@@ -1,11 +1,25 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.29] - 2026-08-20
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.28] - 2026-08-20
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Refactor project management components for improved functionality and UI consistency
+
+- Moved the modal backdrop styling from App.tsx to styles.css to support multiple dialog types.
+- Updated ProjectFormModal to remove the edit mode, simplifying the project creation process.
+- Enhanced ProjectsPanel to include terminal count and delete functionality, replacing the edit option with delete.
+- Adjusted tests across ProjectsPanel and SettingsShell to reflect the new project management workflow and ensure accurate terminal counting.
+- Improved error handling for project deletion and ensured UI reflects the current state of projects and terminals.
 
 ## [0.1.27] - 2026-08-20
 
