@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-06), terminal-chrome (CHROME-01), session-restore (SESS-12, SESS-13), terminal-screenshot (SHOT-13)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-06, TERM-14), terminal-chrome (CHROME-01), session-restore (SESS-12, SESS-13), terminal-screenshot (SHOT-13)
 
 import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
@@ -130,6 +130,41 @@ export default function TerminalPane({
       if (!terminalId) return
       void invoke('pty_resize', { id: terminalId, rows: terminal.rows, cols: terminal.cols })
     }
+
+    /**
+     * SPEC: multi-terminal (TERM-14) — Ctrl+V (e Ctrl+Shift+V) colam o texto
+     * da área de transferência.
+     *
+     * Sem isto o Ctrl+V chega ao shell como o byte de controle literal
+     * (`^V`, "quoted-insert" do readline), que é o oposto do que se espera.
+     *
+     * `terminal.paste()` em vez de escrever direto no PTY: é ele quem aplica
+     * a transformação de texto colado — normaliza as quebras de linha e
+     * envolve o conteúdo nos marcadores de *bracketed paste* quando o
+     * programa em primeiro plano ligou esse modo, o que impede um editor de
+     * interpretar cada linha colada como comando. O texto sai por `onData`,
+     * o mesmo caminho do teclado.
+     *
+     * `preventDefault()` é obrigatório: sem ele o próprio webview ainda
+     * dispararia seu evento `paste` nativo sobre o textarea do xterm, e o
+     * conteúdo entraria duas vezes.
+     */
+    terminal.attachCustomKeyEventHandler((event) => {
+      if (event.type !== 'keydown') return true
+      if (!event.ctrlKey || event.altKey || event.metaKey) return true
+      if (event.key !== 'v' && event.key !== 'V') return true
+
+      event.preventDefault()
+      void navigator.clipboard
+        ?.readText()
+        .then((text) => {
+          if (text) terminal.paste(text)
+        })
+        .catch((error: unknown) => {
+          console.error('falha ao ler a área de transferência', error)
+        })
+      return false
+    })
 
     // Teclado ligado antes do primeiro byte do processo.
     const dataDisposable = terminal.onData((data) => {
