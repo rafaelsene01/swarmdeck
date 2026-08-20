@@ -210,11 +210,14 @@ mod tests {
     fn sessao_nova_passa_a_flag_de_fixar_id() {
         let catalog = fake_catalog();
 
-        let resolution = resolve_with(Some("fake-agent"),
+        let resolution = resolve_with(
+            Some("fake-agent"),
             Some(SessionLaunch {
                 id: SESSION_ID,
                 resume: false,
-            }), None, &catalog,
+            }),
+            None,
+            &catalog,
             &installed(&catalog),
         );
 
@@ -231,11 +234,14 @@ mod tests {
     fn sessao_retomada_passa_a_flag_de_retomada_e_nao_a_de_fixar() {
         let catalog = fake_catalog();
 
-        let resolution = resolve_with(Some("fake-agent"),
+        let resolution = resolve_with(
+            Some("fake-agent"),
             Some(SessionLaunch {
                 id: SESSION_ID,
                 resume: true,
-            }), None, &catalog,
+            }),
+            None,
+            &catalog,
             &installed(&catalog),
         );
 
@@ -256,11 +262,14 @@ mod tests {
         let catalog = sessionless_catalog();
 
         for resume in [false, true] {
-            let resolution = resolve_with(Some("fake-agent"),
+            let resolution = resolve_with(
+                Some("fake-agent"),
                 Some(SessionLaunch {
                     id: SESSION_ID,
                     resume,
-                }), None, &catalog,
+                }),
+                None,
+                &catalog,
                 &installed(&catalog),
             );
 
@@ -279,7 +288,13 @@ mod tests {
     fn sem_sessao_pedida_nao_ha_argumento() {
         let catalog = fake_catalog();
 
-        let resolution = resolve_with(Some("fake-agent"), None, None, &catalog, &installed(&catalog));
+        let resolution = resolve_with(
+            Some("fake-agent"),
+            None,
+            None,
+            &catalog,
+            &installed(&catalog),
+        );
 
         assert_eq!(resolution.args, Vec::<String>::new());
     }
@@ -294,11 +309,14 @@ mod tests {
             installed: false,
         }];
 
-        let resolution = resolve_with(Some("fake-agent"),
+        let resolution = resolve_with(
+            Some("fake-agent"),
             Some(SessionLaunch {
                 id: SESSION_ID,
                 resume: true,
-            }), None, &catalog,
+            }),
+            None,
+            &catalog,
             &statuses,
         );
 

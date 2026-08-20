@@ -145,8 +145,11 @@ impl TerminalManager {
             id,
             resume: cfg.resume,
         });
-        let resolution =
-            resolve_launch_command(cfg.agent.as_deref(), session, cfg.permission_mode.as_deref());
+        let resolution = resolve_launch_command(
+            cfg.agent.as_deref(),
+            session,
+            cfg.permission_mode.as_deref(),
+        );
         let mut cmd = build_command(&resolution, cfg.shell.as_deref());
         cmd.cwd(&cfg.cwd);
         for (key, value) in &cfg.env {
