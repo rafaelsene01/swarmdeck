@@ -5,15 +5,14 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { getVersion } from '@tauri-apps/api/app'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { CircleDot, Download, FolderOpen, SlidersHorizontal, Users, X } from 'lucide-react'
+import { Download, FolderOpen, SlidersHorizontal, Users, X } from 'lucide-react'
 import AgentPanel, { type AgentDescriptor } from './AgentPanel'
 import GeneralPanel, { type QuotaPrefs } from './GeneralPanel'
 import ProjectsPanel, { countTerminalsByProject, type ProjectRow } from './ProjectsPanel'
 import ProjectFormModal, { type ProjectFormValues } from '../../components/project/ProjectFormModal'
-import StatusesPanel, { type StatusRow } from './StatusesPanel'
 import UpdateSettings, { type UpdateState } from '../../components/settings/UpdateSettings'
 
-type SectionId = 'general' | 'agents' | 'projects' | 'statuses' | 'updates'
+type SectionId = 'general' | 'agents' | 'projects' | 'updates'
 
 // QUOTA-26: mesma semente da migração 007 — se `quota_prefs_get` falhar, a
 // seção ainda abre com a lista de provedores de fábrica.
@@ -35,7 +34,6 @@ const SECTIONS: ReadonlyArray<{ id: SectionId; label: string; icon: typeof Users
   { id: 'general', label: 'Geral', icon: SlidersHorizontal },
   { id: 'agents', label: 'Agentes', icon: Users },
   { id: 'projects', label: 'Projetos', icon: FolderOpen },
-  { id: 'statuses', label: 'Status de terminal', icon: CircleDot },
   { id: 'updates', label: 'Atualizações', icon: Download },
 ]
 
@@ -109,17 +107,6 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
   const [projectDeleteError, setProjectDeleteError] = useState<string | null>(null)
   /** SPEC: projects (PROJ-23) — terminais abertos por projeto. */
   const [terminalCwds, setTerminalCwds] = useState<string[]>([])
-
-  // Status de terminal (STAT-02/03): NENHUM `#[tauri::command]` expõe o CRUD
-  // de `status_catalog` (create/update/disable/delete/reorder/
-  // restore_defaults, todos em `src-tauri/src/terminal/status_catalog.rs`)
-  // ao frontend — nenhum está no `invoke_handler!` de `lib.rs`. Wirar isso
-  // exigiria um `commands/statuses.rs` novo mais uma linha em `lib.rs`,
-  // fora da lista fechada de arquivos desta task (`main.tsx` +
-  // `SettingsShell.tsx`). Esta seção roda inteira em estado local desta
-  // sessão — o painel fica clicável e navegável (o que esta task promete),
-  // mas nada aqui persiste no banco. Ver DESVIO no relatório da task.
-  const [statuses, setStatuses] = useState<StatusRow[]>([])
 
   // Atualizações (SILENT-09/13/25): `update_status` sempre consulta ao abrir
   // a seção, independente do toggle de verificação automática abaixo — esse
@@ -379,52 +366,6 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
     void invoke('update_restart')
   }
 
-  const handleCreateStatus = (label: string, instruction: string) => {
-    setStatuses((prev) => [
-      ...prev,
-      {
-        id: `local-${Date.now()}-${prev.length}`,
-        label,
-        color: '#888888',
-        instruction,
-        sortOrder: prev.length,
-        enabled: true,
-        isDefault: false,
-      },
-    ])
-  }
-
-  const handleEditStatus = (
-    id: string,
-    changes: { label: string; color: string; instruction: string },
-  ) => {
-    setStatuses((prev) => prev.map((status) => (status.id === id ? { ...status, ...changes } : status)))
-  }
-
-  const handleToggleStatus = (id: string, enabled: boolean) => {
-    setStatuses((prev) => prev.map((status) => (status.id === id ? { ...status, enabled } : status)))
-  }
-
-  const handleDeleteStatus = (id: string) => {
-    setStatuses((prev) => prev.filter((status) => status.id !== id))
-  }
-
-  const handleReorderStatuses = (orderedIds: string[]) => {
-    setStatuses((prev) => {
-      const byId = new Map(prev.map((status) => [status.id, status]))
-      return orderedIds
-        .map((id, index) => {
-          const status = byId.get(id)
-          return status ? { ...status, sortOrder: index } : undefined
-        })
-        .filter((status): status is StatusRow => status !== undefined)
-    })
-  }
-
-  const handleRestoreDefaults = () => {
-    setStatuses([])
-  }
-
   // SET-06: trilho "Configurações › [Seção ativa]".
   const activeSection = SECTIONS.find((item) => item.id === section)
 
@@ -601,19 +542,6 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
                 setProjectFormOpen(true)
               }}
               onDelete={(project) => void deleteProject(project)}
-            />
-          )}
-
-          {section === 'statuses' && (
-            <StatusesPanel
-              statuses={statuses}
-              terminalCountByStatus={{}}
-              onCreate={handleCreateStatus}
-              onEdit={handleEditStatus}
-              onToggleEnabled={handleToggleStatus}
-              onDelete={handleDeleteStatus}
-              onReorder={handleReorderStatuses}
-              onRestoreDefaults={handleRestoreDefaults}
             />
           )}
 
