@@ -1,6 +1,14 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.34] - 2026-08-20
+
+### Funcionalidades
+
+- *(shells)* Add TerminalProfile and path-based profile derivation
+
+- *(shells)* Add WSL terminal profile selection and routing
+
 ## [0.1.33] - 2026-08-20
 
 ### Outros
