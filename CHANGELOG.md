@@ -1,11 +1,22 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.31] - 2026-08-20
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.30] - 2026-08-20
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Update SettingsShell to rename 'Agentes' to 'Provedores' in sidebar and tests
+
+- Modified the sidebar section label from 'Agentes' to 'Provedores' for consistency.
+- Updated related tests to reflect the new label, ensuring accurate rendering and accessibility checks.
 
 ## [0.1.29] - 2026-08-20
 
