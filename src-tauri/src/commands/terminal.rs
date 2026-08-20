@@ -32,6 +32,11 @@ fn parse_id(id: &str) -> Result<TerminalId, String> {
         .map_err(|_| format!("`{id}` não é um id de terminal válido"))
 }
 
+// A assinatura é o contrato da IPC: cada parâmetro é uma chave do objeto que o
+// `invoke` do front manda. Agrupá-los num struct só para caber no limite do
+// clippy mudaria o payload (e o `TerminalPane` junto) sem ganho nenhum de
+// legibilidade — o comando continua sendo um invólucro fino.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub fn pty_spawn(
     app: AppHandle,
