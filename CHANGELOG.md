@@ -1,11 +1,24 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.27] - 2026-08-20
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.26] - 2026-08-19
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Refactor AgentStep and PaneWizard components for improved project selection and UI consistency
+
+- Updated AgentStep to utilize `aria-label` for agent button accessibility, ensuring screen readers can identify agents correctly.
+- Enhanced PaneWizard to display the project count in the header, improving user feedback during project selection.
+- Refined styling across AgentStep and ProjectStep for better visual alignment and user experience.
+- Adjusted tests to validate the new accessibility features and UI changes, ensuring comprehensive coverage of the updated components.
 
 ## [0.1.25] - 2026-08-19
 
