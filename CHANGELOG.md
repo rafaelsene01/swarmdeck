@@ -1,11 +1,24 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.28] - 2026-08-20
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.27] - 2026-08-20
 
 ### Outros
 
 - Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+- Refactor AgentStep and ProviderIcon components for improved agent selection and branding
+
+- Updated AgentStep to rename "Terminal limpo" to "Terminal" for clarity and adjusted related tests for consistency.
+- Enhanced ProviderIcon to include official brand glyphs and updated color codes for various providers.
+- Refined tests in AgentStep to ensure correct agent selection behavior and updated references to match new naming conventions.
+- Improved accessibility and user experience across components, ensuring a cohesive interface.
 
 ## [0.1.26] - 2026-08-19
 
