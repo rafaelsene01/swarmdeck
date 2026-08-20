@@ -14,6 +14,8 @@ pub mod paths;
 pub mod projects;
 // SPEC: quota-indicator (QUOTA-15, QUOTA-19, QUOTA-25)
 pub mod quota;
+// SPEC: wsl-terminal-profile (WSLP-07, WSLP-08)
+pub mod shells;
 pub mod tasks;
 pub mod terminal;
 pub mod update;
