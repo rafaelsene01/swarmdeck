@@ -1,6 +1,12 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.37] - 2026-08-21
+
+### Funcionalidades
+
+- *(shells)* [**quebra compatibilidade**] Derivar o perfil do caminho e remover o seletor global
+
 ## [0.1.36] - 2026-08-21
 
 ### Correções
