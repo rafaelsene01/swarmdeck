@@ -1,11 +1,22 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.39] - 2026-08-21
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.38] - 2026-08-21
 
 ### Funcionalidades
 
 - *(wsl)* Abrir o editor via --remote wsl+<distro>
+
+
+### Correções
+
+- *(shells)* Parar de herdar perfil WSL salvo em caminho windows
 
 
 ### Outros
