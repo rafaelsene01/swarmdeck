@@ -1,4 +1,4 @@
-// SPEC: terminal-boot-loading (BOOT-11), wsl-terminal-profile (WSLP-02, WSLP-07, WSLP-08)
+// SPEC: terminal-boot-loading (BOOT-11), wsl-terminal-profile (WSLP-02, WSLP-07, WSLP-24)
 
 //! Comando que traduz um `cwd` no perfil de terminal em que ele roda.
 //!
@@ -15,7 +15,7 @@
 
 /// SPEC: terminal-boot-loading (BOOT-11) — o perfil que um `cwd` implica.
 ///
-/// Núcleo puro em `shells::profile_for_path` (WSLP-07/WSLP-08): um caminho
+/// Núcleo puro em `shells::profile_for_path` (WSLP-07/WSLP-24): um caminho
 /// `\\wsl.localhost\<distro>\...` resolve para aquela distro, qualquer outro
 /// cai em `Host` — mesmo default fixo que `projects::service::git_init_command`
 /// já usa. Nunca `prefs::resolve_default`: aquele valor é um resquício da

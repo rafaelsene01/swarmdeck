@@ -1,5 +1,5 @@
 // SPEC: multi-terminal (TERM-01, TERM-02, TERM-06, TERM-11 — REVOKED by AD-019: the two `terminal_picker_*` commands have no caller left), terminal-layout-options (LAYOUT-26), session-restore (SESS-12, SESS-13), projects (PROJ-14)
-// SPEC: wsl-terminal-profile (WSLP-07, WSLP-08, WSLP-10)
+// SPEC: wsl-terminal-profile (WSLP-07, WSLP-10, WSLP-24)
 
 //! Comandos Tauri que expõem `TerminalManager`, `picker_prefs` e
 //! `TerminalMetaService` ao frontend.
@@ -16,7 +16,6 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use rusqlite::Connection;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State};
 
@@ -35,13 +34,13 @@ fn parse_id(id: &str) -> Result<TerminalId, String> {
         .map_err(|_| format!("`{id}` não é um id de terminal válido"))
 }
 
-/// SPEC: wsl-terminal-profile (WSLP-07, WSLP-08, WSLP-10) — núcleo testável
-/// de `pty_spawn`: deriva o perfil efetivo a partir do `cwd` (que vence
-/// quando nomeia uma distro WSL) e da preferência padrão salva, sem exigir
-/// um app Tauri montado — mesmo motivo de `kill_and_touch` acima.
-fn resolve_profile(cwd: &Path, conn: &Connection) -> shells::TerminalProfile {
-    let default = shells::prefs::resolve_default(conn);
-    shells::profile_for_path(cwd, &default)
+/// SPEC: wsl-terminal-profile (WSLP-07, WSLP-24, WSLP-10) — o perfil de um
+/// `pty_spawn` sai só do `cwd`: distro nomeada no caminho vence, e qualquer
+/// outro caminho é `Host`. Nunca `prefs::resolve_default` (AD-039): aquele
+/// valor é o resquício do seletor global que a AD-035 revogou, e usá-lo aqui
+/// abria o terminal dentro da distro para um projeto puramente Windows.
+fn resolve_profile(cwd: &Path) -> shells::TerminalProfile {
+    shells::profile_for_path(cwd, &shells::TerminalProfile::Host)
 }
 
 // A assinatura é o contrato da IPC: cada parâmetro é uma chave do objeto que o
@@ -65,12 +64,8 @@ pub fn pty_spawn(
     channel: Channel<Vec<u8>>,
 ) -> Result<String, String> {
     let manager = app.state::<TerminalManager>();
-    let db = app.state::<Mutex<Db>>();
     let cwd: PathBuf = cwd.into();
-    let profile = {
-        let db = db.lock().expect("db mutex poisoned");
-        resolve_profile(&cwd, db.conn())
-    };
+    let profile = resolve_profile(&cwd);
     let cfg = SessionConfig {
         cwd,
         profile,
@@ -327,58 +322,52 @@ mod tests {
         );
     }
 
-    // WSLP-07: um `cwd` que nomeia uma distro vence a preferência salva,
-    // mesmo quando ela aponta para outra máquina (aqui, o host).
+    // WSLP-07: um `cwd` que nomeia uma distro resolve para ela, nos dois
+    // prefixos — `\\wsl.localhost\` e o sinônimo legado `\\wsl$\`.
     #[test]
-    fn resolve_profile_cwd_naming_distro_wins_over_stored_default() {
-        let (_dir, db) = temp_db();
-        shells::prefs::set_default_profile(db.conn(), &shells::TerminalProfile::Host).unwrap();
-
-        let cwd = Path::new(r"\\wsl.localhost\Ubuntu-24.04\home\x");
-        assert_eq!(
-            resolve_profile(cwd, db.conn()),
-            shells::TerminalProfile::Wsl {
-                distro: "Ubuntu-24.04".to_string()
-            }
-        );
+    fn resolve_profile_cwd_naming_distro_resolves_to_that_distro() {
+        for cwd in [
+            r"\\wsl.localhost\Ubuntu-24.04\home\x",
+            r"\\wsl$\Ubuntu-24.04\home\x",
+        ] {
+            assert_eq!(
+                resolve_profile(Path::new(cwd)),
+                shells::TerminalProfile::Wsl {
+                    distro: "Ubuntu-24.04".to_string()
+                },
+                "{cwd} deveria resolver para a distro que ele nomeia"
+            );
+        }
     }
 
-    // WSLP-07: o sinônimo legado `\\wsl$\` vence a preferência salva do
-    // mesmo jeito que `\\wsl.localhost\` — mesma regra, mesmo resultado.
+    // WSLP-24 (AD-039): o defeito relatado. Uma preferência WSL gravada
+    // antes da AD-035 sobrevive no banco; se `pty_spawn` a consultasse, um
+    // projeto em `C:\` abriria o terminal dentro da distro.
+    //
+    // O teste ataca o mutante pelo derivador, não pelo banco: prova que
+    // `profile_for_path` **honra** um default WSL quando recebe um, e que
+    // `resolve_profile` deliberadamente não lhe entrega nenhum. Gravar a
+    // preferência e conferir o resultado não provaria nada fora do Windows
+    // — `list_profiles` devolve só o host em `cfg(not(windows))`
+    // (`shells/list.rs`), então `resolve_default` já cairia para `Host`
+    // sozinho e o teste passaria com o defeito reintroduzido.
     #[test]
-    fn resolve_profile_cwd_naming_legacy_wsl_dollar_prefix_also_wins() {
-        let (_dir, db) = temp_db();
-        shells::prefs::set_default_profile(db.conn(), &shells::TerminalProfile::Host).unwrap();
+    fn resolve_profile_ignores_stored_wsl_preference_for_windows_path() {
+        let cwd = Path::new(r"C:\repos\x");
+        let wsl = shells::TerminalProfile::Wsl {
+            distro: "Ubuntu-24.04".to_string(),
+        };
 
-        let cwd = Path::new(r"\\wsl$\Ubuntu-24.04\home\x");
         assert_eq!(
-            resolve_profile(cwd, db.conn()),
-            shells::TerminalProfile::Wsl {
-                distro: "Ubuntu-24.04".to_string()
-            }
+            shells::profile_for_path(cwd, &wsl),
+            wsl,
+            "o derivador honra o default que recebe — é por isso que passar \
+             um perfil WSL aqui reabriria o defeito"
         );
-    }
-
-    // WSLP-08: sem distro no `cwd`, usa a preferência salva.
-    #[test]
-    fn resolve_profile_uses_stored_default_when_cwd_names_no_distro() {
-        let (_dir, db) = temp_db();
-        shells::prefs::set_default_profile(db.conn(), &shells::TerminalProfile::Host).unwrap();
-
         assert_eq!(
-            resolve_profile(Path::new(r"C:\repos\x"), db.conn()),
-            shells::TerminalProfile::Host
-        );
-    }
-
-    // WSLP-08: sem preferência gravada nenhuma, o padrão é o host.
-    #[test]
-    fn resolve_profile_uses_host_when_no_stored_preference() {
-        let (_dir, db) = temp_db();
-
-        assert_eq!(
-            resolve_profile(Path::new(r"C:\repos\x"), db.conn()),
-            shells::TerminalProfile::Host
+            resolve_profile(cwd),
+            shells::TerminalProfile::Host,
+            "`resolve_profile` não pode ter default nenhum além de Host"
         );
     }
 }

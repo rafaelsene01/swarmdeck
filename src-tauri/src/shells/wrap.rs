@@ -1,4 +1,4 @@
-// SPEC: wsl-terminal-profile (WSLP-03, WSLP-04, WSLP-05, WSLP-09)
+// SPEC: wsl-terminal-profile (WSLP-03, WSLP-04, WSLP-05, WSLP-09, WSLP-22, WSLP-23)
 // SPEC: terminal-boot-loading (BOOT-01)
 
 //! Traduz (perfil, programa, args, env, cwd) no `CommandBuilder` que de
@@ -76,8 +76,9 @@ fn login_path_cache() -> &'static Mutex<HashMap<String, Option<String>>> {
     CACHE.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-/// `PATH` de login da distro (`wsl.exe -d <distro> -- bash -lc 'printenv
-/// PATH'`), cacheado pelo tempo de vida do processo. `None` quando o
+/// `PATH` de login da distro, perguntado ao shell de login do próprio
+/// usuário (`shells::probe`, WSLP-22) e cacheado pelo tempo de vida do
+/// processo. `None` quando o
 /// comando falha ou o `PATH` retornado vem vazio. Sem efeito fora de
 /// Windows: o alvo aqui não tem `wsl.exe` a chamar — e, quando este código
 /// roda dentro de um WSL2 (como neste próprio ambiente de desenvolvimento),
@@ -104,15 +105,18 @@ pub fn login_path(_distro: &str) -> Option<String> {
 
 #[cfg(windows)]
 fn fetch_login_path(distro: &str) -> Option<String> {
+    // WSLP-22: sob o shell de login do próprio usuário, não `bash` — é lá
+    // que asdf, nvm e fnm entram no PATH.
+    let script = super::probe::login_shell_script("printenv PATH");
     let mut cmd = std::process::Command::new("wsl.exe");
-    cmd.args(["-d", distro, "--", "bash", "-lc", "printenv PATH"]);
+    cmd.args(["-d", distro, "--", "bash", "-lc", &script]);
     // BOOT-01: part of the terminal-open path (once per distro, then cached).
     let output = crate::proc::hide_console(&mut cmd).output().ok()?;
     if !output.status.success() {
         return None;
     }
     let path = String::from_utf8(output.stdout).ok()?;
-    let trimmed = path.trim();
+    let trimmed = super::probe::strip_banner(&path).trim();
     if trimmed.is_empty() {
         None
     } else {

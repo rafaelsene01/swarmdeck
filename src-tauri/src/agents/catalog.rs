@@ -3,7 +3,7 @@
 // SPEC: editor-launch (EDITOR-02) — `resolve_command_in_path` é a mesma
 // resolução de PATH, agora devolvendo o caminho resolvido: `editors.rs`
 // precisa dele para lançar `code.cmd`/`cursor.cmd` no Windows.
-// SPEC: wsl-terminal-profile (WSLP-04, WSLP-06)
+// SPEC: wsl-terminal-profile (WSLP-04, WSLP-06, WSLP-22, WSLP-23)
 
 //! Catálogo estático dos agentes de IA suportados e detecção de CLI no PATH.
 //!
@@ -253,10 +253,12 @@ pub fn detect_installed_in(profile: &TerminalProfile) -> Vec<AgentStatus> {
 }
 
 /// Extrai `(id do catálogo, caminho absoluto)` de uma saída de
-/// `type -P <comandos>`: uma linha por comando encontrado, na ordem em que
-/// o shell os reportou; nomes não reconhecidos são ignorados. Puro — não
-/// chama `wsl.exe`, só interpreta o texto já capturado.
-pub fn parse_type_p_output(raw: &str, catalog: &[AgentDescriptor]) -> Vec<(&'static str, String)> {
+/// `command -v`: uma linha por comando encontrado, na ordem em que o shell
+/// os reportou; nomes não reconhecidos são ignorados — inclusive a linha
+/// `alias x=...` que um shell interativo devolve no lugar do caminho quando
+/// o nome é um alias, cujo basename não bate com nenhum comando do
+/// catálogo. Puro — não chama `wsl.exe`, só interpreta o texto capturado.
+pub fn parse_command_paths(raw: &str, catalog: &[AgentDescriptor]) -> Vec<(&'static str, String)> {
     raw.lines()
         .filter_map(|line| {
             let line = line.trim();
@@ -289,8 +291,8 @@ fn wsl_probe_cache() -> &'static Mutex<HashMap<String, WslFound>> {
     CACHE.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-/// SPEC: wsl-terminal-profile (WSLP-04) — o que `type -P` achou dentro da
-/// distro: `(id do catálogo, caminho absoluto)`. O caminho é guardado, e não
+/// SPEC: wsl-terminal-profile (WSLP-04) — o que `command -v` achou dentro
+/// da distro: `(id do catálogo, caminho absoluto)`. O caminho é guardado, e não
 /// só o booleano `installed`, porque `WSLP-04` exige lançar o CLI pelo
 /// caminho absoluto: o `env` do argv de `wrap` não passa por um shell de
 /// login, então um nome nu só resolveria se o binário estivesse no `PATH`
@@ -310,7 +312,7 @@ fn wsl_found_with(
         return cached.clone();
     }
     let raw = probe(distro);
-    let found = parse_type_p_output(&raw, &CATALOG);
+    let found = parse_command_paths(&raw, &CATALOG);
     cache
         .lock()
         .unwrap()
@@ -337,20 +339,37 @@ pub fn command_path_in(profile: &TerminalProfile, agent_id: &str) -> Option<Stri
     }
 }
 
-/// Uma sonda por comando: `bash -lc` de login shell, requisito para
-/// resolver `~/.local/bin`, nvm e asdf — um shell não-login não os vê.
-/// A string é uma lista fixa de nomes literais do catálogo, sem
-/// interpolação nenhuma.
+/// Uma sonda por comando, sob o shell de login do próprio usuário da distro
+/// (WSLP-22, `shells::probe`): `~/.local/bin`, nvm e asdf só entram no
+/// `PATH` por lá — `bash -lc` não lê o rc de quem usa zsh, e a detecção
+/// achava um `claude` que depois rodava sem `node`. O script é montado a
+/// partir dos nomes literais do catálogo, sem interpolação nenhuma.
+/// WSLP-22: `command -v`, um por comando, e não `type -P <lista>`: `type -P`
+/// é builtin do bash e some sob o zsh que a sonda agora usa, e o `command -v`
+/// de vários argumentos de uma vez só honra o primeiro no `dash` do fallback.
+/// Uma chamada por nome é a forma que os três shells entendem igual —
+/// verificado contra Ubuntu-24.04 sob zsh, bash e dash. Separada de
+/// `real_wsl_probe` para poder ser provada sem `wsl.exe`.
+#[cfg(any(windows, test))]
+fn wsl_probe_script() -> String {
+    let probes: Vec<String> = CATALOG
+        .iter()
+        .map(|agent| format!("command -v {}", agent.command))
+        .collect();
+    crate::shells::probe::login_shell_script(&probes.join("; "))
+}
+
 #[cfg(windows)]
 fn real_wsl_probe(distro: &str) -> String {
-    let commands: Vec<&str> = CATALOG.iter().map(|agent| agent.command).collect();
-    let script = format!("type -P {}", commands.join(" "));
+    let script = wsl_probe_script();
     let mut cmd = std::process::Command::new("wsl.exe");
     cmd.args(["-d", distro, "--", "bash", "-lc", &script]);
     // BOOT-01: no console window for the agent-detection probe.
     crate::proc::hide_console(&mut cmd)
         .output()
-        .map(|out| String::from_utf8_lossy(&out.stdout).into_owned())
+        .map(|out| {
+            crate::shells::probe::strip_banner(&String::from_utf8_lossy(&out.stdout)).to_string()
+        })
         .unwrap_or_default()
 }
 
@@ -453,8 +472,8 @@ mod tests {
     }
 
     #[test]
-    fn parse_type_p_output_maps_by_basename_ignores_unknown_and_empty() {
-        let result = parse_type_p_output(
+    fn parse_command_paths_maps_by_basename_ignores_unknown_and_empty() {
+        let result = parse_command_paths(
             "/home/x/.local/bin/claude\n/usr/bin/unknown-cli\n",
             &CATALOG,
         );
@@ -462,14 +481,43 @@ mod tests {
             result,
             vec![("claude-code", "/home/x/.local/bin/claude".to_string())]
         );
-        assert_eq!(parse_type_p_output("", &CATALOG), Vec::new());
+        assert_eq!(parse_command_paths("", &CATALOG), Vec::new());
+    }
+
+    // WSLP-22: a sonda tem de falar a língua dos três shells que pode
+    // encontrar. `type -P` só existe no bash — sob zsh a detecção voltava
+    // vazia e todo provider caía para shell puro; `command -v a b c` só
+    // honra o primeiro nome no dash.
+    #[test]
+    fn wsl_probe_script_usa_command_v_um_por_comando() {
+        let script = wsl_probe_script();
+
+        assert!(
+            !script.contains("type -P"),
+            "`type -P` é builtin do bash e some sob zsh: {script}"
+        );
+        for agent in CATALOG {
+            assert!(
+                script.contains(&format!("command -v {}", agent.command)),
+                "faltou sondar `{}` isoladamente: {script}",
+                agent.command
+            );
+        }
+    }
+
+    // WSLP-23: um shell interativo responde `alias x=...` quando o nome é
+    // alias em vez de binário. Isso não pode virar um caminho inventado.
+    #[test]
+    fn parse_command_paths_ignora_linha_de_alias() {
+        let result = parse_command_paths("alias claude='claude --foo'\n", &CATALOG);
+        assert_eq!(result, Vec::new());
     }
 
     #[test]
-    fn parse_type_p_output_handles_found_subset() {
+    fn parse_command_paths_handles_found_subset() {
         // Três comandos seriam sondados (claude, codex, opencode); só um
         // veio de volta — os outros dois não estavam instalados.
-        let result = parse_type_p_output("/usr/bin/codex\n", &CATALOG);
+        let result = parse_command_paths("/usr/bin/codex\n", &CATALOG);
         assert_eq!(result, vec![("codex-cli", "/usr/bin/codex".to_string())]);
     }
 

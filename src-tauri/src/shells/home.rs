@@ -1,4 +1,4 @@
-// SPEC: quota-indicator (QUOTA-15, QUOTA-18, QUOTA-20)
+// SPEC: quota-indicator (QUOTA-15, QUOTA-18, QUOTA-20), wsl-terminal-profile (WSLP-22, WSLP-23)
 
 //! Diretório home de uma distro WSL, em forma UNC.
 //!
@@ -71,14 +71,18 @@ pub fn wsl_home(_distro: &str) -> Option<PathBuf> {
 /// usuário padrão da distro, e é esse usuário que rodou `claude login`.
 #[cfg(windows)]
 fn fetch_home(distro: &str) -> Option<PathBuf> {
+    // WSLP-22: mesmo shell de login que `wrap::login_path` usa, para que as
+    // duas sondas nunca discordem sobre qual usuário está sendo perguntado.
+    let script = super::probe::login_shell_script("printenv HOME");
     let mut cmd = std::process::Command::new("wsl.exe");
-    cmd.args(["-d", distro, "--", "bash", "-lc", "printenv HOME"]);
+    cmd.args(["-d", distro, "--", "bash", "-lc", &script]);
     // BOOT-01: sem janela de console.
     let output = crate::proc::hide_console(&mut cmd).output().ok()?;
     if !output.status.success() {
         return None;
     }
-    unc_home(distro, &String::from_utf8(output.stdout).ok()?)
+    let raw = String::from_utf8(output.stdout).ok()?;
+    unc_home(distro, super::probe::strip_banner(&raw))
 }
 
 #[cfg(test)]

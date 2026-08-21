@@ -1,4 +1,4 @@
-// SPEC: wsl-terminal-profile (WSLP-07, WSLP-08, WSLP-21)
+// SPEC: wsl-terminal-profile (WSLP-07, WSLP-21, WSLP-24)
 // SPEC: quota-indicator (QUOTA-15)
 
 //! Qual máquina um terminal, uma sonda de CLI, ou um `git init` deve usar.
@@ -16,6 +16,7 @@ use std::path::Path;
 pub mod home;
 pub mod list;
 pub mod prefs;
+pub mod probe;
 pub mod wrap;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -60,7 +61,7 @@ impl TerminalProfile {
 /// tradução exata, e não a adivinhação `C:\x` → `/mnt/c/x` que a spec
 /// mantém fora de escopo (`/mnt` é configurável em `/etc/wsl.conf`).
 ///
-/// SPEC: wsl-terminal-profile (WSLP-07, WSLP-08, WSLP-21) — único lugar que
+/// SPEC: wsl-terminal-profile (WSLP-07, WSLP-21, WSLP-24) — único lugar que
 /// interpreta a forma UNC: `profile_for_path` e o `--remote wsl+<distro>` do
 /// editor leem os dois pedaços daqui em vez de reimplementar o parse.
 pub fn wsl_path_parts(cwd: &Path) -> Option<(String, String)> {
@@ -84,6 +85,11 @@ pub fn wsl_path_parts(cwd: &Path) -> Option<(String, String)> {
 /// Deriva o perfil a partir do `cwd`: um caminho que nomeia uma distro
 /// vence sobre o perfil padrão passado. Sem distro reconhecível, retorna
 /// o `default` recebido — quem chama decide o que "padrão" significa.
+///
+/// WSLP-24 (AD-039): hoje **todos** os chamadores passam `Host`. O parâmetro
+/// sobrevive porque é ele que torna a regra testável — um teste passa um
+/// perfil WSL aqui justamente para provar que o derivador honraria o default
+/// e que quem chama, de propósito, não lhe dá nenhum.
 pub fn profile_for_path(cwd: &Path, default: &TerminalProfile) -> TerminalProfile {
     match wsl_path_parts(cwd) {
         Some((distro, _)) => TerminalProfile::Wsl { distro },
