@@ -1,11 +1,27 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.41] - 2026-08-21
+
+### Correções
+
+- *(terminal)* Renderizar glifos nerd font no prompt do shell
+
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.40] - 2026-08-21
 
 ### Correções
 
 - *(wsl)* Corrigir PATH da sonda e perfil de caminho windows
+
+
+### Documentação
+
+- *(rules)* Exigir cargo clean --release após tauri build
 
 ## [0.1.39] - 2026-08-21
 
