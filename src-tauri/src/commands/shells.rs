@@ -1,4 +1,4 @@
-// SPEC: terminal-boot-loading (BOOT-11)
+// SPEC: terminal-boot-loading (BOOT-11), wsl-terminal-profile (WSLP-02, WSLP-07, WSLP-08)
 
 //! Comando que traduz um `cwd` no perfil de terminal em que ele roda.
 //!
@@ -13,26 +13,20 @@
 //! `shells::list::list_profiles` continua vivo — `agent_catalog_all` e
 //! `prefs::resolve_default` o chamam direto, sem passar por IPC.
 
-use std::sync::Mutex;
-
-use tauri::State;
-
-use crate::db::Db;
-use crate::shells::prefs;
-
 /// SPEC: terminal-boot-loading (BOOT-11) — o perfil que um `cwd` implica.
 ///
 /// Núcleo puro em `shells::profile_for_path` (WSLP-07/WSLP-08): um caminho
 /// `\\wsl.localhost\<distro>\...` resolve para aquela distro, qualquer outro
-/// cai no perfil padrão. Existe como comando para que o frontend não precise
-/// reimplementar o reconhecimento do prefixo — duas cópias da mesma regra
-/// divergiriam na primeira vez que o formato do caminho mudasse. Sem I/O além
-/// da leitura da preferência padrão.
+/// cai em `Host` — mesmo default fixo que `projects::service::git_init_command`
+/// já usa. Nunca `prefs::resolve_default`: aquele valor é um resquício da
+/// preferência global que a AD-035 revogou, e usá-lo aqui fazia um caminho
+/// puramente Windows (sem prefixo `\\wsl.localhost\` ou `\\wsl$\`) herdar
+/// perfil WSL de uma escolha salva antes do seletor sair da UI.
 #[tauri::command]
-pub fn shell_profile_for_path(db: State<'_, Mutex<Db>>, cwd: String) -> Result<String, String> {
-    let default = {
-        let db = db.lock().map_err(|e| e.to_string())?;
-        prefs::resolve_default(db.conn())
-    };
-    Ok(crate::shells::profile_for_path(std::path::Path::new(&cwd), &default).id())
+pub fn shell_profile_for_path(cwd: String) -> Result<String, String> {
+    Ok(crate::shells::profile_for_path(
+        std::path::Path::new(&cwd),
+        &crate::shells::TerminalProfile::Host,
+    )
+    .id())
 }
