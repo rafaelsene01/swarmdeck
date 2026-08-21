@@ -145,6 +145,8 @@ pub fn run() {
             commands::update::update_skip_version,
             commands::update::update_auto_check_get,
             commands::update::update_auto_check_set,
+            commands::update::update_toast_get,
+            commands::update::update_toast_set,
             // SPEC: task-kanban (KAN-08)
             commands::kanban::kanban_open,
             commands::kanban::kanban_focus_main,

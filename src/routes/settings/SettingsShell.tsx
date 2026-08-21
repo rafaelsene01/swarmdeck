@@ -1,4 +1,4 @@
-// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10, QUOTA-31), silent-update (SILENT-09, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-42), projects (PROJ-19, PROJ-23, PROJ-24)
+// SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10, QUOTA-31), silent-update (SILENT-09, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-42), projects (PROJ-19, PROJ-23, PROJ-24), update-toast (TOAST-06, TOAST-08, TOAST-10)
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -82,10 +82,14 @@ export interface SettingsShellProps {
    * window (`App.tsx`) — closing then means unmounting the modal, not
    * closing an OS window. Absent when it runs in the `settings` window. */
   onClose?: () => void
+  /** SPEC: update-toast (TOAST-06) — seção em que a janela abre. Só o valor
+   * inicial: navegar pela barra lateral depois continua livre. Ausente =
+   * "Geral", o padrão de sempre (QUOTA-08). */
+  initialSection?: SectionId
 }
 
-export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
-  const [section, setSection] = useState<SectionId>('general')
+export default function SettingsShell({ onClose, initialSection }: SettingsShellProps = {}) {
+  const [section, setSection] = useState<SectionId>(initialSection ?? 'general')
 
   // Geral (QUOTA-09/10): carrega ao abrir a seção; falha de `invoke` mantém
   // o default local em vez de travar a seção — mesmo tratamento do bloco de
@@ -115,6 +119,10 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
   // `update_auto_check_get`/`update_auto_check_set` — o `true` aqui é só o
   // valor inicial até a resposta chegar.
   const [autoCheckEnabled, setAutoCheckEnabled] = useState(true)
+  /** SPEC: update-toast (TOAST-08, TOAST-10) — como `autoCheckEnabled`: o
+   * valor real chega de `update_toast_get` ao abrir a seção, e uma falha de
+   * leitura deixa ligado em vez de travar a seção. */
+  const [toastEnabled, setToastEnabled] = useState(true)
   const [updateState, setUpdateState] = useState<UpdateState>({ status: 'loading', current: '' })
   // SILENT-42: as notas da release acompanham a versão remota, não o passo do
   // fluxo — guardadas fora de `updateState` para sobreviverem às transições
@@ -240,6 +248,19 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
         /* mantém o valor padrão atual — edge case da spec */
       },
     )
+    // SPEC: update-toast (TOAST-08, TOAST-10)
+    invoke<boolean>('update_toast_get').then(
+      // `value !== false` e não `value`: qualquer resposta que não seja um
+      // `false` explícito vale como ligado, que é o default do banco
+      // (TOAST-10). Sem isso um `null` deixaria o checkbox sem `checked` e o
+      // React trocaria um input controlado por um não controlado.
+      (value) => {
+        if (!cancelled) setToastEnabled(value !== false)
+      },
+      () => {
+        /* mantém ligado — mesmo tratamento do `auto_check` acima */
+      },
+    )
     return () => {
       cancelled = true
     }
@@ -249,6 +270,13 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
   const handleToggleAutoCheck = (enabled: boolean) => {
     setAutoCheckEnabled(enabled)
     void invoke('update_auto_check_set', { enabled })
+  }
+
+  // SPEC: update-toast (TOAST-08) — independente do de cima: desligar o aviso
+  // não desliga a verificação (TOAST-09).
+  const handleToggleToast = (enabled: boolean) => {
+    setToastEnabled(enabled)
+    void invoke('update_toast_set', { enabled })
   }
 
   // QUOTA-09/10: carrega ao abrir a seção "Geral", mesmo padrão do bloco de
@@ -570,8 +598,10 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
               state={updateState}
               notes={updateNotes}
               autoCheckEnabled={autoCheckEnabled}
+              toastEnabled={toastEnabled}
               checking={checkingUpdate}
               onToggleAutoCheck={handleToggleAutoCheck}
+              onToggleToast={handleToggleToast}
               onCheck={handleCheck}
               onDownload={handleDownload}
               onInstall={handleInstall}

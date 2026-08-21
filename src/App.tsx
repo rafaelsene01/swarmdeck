@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), editor-launch (EDITOR-02), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), settings-shell (SET-01, SET-04, SET-05), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), window-chrome (WIN-01, WIN-02, WIN-03), minimized-tray (MIN-01, MIN-02, MIN-04, MIN-05, MIN-06, MIN-07), projects (PROJ-11, PROJ-12, PROJ-13, PROJ-14, PROJ-16), terminal-boot-loading (BOOT-04, BOOT-05, BOOT-06, BOOT-07, BOOT-09, BOOT-10, BOOT-12)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), editor-launch (EDITOR-02), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), settings-shell (SET-01, SET-04, SET-05), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), window-chrome (WIN-01, WIN-02, WIN-03), minimized-tray (MIN-01, MIN-02, MIN-04, MIN-05, MIN-06, MIN-07), projects (PROJ-11, PROJ-12, PROJ-13, PROJ-14, PROJ-16), terminal-boot-loading (BOOT-04, BOOT-05, BOOT-06, BOOT-07, BOOT-09, BOOT-10, BOOT-12), update-toast (TOAST-01, TOAST-02, TOAST-03, TOAST-04, TOAST-06, TOAST-07, TOAST-09, TOAST-10)
 
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -41,6 +41,7 @@ import PaneWizard, { lastSegment, normalizePath } from './components/terminal/Pa
 import type { AgentDescriptor } from './routes/settings/AgentPanel'
 import type { ProfileCatalog, ProfileCatalogEntry } from './types/agents'
 import SettingsShell from './routes/settings/SettingsShell'
+import UpdateToast from './components/shell/UpdateToast'
 import {
   type LayoutEntry,
   type TerminalState,
@@ -190,6 +191,10 @@ export default function App() {
   // SET-01: Settings is an overlay over the main window, not a separate
   // OS window — the whole shell mounts inline (see the backdrop below).
   const [settingsOpen, setSettingsOpen] = useState(false)
+  /** SPEC: update-toast (TOAST-06) — seção em que o `SettingsShell` abre.
+   * `undefined` deixa o shell no padrão dele ("Geral"); o botão do toast é
+   * quem pede "updates". */
+  const [settingsSection, setSettingsSection] = useState<'general' | 'updates'>('general')
   // SPEC: terminal-screenshot (SHOT-14) — print pronto, aguardando salvar/copiar.
   const [capture, setCapture] = useState<{ blob: Blob; fileName: string } | null>(null)
   /** Instâncias vivas do xterm, por id de terminal (SHOT-13). */
@@ -249,6 +254,20 @@ export default function App() {
   // (spec 03, Assumptions: "fica visível até o app fechar"), por isso um
   // `useState` simples em vez de guardar a versão em si (não usada aqui).
   const [hasUpdateAvailable, setHasUpdateAvailable] = useState(false)
+  /**
+   * SPEC: update-toast (TOAST-03, TOAST-04, TOAST-07)
+   *
+   * Versão anunciada pelo mesmo `update://available` que acende a bolinha.
+   * Guardada aqui — e não derivada de `hasUpdateAvailable` — porque o toast
+   * precisa do número em tela. `dismissed` é separado do valor para que
+   * fechar o aviso valha pela sessão inteira: um segundo evento (o checador
+   * repete de hora em hora) não pode ressuscitá-lo.
+   */
+  const [updateVersion, setUpdateVersion] = useState<string | null>(null)
+  const [updateToastDismissed, setUpdateToastDismissed] = useState(false)
+  /** SPEC: update-toast (TOAST-08, TOAST-10) — `update_toast_get`; falha de
+   * leitura mantém `true`, mesma postura do `auto_check` em Configurações. */
+  const [updateToastEnabled, setUpdateToastEnabled] = useState(true)
 
   // SPEC: terminal-tabs (TAB-02) — `activeTabId` vazio (boot) ou apontando
   // para uma aba já fechada cai na primeira; `tabs` nunca fica vazio, mas o
@@ -300,12 +319,37 @@ export default function App() {
   const [quotaReady, setQuotaReady] = useState(false)
 
   useEffect(() => {
-    const unlistenPromise = listen('update://available', () => {
+    // SPEC: update-toast (TOAST-03, TOAST-04) — o mesmo evento passa a
+    // carregar o toast; `version` vem do payload que `apply.rs` já emitia.
+    const unlistenPromise = listen<{ version?: string }>('update://available', (event) => {
       setHasUpdateAvailable(true)
+      const version = event.payload?.version
+      if (version) setUpdateVersion(version)
     })
 
     return () => {
       void unlistenPromise.then((unlisten) => unlisten())
+    }
+  }, [])
+
+  // SPEC: update-toast (TOAST-08, TOAST-09, TOAST-10) — lê a preferência uma
+  // vez, no mount. Não segura o overlay de boot: o toast só é decidido depois
+  // da tela liberada, e uma leitura pendente vale como "ligado" (TOAST-10),
+  // que é o default do banco.
+  useEffect(() => {
+    let cancelled = false
+    invoke<boolean>('update_toast_get').then(
+      // Só um `false` explícito desliga o toast; qualquer outra resposta vale
+      // como ligado, o default do banco (TOAST-10).
+      (value) => {
+        if (!cancelled) setUpdateToastEnabled(value !== false)
+      },
+      () => {
+        /* mantém ligado — mesma postura do `auto_check` (SET-09) */
+      },
+    )
+    return () => {
+      cancelled = true
     }
   }, [])
 
@@ -1388,6 +1432,22 @@ export default function App() {
         />
       )}
 
+      {/* SPEC: update-toast (TOAST-01, TOAST-02, TOAST-03, TOAST-09) — `!booting`
+          é a "tela da home liberada": enquanto o overlay cobre a janela o aviso
+          não existe, e assim que ele sai o toast aparece se a versão já for
+          conhecida — ou no instante em que o evento chegar, se vier depois. */}
+      {!booting && !updateToastDismissed && updateToastEnabled && updateVersion && (
+        <UpdateToast
+          version={updateVersion}
+          onOpen={() => {
+            setUpdateToastDismissed(true)
+            setSettingsSection('updates')
+            setSettingsOpen(true)
+          }}
+          onDismiss={() => setUpdateToastDismissed(true)}
+        />
+      )}
+
       {/* SET-01/SET-04: clicking the backdrop closes, same as X/"Fechar"; the
           click guard keeps a click inside the card from bubbling out. */}
       {settingsOpen && (
@@ -1399,7 +1459,13 @@ export default function App() {
           }}
         >
           <div className="app-settings-modal" role="dialog" aria-modal="true" aria-label="Configurações">
-            <SettingsShell onClose={() => setSettingsOpen(false)} />
+            <SettingsShell
+              initialSection={settingsSection}
+              onClose={() => {
+                setSettingsOpen(false)
+                setSettingsSection('general')
+              }}
+            />
           </div>
         </div>
       )}

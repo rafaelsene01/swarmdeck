@@ -1,4 +1,4 @@
-// SPEC: shell-chrome (HDR-01, HDR-08, EMPTY-01..EMPTY-09), release-distribution (REL-52), multi-terminal (TERM-12, TERM-13), terminal-tabs (TAB-06), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26, LAYOUT-29), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), minimized-tray (MIN-01, MIN-04, MIN-05, MIN-06), projects (PROJ-11, PROJ-12)
+// SPEC: update-toast (TOAST-01, TOAST-03, TOAST-04, TOAST-06, TOAST-07, TOAST-09), shell-chrome (HDR-01, HDR-08, EMPTY-01..EMPTY-09), release-distribution (REL-52), multi-terminal (TERM-12, TERM-13), terminal-tabs (TAB-06), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26, LAYOUT-29), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), minimized-tray (MIN-01, MIN-04, MIN-05, MIN-06), projects (PROJ-11, PROJ-12)
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -179,6 +179,23 @@ beforeEach(() => {
     // SET-01: `project_list` também é consumido pelo `SettingsShell` inline.
     if (command === 'quota_prefs_get') return Promise.resolve({ enabled: false, window: 'both' })
     if (command === 'terminal_workspace_get') return Promise.resolve([])
+    // SPEC: update-toast (TOAST-08) — preferência do toast; cada teste que
+    // precisa dela desligada sobrescreve o mock.
+    if (command === 'update_toast_get') return Promise.resolve(true)
+    if (command === 'update_toast_set') return Promise.resolve(undefined)
+    if (command === 'update_auto_check_get') return Promise.resolve(true)
+    // A seção "Atualizações" consulta ao abrir (SILENT-25); o toast agora
+    // leva testes daqui até ela, então o comando precisa responder.
+    if (command === 'update_status') {
+      return Promise.resolve({
+        current: '0.0.0-test',
+        latest: null,
+        notes: '',
+        has_update: false,
+        mode: 'installed',
+        platform_key: 'linux-x86_64',
+      })
+    }
     if (command === 'terminal_workspace_set') return Promise.resolve(undefined)
     if (command === 'quota_claude') {
       return Promise.resolve({
@@ -1900,5 +1917,95 @@ describe('App - terminal-boot-loading: overlay de boot', () => {
 
     await waitFor(() => expect(screen.queryByTestId('boot-splash')).not.toBeInTheDocument())
     expect(screen.getByText('No Terminals Active')).toBeInTheDocument()
+  })
+})
+
+/**
+ * SPEC: update-toast (TOAST-01, TOAST-03, TOAST-04, TOAST-06, TOAST-07, TOAST-09)
+ *
+ * A bolinha do cabeçalho (REL-51) e o toast leem o mesmo evento, mas têm
+ * regras diferentes: a bolinha fica a sessão toda, o toast some quando o
+ * usuário o dispensa e não volta.
+ */
+describe('App — toast de nova versão (update-toast)', () => {
+  const TOAST_TITLE = 'Nova versão disponível'
+
+  async function renderReady() {
+    render(<App />)
+    await waitFor(() =>
+      expect(listenMock).toHaveBeenCalledWith('update://available', expect.any(Function)),
+    )
+    // A tela da home só está liberada quando o overlay de boot sai (BOOT-04).
+    await waitFor(() => expect(screen.queryByTestId('boot-splash')).toBeNull())
+    return getUpdateAvailableHandler()
+  }
+
+  it('sem evento não há toast', async () => {
+    await renderReady()
+    expect(screen.queryByText(TOAST_TITLE)).not.toBeInTheDocument()
+  })
+
+  it('o evento mostra o toast com a versão do payload (TOAST-03, TOAST-04)', async () => {
+    const handler = await renderReady()
+
+    act(() => {
+      handler({ payload: { version: '9.9.9' } })
+    })
+
+    expect(await screen.findByText(TOAST_TITLE)).toBeInTheDocument()
+    expect(screen.getByText(/9\.9\.9/)).toBeInTheDocument()
+  })
+
+  it('"Abrir" leva às Configurações na seção Atualizações e fecha o toast (TOAST-06)', async () => {
+    const handler = await renderReady()
+    act(() => {
+      handler({ payload: { version: '9.9.9' } })
+    })
+    await screen.findByText(TOAST_TITLE)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Configurações' })
+    await waitFor(() =>
+      expect(within(dialog).getByRole('button', { name: 'Atualizações' })).toHaveAttribute(
+        'aria-current',
+        'page',
+      ),
+    )
+    expect(screen.queryByText(TOAST_TITLE)).not.toBeInTheDocument()
+  })
+
+  it('depois de dispensado não volta, nem com evento novo (TOAST-07)', async () => {
+    const handler = await renderReady()
+    act(() => {
+      handler({ payload: { version: '9.9.9' } })
+    })
+    await screen.findByText(TOAST_TITLE)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar aviso de atualização' }))
+    expect(screen.queryByText(TOAST_TITLE)).not.toBeInTheDocument()
+
+    act(() => {
+      handler({ payload: { version: '9.9.10' } })
+    })
+    expect(screen.queryByText(TOAST_TITLE)).not.toBeInTheDocument()
+    // A bolinha do cabeçalho segue as regras dela, intocada (REL-51).
+    expect(screen.getByLabelText('update available')).toBeInTheDocument()
+  })
+
+  it('com a preferência desligada não há toast, e a bolinha continua (TOAST-09)', async () => {
+    const original = invokeMock.getMockImplementation()!
+    invokeMock.mockImplementation((command: string, args?: Record<string, unknown>) =>
+      command === 'update_toast_get' ? Promise.resolve(false) : original(command, args),
+    )
+
+    const handler = await renderReady()
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_toast_get'))
+    act(() => {
+      handler({ payload: { version: '9.9.9' } })
+    })
+
+    expect(screen.queryByText(TOAST_TITLE)).not.toBeInTheDocument()
+    expect(screen.getByLabelText('update available')).toBeInTheDocument()
   })
 })

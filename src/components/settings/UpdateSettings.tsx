@@ -1,4 +1,4 @@
-// SPEC: silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-12, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-41, SILENT-42, SILENT-43, SILENT-44, SILENT-45)
+// SPEC: silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-12, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-41, SILENT-42, SILENT-43, SILENT-44, SILENT-45), update-toast (TOAST-08)
 
 import type { ReactNode } from 'react'
 import { Download, RefreshCw, Sparkles } from 'lucide-react'
@@ -24,10 +24,14 @@ export interface UpdateSettingsProps {
    * quando a consulta falhou ou a release saiu sem notas (SILENT-42/43). */
   notes?: string
   autoCheckEnabled: boolean
+  /** SPEC: update-toast (TOAST-08) — aviso de nova versão em toast, na home. */
+  toastEnabled: boolean
   /** `true` enquanto uma consulta acionada por `onCheck` está em andamento (SILENT-34). */
   checking: boolean
   /** Persiste por fora (via `set_auto_check`, fora deste componente) — aqui só noticia a intenção. */
   onToggleAutoCheck: (enabled: boolean) => void
+  /** SPEC: update-toast (TOAST-08) — mesmo contrato do de cima, via `update_toast_set`. */
+  onToggleToast: (enabled: boolean) => void
   /** Reconsulta o manifesto sob demanda (`update_status`), SILENT-32/33. */
   onCheck: () => void
   /** Baixa o artefato da versão nova (`update_download`), SILENT-37. */
@@ -122,8 +126,10 @@ export default function UpdateSettings({
   state,
   notes = '',
   autoCheckEnabled,
+  toastEnabled,
   checking,
   onToggleAutoCheck,
+  onToggleToast,
   onCheck,
   onDownload,
   onInstall,
@@ -382,6 +388,19 @@ export default function UpdateSettings({
         />
         Verificar atualizações automaticamente
       </label>
+
+      {/* SPEC: update-toast (TOAST-08) — segundo toggle, ao lado do de
+          verificação: um governa sair para a rede, o outro só o aviso. */}
+      <label className="update-settings__auto-check">
+        <input type="checkbox" checked={toastEnabled} onChange={() => onToggleToast(!toastEnabled)} />
+        Avisar com um toast quando houver nova versão
+      </label>
+
+      <p className="update-settings__explainer">
+        O toast aparece uma vez por sessão, quando a tela inicial termina de carregar, e fica até
+        você fechá-lo. Desligá-lo não interrompe a verificação: o ponto no ícone de configurações
+        continua indicando que há versão nova.
+      </p>
 
       <p className="update-settings__explainer">
         A verificação automática roda ao abrir o SwarmDeck e a cada hora, sem baixar nada sozinha.

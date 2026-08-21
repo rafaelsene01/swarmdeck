@@ -1,4 +1,4 @@
-// SPEC: settings-shell (SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), projects (PROJ-19, PROJ-23, PROJ-24)
+// SPEC: update-toast (TOAST-06, TOAST-08, TOAST-09), settings-shell (SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), projects (PROJ-19, PROJ-23, PROJ-24)
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -479,5 +479,99 @@ describe('SettingsShell — criar e excluir projeto (PROJ-19, PROJ-23, PROJ-24)'
 
     expect(await screen.findByRole('alert')).toHaveTextContent('banco travado')
     expect(screen.getByText('SwarmDeck')).toBeInTheDocument()
+  })
+})
+
+/**
+ * SPEC: update-toast (TOAST-06, TOAST-08, TOAST-09)
+ *
+ * O toast precisa de duas coisas daqui: uma porta de entrada que já abra em
+ * "Atualizações", e o switch que o desliga.
+ */
+describe('SettingsShell — atalho e preferência do toast (update-toast)', () => {
+  const TOAST_LABEL = 'Avisar com um toast quando houver nova versão'
+
+  beforeEach(() => {
+    invokeMock.mockReset()
+    invokeMock.mockImplementation((command: string) => {
+      if (command === 'agent_catalog') return Promise.resolve([])
+      if (command === 'agent_default') return Promise.resolve(null)
+      if (command === 'project_list') return Promise.resolve([])
+      if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
+      if (command === 'update_auto_check_get') return Promise.resolve(true)
+      if (command === 'update_toast_get') return Promise.resolve(true)
+      if (command === 'update_status') {
+        return Promise.resolve({
+          current: '0.1.9',
+          latest: null,
+          notes: '',
+          has_update: false,
+          mode: 'installed',
+          platform_key: 'linux-x86_64',
+        })
+      }
+      return Promise.resolve(null)
+    })
+  })
+
+  // TOAST-06: sem isto o botão do toast largaria o usuário em "Geral".
+  it('`initialSection="updates"` abre direto na seção Atualizações', async () => {
+    render(<SettingsShell initialSection="updates" />)
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Atualizações' })).toHaveAttribute(
+        'aria-current',
+        'page',
+      ),
+    )
+    expect(await screen.findByLabelText(TOAST_LABEL)).toBeInTheDocument()
+  })
+
+  it('sem a prop continua abrindo em Geral, como antes (QUOTA-08)', async () => {
+    render(<SettingsShell />)
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Geral' })).toHaveAttribute('aria-current', 'page'),
+    )
+  })
+
+  // TOAST-08/TOAST-09: persiste, e só o toast.
+  it('alternar o switch chama `update_toast_set` sem tocar em `update_auto_check_set`', async () => {
+    render(<SettingsShell initialSection="updates" />)
+
+    const toggle = await screen.findByLabelText(TOAST_LABEL)
+    await waitFor(() => expect(toggle).toBeChecked())
+
+    fireEvent.click(toggle)
+
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith('update_toast_set', { enabled: false }),
+    )
+    expect(invokeMock).not.toHaveBeenCalledWith('update_auto_check_set', expect.anything())
+  })
+
+  // TOAST-10: leitura que falha deixa o switch ligado em vez de travar a seção.
+  it('falha de `update_toast_get` mantém o switch ligado', async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === 'update_toast_get') return Promise.reject(new Error('sem banco'))
+      if (command === 'agent_catalog') return Promise.resolve([])
+      if (command === 'project_list') return Promise.resolve([])
+      if (command === 'update_auto_check_get') return Promise.resolve(true)
+      if (command === 'update_status') {
+        return Promise.resolve({
+          current: '0.1.9',
+          latest: null,
+          notes: '',
+          has_update: false,
+          mode: 'installed',
+          platform_key: 'linux-x86_64',
+        })
+      }
+      return Promise.resolve(null)
+    })
+
+    render(<SettingsShell initialSection="updates" />)
+
+    expect(await screen.findByLabelText(TOAST_LABEL)).toBeChecked()
   })
 })

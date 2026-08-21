@@ -1,4 +1,4 @@
-// SPEC: silent-update (SILENT-09, SILENT-25)
+// SPEC: silent-update (SILENT-09, SILENT-25), update-toast (TOAST-08)
 
 //! Comandos Tauri que alimentam a seção "Atualizações" de `UpdateSettings.tsx`.
 //!
@@ -73,6 +73,18 @@ pub fn update_auto_check_set(db: State<'_, Mutex<Db>>, enabled: bool) -> Result<
     with_db(db.inner(), |db| db::set_auto_check(db.conn(), enabled))
 }
 
+/// Lê o toggle do toast de nova versão (TOAST-08) para a seção Atualizações.
+#[tauri::command]
+pub fn update_toast_get(db: State<'_, Mutex<Db>>) -> Result<bool, String> {
+    with_db(db.inner(), |db| db::toast_enabled(db.conn()))
+}
+
+/// Persiste o toggle do toast de nova versão (TOAST-08).
+#[tauri::command]
+pub fn update_toast_set(db: State<'_, Mutex<Db>>, enabled: bool) -> Result<(), String> {
+    with_db(db.inner(), |db| db::set_toast_enabled(db.conn(), enabled))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -99,6 +111,26 @@ mod tests {
         assert!(
             !with_db(&mutex, |db| db::auto_check(db.conn())).unwrap(),
             "set_auto_check(false) deve refletir na próxima leitura"
+        );
+    }
+
+    // TOAST-08: o toast nasce ligado e o par get/set persiste a escolha, sem
+    // arrastar `auto_check` junto — são dois avisos independentes (TOAST-09).
+    #[test]
+    fn toast_nasce_ligado_e_e_independente_do_auto_check() {
+        let (_dir, mutex) = temp_db();
+
+        assert!(
+            with_db(&mutex, |db| db::toast_enabled(db.conn())).unwrap(),
+            "toast_enabled nasce ligado (TOAST-08)"
+        );
+
+        with_db(&mutex, |db| db::set_toast_enabled(db.conn(), false)).unwrap();
+
+        assert!(!with_db(&mutex, |db| db::toast_enabled(db.conn())).unwrap());
+        assert!(
+            with_db(&mutex, |db| db::auto_check(db.conn())).unwrap(),
+            "desligar o toast não pode desligar a verificação automática (TOAST-09)"
         );
     }
 

@@ -1,4 +1,4 @@
-// SPEC: release-distribution (REL-34, REL-23)
+// SPEC: release-distribution (REL-34, REL-23), update-toast (TOAST-08)
 
 //! Preferências de atualização: toggle de verificação automática e as
 //! versões que o usuário escolheu pular.
@@ -27,6 +27,32 @@ pub fn auto_check(conn: &Connection) -> Result<bool, DbError> {
 pub fn set_auto_check(conn: &Connection, enabled: bool) -> Result<(), DbError> {
     conn.execute(
         "UPDATE update_settings SET auto_check = ?1 WHERE id = 1",
+        params![enabled as i64],
+    )?;
+    Ok(())
+}
+
+/// Lê se o toast de nova versão está ligado (TOAST-08).
+///
+/// Nasce `true` tanto num banco novo quanto numa instalação existente — a
+/// migração `012` aplica o default nos dois casos.
+pub fn toast_enabled(conn: &Connection) -> Result<bool, DbError> {
+    let value: i64 = conn.query_row(
+        "SELECT toast_enabled FROM update_settings WHERE id = 1",
+        [],
+        |row| row.get(0),
+    )?;
+    Ok(value != 0)
+}
+
+/// Liga ou desliga o toast de nova versão (TOAST-08).
+///
+/// Não toca `auto_check`: a verificação em segundo plano segue rodando com o
+/// toast desligado, e é ela quem continua acendendo a bolinha do cabeçalho
+/// (REL-51).
+pub fn set_toast_enabled(conn: &Connection, enabled: bool) -> Result<(), DbError> {
+    conn.execute(
+        "UPDATE update_settings SET toast_enabled = ?1 WHERE id = 1",
         params![enabled as i64],
     )?;
     Ok(())

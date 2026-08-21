@@ -1,4 +1,4 @@
-// SPEC: silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-12, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-41, SILENT-42, SILENT-43, SILENT-44, SILENT-45)
+// SPEC: update-toast (TOAST-08), silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-12, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-41, SILENT-42, SILENT-43, SILENT-44, SILENT-45)
 
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -8,8 +8,10 @@ function renderSettings(state: UpdateState, overrides: Partial<Parameters<typeof
   const props = {
     state,
     autoCheckEnabled: true,
+    toastEnabled: true,
     checking: false,
     onToggleAutoCheck: vi.fn(),
+    onToggleToast: vi.fn(),
     onCheck: vi.fn(),
     onDownload: vi.fn(),
     onInstall: vi.fn(),
@@ -151,8 +153,10 @@ describe('UpdateSettings', () => {
         <UpdateSettings
           state={state}
           autoCheckEnabled
+          toastEnabled
           checking={false}
           onToggleAutoCheck={vi.fn()}
+          onToggleToast={vi.fn()}
           onCheck={vi.fn()}
           onDownload={vi.fn()}
           onInstall={vi.fn()}
@@ -220,8 +224,10 @@ describe('UpdateSettings', () => {
         state={{ status: 'downloading', current: '0.3.1', latest: '0.4.0', downloaded: 1, total: 2 }}
         notes={notes}
         autoCheckEnabled
+        toastEnabled
         checking={false}
         onToggleAutoCheck={vi.fn()}
+        onToggleToast={vi.fn()}
         onCheck={vi.fn()}
         onDownload={vi.fn()}
         onInstall={vi.fn()}
@@ -248,5 +254,51 @@ describe('UpdateSettings', () => {
 
     const explainer = screen.getByText(/verificação automática/i)
     expect(explainer).not.toHaveTextContent(/fechamento/i)
+  })
+})
+
+/**
+ * SPEC: update-toast (TOAST-08)
+ *
+ * O toggle do toast é outro switch, ao lado do de verificação automática —
+ * e não o mesmo: um governa sair para a rede, o outro só o aviso na home.
+ */
+describe('UpdateSettings — toggle do toast de nova versão (TOAST-08)', () => {
+  const TOAST_LABEL = 'Avisar com um toast quando houver nova versão'
+  const AUTO_LABEL = 'Verificar atualizações automaticamente'
+
+  it('reflete o estado ligado e desligado da preferência', () => {
+    const { unmount } = render(
+      <UpdateSettings
+        state={{ status: 'ready', current: '0.3.1', latest: '0.3.1', hasUpdate: false }}
+        autoCheckEnabled
+        toastEnabled
+        checking={false}
+        onToggleAutoCheck={vi.fn()}
+        onToggleToast={vi.fn()}
+        onCheck={vi.fn()}
+        onDownload={vi.fn()}
+        onInstall={vi.fn()}
+        onRestart={vi.fn()}
+      />,
+    )
+    expect(screen.getByLabelText(TOAST_LABEL)).toBeChecked()
+    unmount()
+
+    renderSettings(
+      { status: 'ready', current: '0.3.1', latest: '0.3.1', hasUpdate: false },
+      { toastEnabled: false },
+    )
+    expect(screen.getByLabelText(TOAST_LABEL)).not.toBeChecked()
+  })
+
+  it('alternar avisa só `onToggleToast`, sem mexer na verificação automática (TOAST-09)', () => {
+    const props = renderSettings({ status: 'ready', current: '0.3.1', latest: '0.3.1', hasUpdate: false })
+
+    fireEvent.click(screen.getByLabelText(TOAST_LABEL))
+
+    expect(props.onToggleToast).toHaveBeenCalledWith(false)
+    expect(props.onToggleAutoCheck).not.toHaveBeenCalled()
+    expect(screen.getByLabelText(AUTO_LABEL)).toBeChecked()
   })
 })
