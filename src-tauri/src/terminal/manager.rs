@@ -224,6 +224,7 @@ impl TerminalManager {
             resume: cfg.resume,
         });
         let resolution = resolve_launch_command(
+            &cfg.profile,
             cfg.agent.as_deref(),
             session,
             cfg.permission_mode.as_deref(),

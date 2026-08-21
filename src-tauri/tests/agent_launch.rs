@@ -93,7 +93,10 @@ fn default_config() -> SessionConfig {
 fn sessao_com_agente_usa_a_mesma_resolucao_de_resolve_launch_command() {
     let _g = serial();
     let agent_id = "claude-code";
-    let esperado = resolve_launch_command(Some(agent_id), None, None);
+    // O perfil é parte da resolução (wsl-terminal-profile WSLP-06): o mesmo
+    // que o `SessionConfig` do spawn abaixo carrega, senão os dois lados
+    // podem estar consultando máquinas diferentes.
+    let esperado = resolve_launch_command(&default_config().profile, Some(agent_id), None, None);
 
     let manager = TerminalManager::new();
     let cfg = SessionConfig {

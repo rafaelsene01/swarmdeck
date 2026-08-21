@@ -1,4 +1,5 @@
 // SPEC: agent-selection (AGT-03, AGT-04), session-restore (SESS-12, SESS-13, SESS-14), agent-permission-mode (PERM-01, PERM-02)
+// SPEC: wsl-terminal-profile (WSLP-04, WSLP-06)
 
 //! Resolves which command a terminal session should launch: the requested
 //! agent's CLI, or a fall back to the plain shell.
@@ -10,8 +11,10 @@
 //! (`agents::catalog`).
 
 use super::catalog::{
-    catalog, detect_installed, is_valid_permission_mode, AgentDescriptor, AgentStatus,
+    catalog, command_path_in, detect_installed_in, is_valid_permission_mode, AgentDescriptor,
+    AgentStatus,
 };
+use crate::shells::TerminalProfile;
 
 /// Which agent session this launch should pin or resume.
 ///
@@ -45,7 +48,7 @@ pub struct LaunchResolution {
 }
 
 /// Resolves `agent_id` (as stored in `SessionConfig.agent`) against the live
-/// catalog and the current PATH.
+/// catalog and the CLIs available **in `profile`**.
 ///
 /// Three cases:
 /// - `agent_id` is `None` → no agent requested: `{ command: None, warning: None }`.
@@ -54,18 +57,49 @@ pub struct LaunchResolution {
 /// - `agent_id` names an unknown agent, or a known one that isn't
 ///   installed → falls back to the shell (`command: None`), with a
 ///   `warning` describing why. The caller never fails the spawn over this.
+///
+/// SPEC: wsl-terminal-profile (WSLP-04, WSLP-06) — `profile` is what decides
+/// *which machine* is asked. Probing the Windows `PATH` for a terminal that is
+/// about to run inside a distro reported every in-distro CLI as missing, so
+/// picking a provider for a `\\wsl.localhost\...` project silently opened a
+/// bare shell instead. Inside a distro the resolved absolute path replaces the
+/// bare command name, because `wrap`'s `env` argv never goes through a login
+/// shell.
 pub fn resolve_launch_command(
+    profile: &TerminalProfile,
     agent_id: Option<&str>,
     session: Option<SessionLaunch<'_>>,
     permission_mode: Option<&str>,
 ) -> LaunchResolution {
-    resolve_with(
+    let resolution = resolve_with(
         agent_id,
         session,
         permission_mode,
         catalog(),
-        &detect_installed(),
+        &detect_installed_in(profile),
+    );
+    apply_profile_command(
+        resolution,
+        agent_id.and_then(|id| command_path_in(profile, id)),
     )
+}
+
+/// SPEC: wsl-terminal-profile (WSLP-04) — troca o nome nu pelo caminho
+/// absoluto que o perfil resolveu, e **só** quando um agente foi de fato
+/// lançado: aplicar o caminho sobre um `command: None` transformaria o
+/// fallback para shell puro num lançamento de agente que a detecção acabou
+/// de dizer que não existe. Puro, para o caso poder ser provado sem
+/// `wsl.exe`.
+fn apply_profile_command(
+    mut resolution: LaunchResolution,
+    path: Option<String>,
+) -> LaunchResolution {
+    if resolution.command.is_some() {
+        if let Some(path) = path {
+            resolution.command = Some(path);
+        }
+    }
+    resolution
 }
 
 /// Argumentos que fixam o modo de permissão de `descriptor`.
@@ -391,6 +425,47 @@ mod tests {
             warning.contains("fakecli"),
             "aviso deve nomear o comando esperado: {warning}"
         );
+    }
+
+    // SPEC: wsl-terminal-profile (WSLP-04) — dentro de uma distro o argv leva
+    // o caminho absoluto, porque o `env` de `wrap` não passa por shell de
+    // login e um nome nu ficaria dependendo do PATH não-login.
+    #[test]
+    fn caminho_do_perfil_substitui_o_nome_nu_do_comando() {
+        let catalog = fake_catalog();
+        let resolution = resolve_with(
+            Some("fake-agent"),
+            None,
+            None,
+            &catalog,
+            &installed(&catalog),
+        );
+
+        let com_caminho =
+            apply_profile_command(resolution, Some("/home/x/.local/bin/fakecli".to_string()));
+
+        assert_eq!(
+            com_caminho.command,
+            Some("/home/x/.local/bin/fakecli".to_string())
+        );
+    }
+
+    // O fallback para shell puro não pode virar lançamento de agente só
+    // porque o perfil devolveu um caminho.
+    #[test]
+    fn caminho_do_perfil_nao_ressuscita_o_fallback_para_shell() {
+        let catalog = fake_catalog();
+        let statuses = vec![AgentStatus {
+            agent: catalog[0],
+            installed: false,
+        }];
+        let resolution = resolve_with(Some("fake-agent"), None, None, &catalog, &statuses);
+
+        let com_caminho =
+            apply_profile_command(resolution, Some("/home/x/.local/bin/fakecli".to_string()));
+
+        assert_eq!(com_caminho.command, None);
+        assert!(com_caminho.warning.is_some());
     }
 }
 

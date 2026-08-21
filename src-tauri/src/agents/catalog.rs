@@ -3,7 +3,7 @@
 // SPEC: editor-launch (EDITOR-02) — `resolve_command_in_path` é a mesma
 // resolução de PATH, agora devolvendo o caminho resolvido: `editors.rs`
 // precisa dele para lançar `code.cmd`/`cursor.cmd` no Windows.
-// SPEC: wsl-terminal-profile (WSLP-06)
+// SPEC: wsl-terminal-profile (WSLP-04, WSLP-06)
 
 //! Catálogo estático dos agentes de IA suportados e detecção de CLI no PATH.
 //!
@@ -282,32 +282,59 @@ fn apply_installed(found: &[(&'static str, String)]) -> Vec<AgentStatus> {
         .collect()
 }
 
-fn wsl_probe_cache() -> &'static Mutex<HashMap<String, Vec<AgentStatus>>> {
-    static CACHE: OnceLock<Mutex<HashMap<String, Vec<AgentStatus>>>> = OnceLock::new();
+type WslFound = Vec<(&'static str, String)>;
+
+fn wsl_probe_cache() -> &'static Mutex<HashMap<String, WslFound>> {
+    static CACHE: OnceLock<Mutex<HashMap<String, WslFound>>> = OnceLock::new();
     CACHE.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-fn detect_installed_in_wsl(distro: &str) -> Vec<AgentStatus> {
-    detect_installed_in_wsl_with(distro, wsl_probe_cache(), real_wsl_probe)
+/// SPEC: wsl-terminal-profile (WSLP-04) — o que `type -P` achou dentro da
+/// distro: `(id do catálogo, caminho absoluto)`. O caminho é guardado, e não
+/// só o booleano `installed`, porque `WSLP-04` exige lançar o CLI pelo
+/// caminho absoluto: o `env` do argv de `wrap` não passa por um shell de
+/// login, então um nome nu só resolveria se o binário estivesse no `PATH`
+/// não-login da distro — o que não vale para nvm, asdf nem `~/.local/bin`.
+fn wsl_found(distro: &str) -> WslFound {
+    wsl_found_with(distro, wsl_probe_cache(), real_wsl_probe)
 }
 
 /// Núcleo testável: cache e sonda injetáveis, sem depender de `wsl.exe`
 /// de verdade — mesmo desenho de `shells::wrap::login_path`.
-fn detect_installed_in_wsl_with(
+fn wsl_found_with(
     distro: &str,
-    cache: &Mutex<HashMap<String, Vec<AgentStatus>>>,
+    cache: &Mutex<HashMap<String, WslFound>>,
     probe: impl FnOnce(&str) -> String,
-) -> Vec<AgentStatus> {
+) -> WslFound {
     if let Some(cached) = cache.lock().unwrap().get(distro) {
         return cached.clone();
     }
     let raw = probe(distro);
-    let result = apply_installed(&parse_type_p_output(&raw, &CATALOG));
+    let found = parse_type_p_output(&raw, &CATALOG);
     cache
         .lock()
         .unwrap()
-        .insert(distro.to_string(), result.clone());
-    result
+        .insert(distro.to_string(), found.clone());
+    found
+}
+
+fn detect_installed_in_wsl(distro: &str) -> Vec<AgentStatus> {
+    apply_installed(&wsl_found(distro))
+}
+
+/// SPEC: wsl-terminal-profile (WSLP-04) — caminho absoluto do CLI de
+/// `agent_id` dentro de `profile`, quando o perfil exige um. `None` no host:
+/// lá o nome nu do descritor é resolvido pelo `PATH` do processo, como
+/// sempre — trocar por caminho absoluto arriscaria o shim sem extensão em
+/// vez do `.cmd` que o Windows realmente executa.
+pub fn command_path_in(profile: &TerminalProfile, agent_id: &str) -> Option<String> {
+    match profile {
+        TerminalProfile::Host => None,
+        TerminalProfile::Wsl { distro } => wsl_found(distro)
+            .into_iter()
+            .find(|(id, _)| *id == agent_id)
+            .map(|(_, path)| path),
+    }
 }
 
 /// Uma sonda por comando: `bash -lc` de login shell, requisito para
@@ -451,20 +478,31 @@ mod tests {
         use std::sync::atomic::{AtomicUsize, Ordering};
 
         let calls = AtomicUsize::new(0);
-        let cache: Mutex<HashMap<String, Vec<AgentStatus>>> = Mutex::new(HashMap::new());
+        let cache: Mutex<HashMap<String, WslFound>> = Mutex::new(HashMap::new());
         let probe = |_: &str| {
             calls.fetch_add(1, Ordering::SeqCst);
             "/home/x/.local/bin/claude\n".to_string()
         };
 
-        let first = detect_installed_in_wsl_with("Ubuntu-24.04", &cache, probe);
-        let second = detect_installed_in_wsl_with("Ubuntu-24.04", &cache, probe);
+        let first = wsl_found_with("Ubuntu-24.04", &cache, probe);
+        let second = wsl_found_with("Ubuntu-24.04", &cache, probe);
 
         assert_eq!(calls.load(Ordering::SeqCst), 1);
         assert_eq!(first, second);
-        assert!(first
+        assert_eq!(
+            first,
+            vec![("claude-code", "/home/x/.local/bin/claude".to_string())]
+        );
+        assert!(apply_installed(&first)
             .iter()
             .any(|status| status.agent.id == "claude-code" && status.installed));
+    }
+
+    // SPEC: wsl-terminal-profile (WSLP-04) — o host segue lançando pelo nome
+    // nu; a distro devolve o caminho absoluto que a sonda achou.
+    #[test]
+    fn command_path_in_host_is_none() {
+        assert_eq!(command_path_in(&TerminalProfile::Host, "claude-code"), None);
     }
 
     #[test]

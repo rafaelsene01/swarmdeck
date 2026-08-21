@@ -1,4 +1,4 @@
-// SPEC: wsl-terminal-profile (WSLP-07, WSLP-08)
+// SPEC: wsl-terminal-profile (WSLP-07, WSLP-08, WSLP-21)
 // SPEC: quota-indicator (QUOTA-15)
 
 //! Qual máquina um terminal, uma sonda de CLI, ou um `git init` deve usar.
@@ -50,23 +50,45 @@ impl TerminalProfile {
     }
 }
 
+/// Divide um caminho UNC do WSL em `(distro, caminho dentro da distro)`.
+/// `None` para qualquer coisa que não seja `\\wsl.localhost\<distro>\...`
+/// (ou o sinônimo legado `\\wsl$\`), inclusive o caso do segmento de
+/// distro vazio.
+///
+/// O caminho devolvido é POSIX porque é exatamente o que existe dentro da
+/// distro: o prefixo UNC *é* a raiz dela, então trocar `\` por `/` é
+/// tradução exata, e não a adivinhação `C:\x` → `/mnt/c/x` que a spec
+/// mantém fora de escopo (`/mnt` é configurável em `/etc/wsl.conf`).
+///
+/// SPEC: wsl-terminal-profile (WSLP-07, WSLP-08, WSLP-21) — único lugar que
+/// interpreta a forma UNC: `profile_for_path` e o `--remote wsl+<distro>` do
+/// editor leem os dois pedaços daqui em vez de reimplementar o parse.
+pub fn wsl_path_parts(cwd: &Path) -> Option<(String, String)> {
+    let raw = cwd.to_string_lossy();
+    for prefix in [r"\\wsl.localhost\", r"\\wsl$\"] {
+        let Some(rest) = raw.strip_prefix(prefix) else {
+            continue;
+        };
+        let (distro, tail) = match rest.split_once('\\') {
+            Some((distro, tail)) => (distro, tail),
+            None => (rest, ""),
+        };
+        if distro.is_empty() {
+            return None;
+        }
+        return Some((distro.to_string(), format!("/{}", tail.replace('\\', "/"))));
+    }
+    None
+}
+
 /// Deriva o perfil a partir do `cwd`: um caminho que nomeia uma distro
 /// vence sobre o perfil padrão passado. Sem distro reconhecível, retorna
 /// o `default` recebido — quem chama decide o que "padrão" significa.
 pub fn profile_for_path(cwd: &Path, default: &TerminalProfile) -> TerminalProfile {
-    let raw = cwd.to_string_lossy();
-    for prefix in [r"\\wsl.localhost\", r"\\wsl$\"] {
-        if let Some(rest) = raw.strip_prefix(prefix) {
-            if let Some(distro) = rest.split('\\').next() {
-                if !distro.is_empty() {
-                    return TerminalProfile::Wsl {
-                        distro: distro.to_string(),
-                    };
-                }
-            }
-        }
+    match wsl_path_parts(cwd) {
+        Some((distro, _)) => TerminalProfile::Wsl { distro },
+        None => default.clone(),
     }
-    default.clone()
 }
 
 #[cfg(test)]
@@ -114,6 +136,33 @@ mod tests {
             profile_for_path(Path::new(r"\\wsl.localhost\\home\x"), &default),
             default
         );
+    }
+
+    // SPEC: wsl-terminal-profile (WSLP-21) — o caminho dentro da distro é o
+    // argumento do `--remote wsl+<distro>` do editor; errar aqui abre a pasta
+    // errada, ou nenhuma.
+    #[test]
+    fn wsl_path_parts_splits_distro_and_posix_path() {
+        assert_eq!(
+            wsl_path_parts(Path::new(r"\\wsl.localhost\Ubuntu-24.04\home\x\repo")),
+            Some(("Ubuntu-24.04".to_string(), "/home/x/repo".to_string()))
+        );
+        assert_eq!(
+            wsl_path_parts(Path::new(r"\\wsl$\Ubuntu-24.04\home\x")),
+            Some(("Ubuntu-24.04".to_string(), "/home/x".to_string()))
+        );
+        // Raiz da distro, sem cauda: o caminho lá dentro é `/`.
+        assert_eq!(
+            wsl_path_parts(Path::new(r"\\wsl.localhost\Ubuntu-24.04")),
+            Some(("Ubuntu-24.04".to_string(), "/".to_string()))
+        );
+    }
+
+    #[test]
+    fn wsl_path_parts_returns_none_for_non_wsl_paths() {
+        assert_eq!(wsl_path_parts(Path::new(r"C:\repos\x")), None);
+        assert_eq!(wsl_path_parts(Path::new("/home/x/repo")), None);
+        assert_eq!(wsl_path_parts(Path::new(r"\\wsl.localhost\\home\x")), None);
     }
 
     #[test]

@@ -1,5 +1,6 @@
 // SPEC: editor-launch (EDITOR-02, EDITOR-04, EDITOR-05)
 // SPEC: terminal-boot-loading (BOOT-01)
+// SPEC: wsl-terminal-profile (WSLP-21)
 
 //! Catálogo estático dos editores de código suportados, detecção de qual
 //! deles está instalado, e a montagem do comando que abre uma pasta neles.
@@ -15,7 +16,7 @@
 //! comando. Sem isso, `editor_open` seria execução arbitrária a partir da
 //! camada de UI.
 
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -31,6 +32,11 @@ pub struct EditorDescriptor {
     /// Nome do binário a resolver no PATH, sem extensão (a extensão é
     /// resolvida via `PATHEXT` no Windows).
     pub command: &'static str,
+    /// SPEC: wsl-terminal-profile (WSLP-21) — `true` quando o editor aceita
+    /// `--remote wsl+<distro>`, o que hoje quer dizer "é VS Code ou um fork
+    /// dele". Uma coluna, e não um `match` por id: acrescentar editor
+    /// continua sendo acrescentar uma linha no catálogo.
+    pub wsl_remote: bool,
 }
 
 /// Resultado da detecção: o editor e o caminho onde o CLI dele resolveu.
@@ -51,56 +57,67 @@ pub const CATALOG: [EditorDescriptor; 11] = [
         id: "vscode",
         name: "VS Code",
         command: "code",
+        wsl_remote: true,
     },
     EditorDescriptor {
         id: "vscode-insiders",
         name: "VS Code Insiders",
         command: "code-insiders",
+        wsl_remote: true,
     },
     EditorDescriptor {
         id: "cursor",
         name: "Cursor",
         command: "cursor",
+        wsl_remote: true,
     },
     EditorDescriptor {
         id: "windsurf",
         name: "Windsurf",
         command: "windsurf",
+        wsl_remote: true,
     },
     EditorDescriptor {
         id: "trae",
         name: "Trae",
         command: "trae",
+        wsl_remote: true,
     },
     EditorDescriptor {
         id: "vscodium",
         name: "VSCodium",
         command: "codium",
+        wsl_remote: true,
     },
     EditorDescriptor {
         id: "zed",
         name: "Zed",
         command: "zed",
+        wsl_remote: false,
     },
     EditorDescriptor {
         id: "sublime",
         name: "Sublime Text",
         command: "subl",
+        wsl_remote: false,
     },
     EditorDescriptor {
         id: "intellij",
         name: "IntelliJ IDEA",
         command: "idea",
+        wsl_remote: false,
     },
     EditorDescriptor {
         id: "webstorm",
         name: "WebStorm",
         command: "webstorm",
+        wsl_remote: false,
     },
     EditorDescriptor {
         id: "pycharm",
         name: "PyCharm",
         command: "pycharm",
+        wsl_remote: false,
     },
 ];
 
@@ -157,18 +174,42 @@ fn is_windows_script(program: &Path) -> bool {
         .is_some_and(|ext| ext.eq_ignore_ascii_case("cmd") || ext.eq_ignore_ascii_case("bat"))
 }
 
+/// Os argumentos que dizem ao editor *qual pasta* abrir.
+///
+/// SPEC: wsl-terminal-profile (WSLP-21) — numa pasta dentro de uma distro,
+/// um editor da família VS Code recebe `--remote wsl+<distro> <caminho
+/// POSIX>`. Passar o caminho UNC cru abre a janela no host, que trata o
+/// compartilhamento de rede como não confiável e cai em Modo Restrito: sem
+/// extensões, sem tarefas, sem terminal na distro. Editor que não fala
+/// `--remote` continua recebendo o caminho como sempre — nada piora.
+fn open_args(editor: &EditorDescriptor, dir: &Path) -> Vec<OsString> {
+    let remote = if editor.wsl_remote {
+        crate::shells::wsl_path_parts(dir)
+    } else {
+        None
+    };
+    match remote {
+        Some((distro, inner)) => vec![
+            OsString::from("--remote"),
+            OsString::from(format!("wsl+{distro}")),
+            OsString::from(inner),
+        ],
+        None => vec![dir.as_os_str().to_owned()],
+    }
+}
+
 /// Monta o comando que abre `dir` em `program` — o núcleo com regra de
 /// `open`, separado dele para ser testável sem lançar processo (EDITOR-04).
-fn build_open_command(program: &Path, dir: &Path) -> Command {
-    if is_windows_script(program) {
+fn build_open_command(editor: &EditorDescriptor, program: &Path, dir: &Path) -> Command {
+    let mut cmd = if is_windows_script(program) {
         let mut cmd = Command::new("cmd");
-        cmd.arg("/C").arg(program).arg(dir);
+        cmd.arg("/C").arg(program);
         cmd
     } else {
-        let mut cmd = Command::new(program);
-        cmd.arg(dir);
-        cmd
-    }
+        Command::new(program)
+    };
+    cmd.args(open_args(editor, dir));
+    cmd
 }
 
 /// Abre `dir` no editor de id `id` (EDITOR-04).
@@ -188,7 +229,7 @@ pub fn open(id: &str, dir: &str) -> Result<(), String> {
     let program = resolve_command_in_path(editor.command, &path_var, pathext.as_deref())
         .ok_or_else(|| format!("`{}` não está no PATH", editor.command))?;
 
-    let mut cmd = build_open_command(&program, dir);
+    let mut cmd = build_open_command(editor, &program, dir);
     // BOOT-01: `crate::proc` is now the single owner of `CREATE_NO_WINDOW`;
     // the private copy that used to live here was one of two duplicates.
     crate::proc::hide_console(&mut cmd)
@@ -268,9 +309,17 @@ mod tests {
     }
 
     // EDITOR-04: o diretório é o argumento do editor, sempre o último.
+    fn vscode() -> &'static EditorDescriptor {
+        descriptor("vscode").expect("vscode no catálogo")
+    }
+
     #[test]
     fn build_open_command_passa_o_diretorio_como_argumento() {
-        let cmd = build_open_command(Path::new("/usr/bin/code"), Path::new("/home/user/proj"));
+        let cmd = build_open_command(
+            vscode(),
+            Path::new("/usr/bin/code"),
+            Path::new("/home/user/proj"),
+        );
 
         assert_eq!(argv(&cmd), vec!["/usr/bin/code", "/home/user/proj"]);
     }
@@ -278,7 +327,68 @@ mod tests {
     // `code.cmd` não é executável para o `CreateProcess`: precisa de `cmd /C`.
     #[test]
     fn build_open_command_roteia_script_do_windows_por_cmd() {
-        let cmd = build_open_command(Path::new(r"C:\bin\code.cmd"), Path::new(r"C:\proj"));
+        let cmd = build_open_command(
+            vscode(),
+            Path::new(r"C:\bin\code.cmd"),
+            Path::new(r"C:\proj"),
+        );
+
+        assert_eq!(
+            argv(&cmd),
+            vec!["cmd", "/C", r"C:\bin\code.cmd", r"C:\proj"]
+        );
+    }
+
+    // SPEC: wsl-terminal-profile (WSLP-21) — pasta na distro abre remoto, e
+    // é por isso que o caminho UNC não aparece no argv: ele é o que levava a
+    // janela ao Modo Restrito.
+    #[test]
+    fn build_open_command_abre_pasta_da_wsl_em_modo_remoto() {
+        let cmd = build_open_command(
+            vscode(),
+            Path::new(r"C:\bin\code.cmd"),
+            Path::new(r"\\wsl.localhost\Ubuntu-24.04\home\x\repo"),
+        );
+
+        assert_eq!(
+            argv(&cmd),
+            vec![
+                "cmd",
+                "/C",
+                r"C:\bin\code.cmd",
+                "--remote",
+                "wsl+Ubuntu-24.04",
+                "/home/x/repo",
+            ]
+        );
+    }
+
+    // Editor sem suporte a `--remote` recebe o caminho como antes: sem
+    // remoto é ruim, com flag que ele não entende é pior (nem abre).
+    #[test]
+    fn build_open_command_nao_usa_remoto_em_editor_que_nao_suporta() {
+        let zed = descriptor("zed").expect("zed no catálogo");
+        let dir = Path::new(r"\\wsl.localhost\Ubuntu-24.04\home\x\repo");
+        let cmd = build_open_command(zed, Path::new(r"C:\bin\zed.exe"), dir);
+
+        assert_eq!(
+            argv(&cmd),
+            vec![
+                r"C:\bin\zed.exe",
+                r"\\wsl.localhost\Ubuntu-24.04\home\x\repo"
+            ]
+        );
+    }
+
+    // Pasta do host continua no comportamento de sempre, mesmo em editor que
+    // fala `--remote`.
+    #[test]
+    fn build_open_command_nao_usa_remoto_em_pasta_do_host() {
+        let cmd = build_open_command(
+            vscode(),
+            Path::new(r"C:\bin\code.cmd"),
+            Path::new(r"C:\proj"),
+        );
 
         assert_eq!(
             argv(&cmd),
@@ -288,7 +398,8 @@ mod tests {
 
     #[test]
     fn build_open_command_nao_roteia_exe_por_cmd() {
-        let cmd = build_open_command(Path::new(r"C:\bin\zed.exe"), Path::new(r"C:\proj"));
+        let zed = descriptor("zed").expect("zed no catálogo");
+        let cmd = build_open_command(zed, Path::new(r"C:\bin\zed.exe"), Path::new(r"C:\proj"));
 
         assert_eq!(argv(&cmd), vec![r"C:\bin\zed.exe", r"C:\proj"]);
     }
