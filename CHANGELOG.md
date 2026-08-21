@@ -1,7 +1,25 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.36] - 2026-08-21
+
+### Correções
+
+- *(quota)* Hide providers without quota from popover and settings
+
+- *(settings)* Tratar falha ao ler catálogo e agente padrão
+
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.35] - 2026-08-21
+
+### Funcionalidades
+
+- *(terminal)* Scan agents per profile and gate boot on quota
+
 
 ### Outros
 
