@@ -1,4 +1,5 @@
 // SPEC: projects (PROJ-13, PROJ-14, PROJ-16, PROJ-17, PROJ-18, PROJ-21)
+// SPEC: terminal-boot-loading (BOOT-11, BOOT-12)
 
 import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -7,6 +8,7 @@ import ProjectStep from './ProjectStep'
 import AgentStep, { DEFAULT_PERMISSION_MODE } from './AgentStep'
 import ProjectFormModal, { type ProjectFormValues } from '../project/ProjectFormModal'
 import type { AgentDescriptor } from '../../routes/settings/AgentPanel'
+import type { ProfileCatalogEntry } from '../../types/agents'
 import { filterProjects, type ProjectRow } from '../../routes/settings/ProjectsPanel'
 
 /** Espelha `projects::service::Project` — o campo chega `last_used`. */
@@ -50,6 +52,18 @@ export interface PaneWizardProps {
   agents: AgentDescriptor[]
   installedIds: Set<string>
   defaultAgentId: string | null
+  /**
+   * SPEC: terminal-boot-loading (BOOT-10, BOOT-12) — catálogo por perfil,
+   * varrido no boot. A etapa AGENT usa a entrada do perfil que o **caminho
+   * escolhido** implica, não a do perfil padrão: uma pasta em
+   * `\\wsl.localhost\Ubuntu-24.04\...` roda dentro da distro, e é lá que o
+   * `claude` dela precisa estar. Sem isto a grade marcava "não encontrado no
+   * PATH" para um CLI que está instalado — só não no Windows.
+   *
+   * Opcional: sem a varredura (ou com um perfil que não veio nela) a etapa
+   * cai em `agents`/`installedIds`, exatamente o comportamento anterior.
+   */
+  profileCatalogs?: ProfileCatalogEntry[]
   /** SPEC: agent-permission-mode (PERM-05) — `permissionMode` é `null`
    * quando o agente escolhido não oferece modos (ou é terminal limpo). */
   onConfirm: (
@@ -67,6 +81,12 @@ interface Selection {
   name: string
   path: string
   color: string | null
+  /**
+   * SPEC: terminal-boot-loading (BOOT-11) — id do perfil que este caminho
+   * implica, resolvido por `shell_profile_for_path`. `null` quando a consulta
+   * falhou: a etapa AGENT então usa o catálogo do perfil padrão, como antes.
+   */
+  profileId: string | null
 }
 
 /**
@@ -81,6 +101,7 @@ export default function PaneWizard({
   agents,
   installedIds,
   defaultAgentId,
+  profileCatalogs,
   onConfirm,
   onCancel,
 }: PaneWizardProps) {
@@ -120,6 +141,21 @@ export default function PaneWizard({
   }, [])
 
   /**
+   * SPEC: terminal-boot-loading (BOOT-11) — o perfil de terminal que `path`
+   * implica. Falha devolve `null` em vez de subir: não saber o perfil degrada
+   * para o catálogo do padrão, e não vale bloquear a escolha do projeto por
+   * causa disso.
+   */
+  const profileForPath = async (path: string): Promise<string | null> => {
+    try {
+      return await invoke<string>('shell_profile_for_path', { cwd: path })
+    } catch (err: unknown) {
+      console.error('falha ao resolver o terminal do caminho', err)
+      return null
+    }
+  }
+
+  /**
    * SPEC: projects (PROJ-13 AC15, PROJ-14 AC9) — `project_touch` faz as duas
    * coisas de uma vez: valida que o caminho ainda existe no disco
    * (`require_existing_dir` devolve `PathNotFound` com o caminho ausente) e
@@ -139,6 +175,7 @@ export default function PaneWizard({
       name: project.name,
       path: project.path,
       color: project.color,
+      profileId: await profileForPath(project.path),
     })
   }, [])
 
@@ -146,7 +183,13 @@ export default function PaneWizard({
     try {
       const dir = await invoke<string>('project_sandbox_dir')
       setError(null)
-      setSelection({ id: null, name: 'Sem projeto', path: dir, color: null })
+      setSelection({
+        id: null,
+        name: 'Sem projeto',
+        path: dir,
+        color: null,
+        profileId: await profileForPath(dir),
+      })
     } catch (err: unknown) {
       setError(String(err))
     }
@@ -197,11 +240,22 @@ export default function PaneWizard({
   }
 
   if (selection !== null) {
+    // SPEC: terminal-boot-loading (BOOT-12) — o catálogo do perfil que este
+    // caminho implica. Sem entrada correspondente (varredura ausente, perfil
+    // que sumiu da lista), cai nas props de sempre.
+    const profile =
+      profileCatalogs?.find((entry) => entry.profileId === selection.profileId) ?? null
+    const stepAgents = profile?.agents ?? agents
+    const stepInstalledIds = profile
+      ? new Set(profile.agents.filter((agent) => agent.installed).map((agent) => agent.id))
+      : installedIds
+
     return (
       <AgentStep
         selection={{ name: selection.name, path: selection.path, color: selection.color }}
-        agents={agents}
-        installedIds={installedIds}
+        agents={stepAgents}
+        installedIds={stepInstalledIds}
+        terminalLabel={profile?.label}
         selectedAgentId={selectedAgentId}
         onSelectAgent={(id) => setChosen({ id })}
         permissionMode={permissionMode}
@@ -215,9 +269,9 @@ export default function PaneWizard({
             selection.id,
             // PERM-05: só vai modo se o agente escolhido declarar algum — o
             // shell puro e os agentes sem a flag não têm o que receber.
-            (agents.find((agent) => agent.id === selectedAgentId)?.permissionModes ?? []).includes(
-              permissionMode,
-            )
+            (
+              stepAgents.find((agent) => agent.id === selectedAgentId)?.permissionModes ?? []
+            ).includes(permissionMode)
               ? permissionMode
               : null,
           )

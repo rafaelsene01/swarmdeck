@@ -1,4 +1,5 @@
 // SPEC: projects (PROJ-13, PROJ-21), agent-permission-mode (PERM-05, PERM-06)
+// SPEC: terminal-boot-loading (BOOT-12)
 
 import { useState } from 'react'
 import ProviderIcon from '../shell/ProviderIcon'
@@ -86,6 +87,14 @@ export interface AgentStepProps {
   onConfirm: () => void
   /** "N / M projects" do passo anterior, para o cabeçalho não zerar aqui. */
   counter?: string
+  /**
+   * SPEC: terminal-boot-loading (BOOT-12) — rótulo do perfil em que este
+   * caminho vai rodar ("Windows (padrão)", "Ubuntu-24.04"). Vem de
+   * `shell_profile_for_path`, e é o que explica por que a grade mostra este
+   * conjunto de agentes e não outro: uma pasta dentro de uma distro procura
+   * o CLI lá dentro, não no PATH do Windows. `undefined` omite a linha.
+   */
+  terminalLabel?: string
 }
 
 /** Id sintético do ladrilho "Terminal": a escolha é `null`, mas o estado de
@@ -124,6 +133,7 @@ export default function AgentStep({
   onBack,
   onConfirm,
   counter = '',
+  terminalLabel,
 }: AgentStepProps) {
   const [hovered, setHovered] = useState<string | null>(null)
 
@@ -212,6 +222,21 @@ export default function AgentStep({
           min-width: 0;
         }
         .agent-step__card-name { font-size: 0.83rem; font-weight: 700; }
+        /* SPEC: terminal-boot-loading (BOOT-12) — selo do terminal em que a
+           pasta vai rodar. Fica à direita do cartão, alinhado ao nome, para
+           ser lido junto com ele sem competir com o caminho. */
+        .agent-step__terminal {
+          flex: none;
+          align-self: center;
+          padding: 0.1rem 0.45rem;
+          border: 1px solid var(--border, #26262d);
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.04);
+          color: var(--muted, #8a8a92);
+          font-size: 0.68rem;
+          letter-spacing: 0.04em;
+          white-space: nowrap;
+        }
         .agent-step__card-path {
           font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
           font-size: 0.72rem;
@@ -389,6 +414,12 @@ export default function AgentStep({
               <span className="agent-step__card-name">{selection.name}</span>
               <span className="agent-step__card-path">{selection.path}</span>
             </span>
+            {/* SPEC: terminal-boot-loading (BOOT-12) */}
+            {terminalLabel !== undefined && (
+              <span className="agent-step__terminal" title="terminal onde esta pasta vai rodar">
+                {terminalLabel}
+              </span>
+            )}
             <button type="button" className="agent-step__back" onClick={onBack}>
               <svg
                 width="12"

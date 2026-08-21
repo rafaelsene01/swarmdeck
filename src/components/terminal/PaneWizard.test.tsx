@@ -1,4 +1,5 @@
 // SPEC: projects (PROJ-13, PROJ-16, PROJ-17, PROJ-18, PROJ-21)
+// SPEC: terminal-boot-loading (BOOT-11, BOOT-12)
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -69,6 +70,9 @@ describe('PaneWizard', () => {
       const touched = touchOk(command)
       if (touched) return touched
       if (command === 'project_list') return Promise.resolve([ALPHA])
+      // SPEC: terminal-boot-loading (BOOT-11) — selecionar um projeto passou a
+      // perguntar em qual terminal aquele caminho roda.
+      if (command === 'shell_profile_for_path') return Promise.resolve('host')
       return unexpected(command)
     })
   })
@@ -124,6 +128,7 @@ describe('PaneWizard', () => {
       const touched = touchOk(command)
       if (touched) return touched
       if (command === 'project_list') return Promise.resolve([ALPHA])
+      if (command === 'shell_profile_for_path') return Promise.resolve('host')
       if (command === 'project_sandbox_dir') return Promise.resolve('/data/swarmdeck/sandbox')
       return unexpected(command)
     })
@@ -146,6 +151,7 @@ describe('PaneWizard', () => {
       const touched = touchOk(command)
       if (touched) return touched
       if (command === 'project_list') return Promise.resolve([ALPHA])
+      if (command === 'shell_profile_for_path') return Promise.resolve('host')
       if (command === 'project_create')
         return Promise.resolve({
           id: 'n',
@@ -195,6 +201,7 @@ describe('PaneWizard', () => {
       const touched = touchOk(command)
       if (touched) return touched
       if (command === 'project_list') return Promise.resolve([ALPHA])
+      if (command === 'shell_profile_for_path') return Promise.resolve('host')
       if (command === 'project_create_in')
         return Promise.resolve({
           id: 'c',
@@ -253,6 +260,7 @@ describe('PaneWizard', () => {
     const onConfirm = vi.fn()
     invokeMock.mockImplementation((command: string) => {
       if (command === 'project_list') return Promise.resolve([ALPHA])
+      if (command === 'shell_profile_for_path') return Promise.resolve('host')
       if (command === 'project_touch')
         return Promise.reject('diretório não encontrado: /home/user/dev/alpha')
       return unexpected(command)
@@ -274,6 +282,7 @@ describe('PaneWizard', () => {
       const touched = touchOk(command)
       if (touched) return touched
       if (command === 'project_list') return Promise.resolve([ALPHA])
+      if (command === 'shell_profile_for_path') return Promise.resolve('host')
       if (command === 'project_sandbox_dir')
         return Promise.reject(new Error('diretório de dados sem permissão'))
       return unexpected(command)
@@ -295,6 +304,7 @@ describe('PaneWizard', () => {
       const touched = touchOk(command)
       if (touched) return touched
       if (command === 'project_list') return Promise.resolve([ALPHA])
+      if (command === 'shell_profile_for_path') return Promise.resolve('host')
       if (command === 'project_create_in')
         return Promise.reject(new Error('caminho já usado pelo projeto alpha'))
       return unexpected(command)
@@ -325,6 +335,7 @@ describe('PaneWizard', () => {
       const touched = touchOk(command)
       if (touched) return touched
       if (command === 'project_list') return Promise.resolve([ALPHA])
+      if (command === 'shell_profile_for_path') return Promise.resolve('host')
       if (command === 'project_create') return Promise.reject(new Error('diretório não existe'))
       return unexpected(command)
     })
@@ -347,6 +358,9 @@ describe('PaneWizard — modo de permissão (PERM-05)', () => {
       const touched = touchOk(command)
       if (touched) return touched
       if (command === 'project_list') return Promise.resolve([ALPHA])
+      // SPEC: terminal-boot-loading (BOOT-11) — selecionar um projeto passou a
+      // perguntar em qual terminal aquele caminho roda.
+      if (command === 'shell_profile_for_path') return Promise.resolve('host')
       return unexpected(command)
     })
   })
@@ -379,5 +393,95 @@ describe('PaneWizard — modo de permissão (PERM-05)', () => {
     fireEvent.click(confirm)
 
     expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/alpha', 'codex-cli', 'a', null)
+  })
+})
+
+// SPEC: terminal-boot-loading (BOOT-11, BOOT-12)
+// O ponto da feature: a etapa AGENT lista os agentes do terminal em que
+// **aquele caminho** roda. Antes disto ela usava sempre o catálogo do perfil
+// padrão, então uma pasta dentro de uma distro WSL mostrava o `claude` como
+// "não encontrado no PATH" — o do Windows — e o ladrilho ficava desabilitado
+// mesmo com o CLI instalado lá dentro.
+describe('PaneWizard — agentes do terminal do caminho', () => {
+  const WSL_PROJECT = {
+    id: 'w',
+    name: 'api',
+    path: '\\\\wsl.localhost\\Ubuntu-24.04\\home\\x\\api',
+    color: null,
+    last_used: null,
+  }
+
+  /** Claude instalado só dentro da distro; nada instalado no host. */
+  const PROFILES = [
+    {
+      profileId: 'host',
+      label: 'Windows (padrão)',
+      wsl1: false,
+      agents: CATALOG.map((agent) => ({ ...agent, installed: false })),
+    },
+    {
+      profileId: 'wsl:Ubuntu-24.04',
+      label: 'Ubuntu-24.04',
+      wsl1: false,
+      agents: CATALOG.map((agent) => ({ ...agent, installed: agent.id === 'claude-code' })),
+    },
+  ]
+
+  /** `profileId` é o que `shell_profile_for_path` devolve para o caminho. */
+  function mockProfile(profileId: string) {
+    invokeMock.mockReset()
+    invokeMock.mockImplementation((command: string) => {
+      if (command === 'project_touch') return Promise.resolve(WSL_PROJECT)
+      if (command === 'project_list') return Promise.resolve([WSL_PROJECT])
+      if (command === 'shell_profile_for_path') return Promise.resolve(profileId)
+      return unexpected(command)
+    })
+  }
+
+  it('pasta dentro da distro libera o agente instalado lá e nomeia o terminal', async () => {
+    mockProfile('wsl:Ubuntu-24.04')
+    // `installedIds` vazio de propósito: se a etapa ainda usasse as props do
+    // perfil padrão, o ladrilho ficaria desabilitado e o teste falharia.
+    renderWizard({ profileCatalogs: PROFILES, installedIds: new Set() })
+
+    fireEvent.click(await screen.findByRole('button', { name: /api/ }))
+    await waitFor(() => expect(activeStep()).toBe('2'))
+
+    expect(invokeMock).toHaveBeenCalledWith('shell_profile_for_path', {
+      cwd: WSL_PROJECT.path,
+    })
+    expect(screen.getByText('Ubuntu-24.04')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Claude Code' })).toBeEnabled()
+  })
+
+  it('pasta no host mantém desabilitado o agente que só existe na distro', async () => {
+    mockProfile('host')
+    renderWizard({ profileCatalogs: PROFILES, installedIds: new Set(['claude-code']) })
+
+    fireEvent.click(await screen.findByRole('button', { name: /api/ }))
+    await waitFor(() => expect(activeStep()).toBe('2'))
+
+    expect(screen.getByText('Windows (padrão)')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Claude Code' })).toBeDisabled()
+  })
+
+  it('consulta de perfil que falha cai no catálogo das props, como antes', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    invokeMock.mockReset()
+    invokeMock.mockImplementation((command: string) => {
+      if (command === 'project_touch') return Promise.resolve(WSL_PROJECT)
+      if (command === 'project_list') return Promise.resolve([WSL_PROJECT])
+      if (command === 'shell_profile_for_path') return Promise.reject(new Error('sem banco'))
+      return unexpected(command)
+    })
+
+    renderWizard({ profileCatalogs: PROFILES, installedIds: new Set(['claude-code']) })
+
+    fireEvent.click(await screen.findByRole('button', { name: /api/ }))
+    await waitFor(() => expect(activeStep()).toBe('2'))
+
+    expect(screen.queryByText('Ubuntu-24.04')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Claude Code' })).toBeEnabled()
+    consoleError.mockRestore()
   })
 })

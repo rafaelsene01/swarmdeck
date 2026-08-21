@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), editor-launch (EDITOR-02), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), settings-shell (SET-01, SET-04, SET-05), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), window-chrome (WIN-01, WIN-02, WIN-03), minimized-tray (MIN-01, MIN-02, MIN-04, MIN-05, MIN-06, MIN-07), projects (PROJ-11, PROJ-12, PROJ-13, PROJ-14, PROJ-16), terminal-boot-loading (BOOT-04, BOOT-05, BOOT-06, BOOT-07)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), editor-launch (EDITOR-02), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), settings-shell (SET-01, SET-04, SET-05), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), window-chrome (WIN-01, WIN-02, WIN-03), minimized-tray (MIN-01, MIN-02, MIN-04, MIN-05, MIN-06, MIN-07), projects (PROJ-11, PROJ-12, PROJ-13, PROJ-14, PROJ-16), terminal-boot-loading (BOOT-04, BOOT-05, BOOT-06, BOOT-07, BOOT-09, BOOT-10, BOOT-12)
 
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -39,6 +39,7 @@ import TerminalPane from './components/terminal/TerminalPane'
 import TerminalHeader from './components/terminal/TerminalHeader'
 import PaneWizard, { lastSegment, normalizePath } from './components/terminal/PaneWizard'
 import type { AgentDescriptor } from './routes/settings/AgentPanel'
+import type { ProfileCatalog, ProfileCatalogEntry } from './types/agents'
 import SettingsShell from './routes/settings/SettingsShell'
 import {
   type LayoutEntry,
@@ -79,15 +80,10 @@ interface WorkspaceTab {
  * outra coisa sobre um painel não seja confundido com reordenar. */
 const REORDER_MIME = 'text/swarmdeck-terminal'
 
-// SPEC: agent-selection (AGT-01, AGT-04)
-// Forma devolvida por `agent_catalog` (T5, invólucro sobre
-// `agents::catalog::detect_installed`, T1) — `AgentDescriptor` mais o status
-// de instalação, que aqui vira `installedIds` para o diálogo.
-interface AgentCatalogEntry extends AgentDescriptor {
-  installed: boolean
-  /** SPEC: session-restore (SESS-15) — o CLI aceita `--resume <id>`. */
-  supportsSessionResume?: boolean
-}
+// SPEC: agent-selection (AGT-01, AGT-04), terminal-boot-loading (BOOT-10)
+// `AgentCatalogEntry` / `ProfileCatalog` moram em `types/agents.ts` desde
+// BOOT-10: o wizard passou a consumir a mesma forma, e duas declarações da
+// mesma resposta de IPC divergiriam.
 
 /** Janela de espera antes de gravar o workspace (LAYOUT-21). `handleResize`
  * dispara a cada `pointermove` do arrasto de divisória; gravar em SQLite por
@@ -219,6 +215,11 @@ export default function App() {
    * Segura o modal até o catálogo responder — erro incluso, senão a falha
    * esconderia o modal para sempre. */
   const [agentCatalogSettled, setAgentCatalogSettled] = useState(false)
+  /** SPEC: terminal-boot-loading (BOOT-10) — resultado da varredura do boot:
+   * um perfil de terminal por entrada, cada um com os agentes instalados
+   * **nele**. Repassado ao wizard, que escolhe a entrada pelo caminho da pasta
+   * em vez de usar sempre a do perfil padrão (BOOT-12). */
+  const [profileCatalogs, setProfileCatalogs] = useState<ProfileCatalogEntry[]>([])
   const [defaultAgentId, setDefaultAgentId] = useState<string | null>(null)
   // Agente escolhido por sessão (AGT-03): sobrescreve o padrão só para o
   // terminal criado com aquela escolha, sem tocar a preferência global.
@@ -294,6 +295,11 @@ export default function App() {
   // mesmo efeito que `enabled: false` no `Header` (QUOTA-12).
   const [quotaPrefs, setQuotaPrefs] = useState<QuotaPrefsPayload | null>(null)
 
+  /** SPEC: terminal-boot-loading (BOOT-09) — `false` até a cota do boot
+   * assentar. Segunda porta do overlay, ao lado da restauração de sessão: as
+   * duas correm em paralelo e a tela só é liberada quando ambas fecham. */
+  const [quotaReady, setQuotaReady] = useState(false)
+
   useEffect(() => {
     const unlistenPromise = listen('update://available', () => {
       setHasUpdateAvailable(true)
@@ -307,9 +313,29 @@ export default function App() {
   useEffect(() => {
     let cancelled = false
 
-    void invoke<QuotaPrefsPayload>('quota_prefs_get').then((prefs) => {
-      if (!cancelled) setQuotaPrefs(prefs)
-    })
+    // SPEC: terminal-boot-loading (BOOT-09) — as preferências e a cota em si,
+    // na ordem, antes de liberar a tela.
+    //
+    // O `quota_claude` aqui não é a busca do `QuotaIndicator`: é o que aquece
+    // o cache do backend (piso de 5 min, QUOTA-14/QUOTA-28), para o anel do
+    // cabeçalho nascer com dado em vez de nascer em carregamento. A busca do
+    // próprio indicador continua onde estava e passa a ser servida do cache.
+    //
+    // Sem checar `prefs.enabled` de propósito: com a cota desligada
+    // `quota_claude` devolve `state: "disabled"` sem tocar disco nem rede
+    // (QUOTA-17), então o guard viveria em dois lugares dizendo a mesma coisa.
+    // E o comando nunca rejeita — falha de rede vira `state: "offline"` —, por
+    // isso o `.finally` é suficiente para fechar a porta em qualquer desfecho.
+    void invoke<QuotaPrefsPayload>('quota_prefs_get')
+      .then((prefs) => {
+        if (cancelled) return
+        setQuotaPrefs(prefs)
+        return invoke('quota_claude', { force: false })
+      })
+      .catch((error) => console.error('falha ao preparar a cota no boot', error))
+      .finally(() => {
+        if (!cancelled) setQuotaReady(true)
+      })
 
     const unlistenPromise = listen<QuotaPrefsPayload>('quota://prefs-changed', (event) =>
       setQuotaPrefs(event.payload),
@@ -356,25 +382,54 @@ export default function App() {
     )
   }
 
-  // BOOT-06: último terminal pronto libera a tela.
+  // BOOT-06: último terminal pronto fecha a porta da restauração.
   useEffect(() => {
     if (boot && boot.total > 0 && boot.pending.length === 0) setBoot(null)
   }, [boot])
 
+  /** SPEC: terminal-boot-loading (BOOT-04, BOOT-09, BOOT-10) — as três portas
+   * do boot, todas abertas em paralelo: a varredura de terminais/agentes, a
+   * restauração de sessão e a cota. A tela só é liberada quando as três
+   * fecham; qualquer uma pendente mantém o overlay. */
+  const booting = !agentCatalogSettled || boot !== null || !quotaReady
+
+  /** SPEC: terminal-boot-loading (BOOT-04, BOOT-09, BOOT-10) — a fase mais
+   * informativa vence. Só "abrindo os terminais" tem número; as outras são
+   * indeterminadas. A ordem dos empates segue o custo típico: a varredura de
+   * perfis é a primeira a ser anunciada porque é ela que paga um `wsl.exe` por
+   * distro, e a cota é a última porque é a única chamada de rede — anunciar
+   * "verificando sessão" enquanto o que falta é a cota mentiria sobre o que
+   * está segurando a tela. */
+  const bootLabel = boot?.total
+    ? 'Abrindo os terminais salvos…'
+    : pendingRestore
+      ? 'Sessão anterior encontrada'
+      : !agentCatalogSettled
+        ? 'Procurando terminais e agentes instalados…'
+        : boot
+          ? 'Verificando a sessão anterior…'
+          : 'Consultando a cota dos agentes…'
+
   // BOOT-07: o teto só corre quando a espera é do app. Com o modal aberto a
   // espera é do usuário, e derrubar o overlay ali revelaria a área de painéis
   // vazia atrás dele. `boot` troca de identidade a cada terminal pronto, o que
-  // rearma o `setTimeout` — o teto passa a valer por falta de progresso.
+  // rearma o `setTimeout` — o teto passa a valer por falta de progresso, e
+  // vale para as duas portas: um `quota_claude` que nunca assenta prenderia a
+  // janela do mesmo jeito que um `pty_spawn` travado.
   useEffect(() => {
-    if (!boot || pendingRestore) return
+    if (!booting || pendingRestore) return
 
     const timer = setTimeout(() => {
       console.error('boot excedeu o tempo sem progresso; liberando a tela')
       setBoot(null)
+      setQuotaReady(true)
+      setAgentCatalogSettled(true)
     }, BOOT_STALL_MS)
 
     return () => clearTimeout(timer)
-  }, [boot, pendingRestore])
+    // `booting` é derivado dos três abaixo, e é a mudança de identidade de
+    // `boot` (um terminal pronto) que rearma o teto.
+  }, [booting, boot, quotaReady, agentCatalogSettled, pendingRestore])
 
   /** Aplica um workspace ao estado do app. Usado pelo caminho sem modal
    * (SESS-02) e pela confirmação do modal (SESS-06). */
@@ -533,23 +588,43 @@ export default function App() {
 
     fetchProjectNames(setProjectNameByPath)
 
-    void invoke<AgentCatalogEntry[]>('agent_catalog').then((entries) => {
-      if (cancelled) return
-      setAgents(
-        entries.map(
-          ({ installed: _installed, supportsSessionResume: _resume, ...agent }) => agent,
-        ),
-      )
-      setInstalledIds(new Set(entries.filter((entry) => entry.installed).map((entry) => entry.id)))
-      setResumableAgentIds(
-        new Set(entries.filter((entry) => entry.supportsSessionResume).map((entry) => entry.id)),
-      )
-      setAgentCatalogSettled(true)
-    })
-    .catch((error) => {
-      console.error('falha ao ler o catálogo de agentes', error)
-      if (!cancelled) setAgentCatalogSettled(true)
-    })
+    // SPEC: terminal-boot-loading (BOOT-10) — uma varredura só: quais perfis
+    // de terminal existem e, em cada um, quais agentes estão instalados. É o
+    // que substitui o antigo `agent_catalog`, que só olhava o perfil padrão e
+    // por isso marcava "não encontrado no PATH" um `claude` que estava
+    // instalado dentro de uma distro WSL.
+    //
+    // Os três estados abaixo continuam sendo a visão do **perfil padrão** —
+    // é ela que o modal de restauração (SESS-15) e o padrão do wizard usam.
+    // A visão por caminho vive em `profileCatalogs`, consumida pelo wizard.
+    void invoke<ProfileCatalog>('agent_catalog_all')
+      .then((catalog) => {
+        if (cancelled) return
+        setProfileCatalogs(catalog.profiles)
+
+        const fallback = catalog.profiles[0]?.agents ?? []
+        const entries =
+          catalog.profiles.find((profile) => profile.profileId === catalog.defaultProfileId)
+            ?.agents ?? fallback
+
+        setAgents(
+          entries.map(
+            ({ installed: _installed, supportsSessionResume: _resume, ...agent }) => agent,
+          ),
+        )
+        setInstalledIds(
+          new Set(entries.filter((entry) => entry.installed).map((entry) => entry.id)),
+        )
+        setResumableAgentIds(
+          new Set(entries.filter((entry) => entry.supportsSessionResume).map((entry) => entry.id)),
+        )
+      })
+      .catch((error) => console.error('falha ao ler o catálogo de agentes', error))
+      // BOOT-10: erro incluso — uma varredura que falha não pode esconder o
+      // modal de restauração para sempre nem prender o overlay de boot.
+      .finally(() => {
+        if (!cancelled) setAgentCatalogSettled(true)
+      })
 
     void invoke<string | null>('agent_default').then((id) => {
       if (!cancelled) setDefaultAgentId(id)
@@ -900,6 +975,9 @@ export default function App() {
                         agents={agents}
                         installedIds={installedIds}
                         defaultAgentId={defaultAgentId}
+                        // SPEC: terminal-boot-loading (BOOT-12) — a etapa
+                        // AGENT escolhe o catálogo pelo caminho da pasta.
+                        profileCatalogs={profileCatalogs}
                         onConfirm={(cwd, agentId, _projectId, permissionMode) =>
                           handleWizardConfirm(terminal.id, cwd, agentId, permissionMode)
                         }
@@ -1266,17 +1344,11 @@ export default function App() {
           janela desde o primeiro quadro. Fica ABAIXO do backdrop do modal de
           restauração (z-index 900 contra 1000), então o modal aparece por
           cima do carregamento em vez de esperar por ele. */}
-      {boot && (
+      {booting && (
         <BootSplash
-          label={
-            boot.total > 0
-              ? 'Abrindo os terminais salvos…'
-              : pendingRestore
-                ? 'Sessão anterior encontrada'
-                : 'Verificando a sessão anterior…'
-          }
+          label={bootLabel}
           progress={
-            boot.total > 0
+            boot && boot.total > 0
               ? { done: boot.total - boot.pending.length, total: boot.total }
               : null
           }

@@ -160,6 +160,8 @@ pub fn run() {
             // SPEC: agent-selection (AGT-01, AGT-03, AGT-04)
             commands::agents::agent_catalog,
             commands::agents::agent_default,
+            // SPEC: terminal-boot-loading (BOOT-10)
+            commands::agents::agent_catalog_all,
             // SPEC: editor-launch (EDITOR-02, EDITOR-04)
             commands::editors::editor_catalog,
             commands::editors::editor_open,
@@ -173,6 +175,8 @@ pub fn run() {
             commands::shells::shell_profiles_list,
             commands::shells::shell_profile_get,
             commands::shells::shell_profile_set,
+            // SPEC: terminal-boot-loading (BOOT-11)
+            commands::shells::shell_profile_for_path,
         ])
         .build(tauri::generate_context!())
         .expect("erro ao iniciar o SwarmDeck");

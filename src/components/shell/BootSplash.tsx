@@ -1,4 +1,4 @@
-// SPEC: terminal-boot-loading (BOOT-04, BOOT-05, BOOT-06, BOOT-08)
+// SPEC: terminal-boot-loading (BOOT-04, BOOT-05, BOOT-06, BOOT-08, BOOT-09)
 
 /**
  * Full-window boot overlay.
@@ -35,6 +35,7 @@ export default function BootSplash({ label, progress }: BootSplashProps) {
   return (
     <div
       className="boot-splash"
+      data-testid="boot-splash"
       role="status"
       aria-live="polite"
       aria-busy="true"
