@@ -140,6 +140,11 @@ function hostCatalog(agents: unknown[]) {
  * cá no fallback, senão `project_list` volta `undefined` e o wizard quebra. */
 function projectInvoke(command: string, args?: Record<string, unknown>) {
   if (command === 'project_list') return Promise.resolve([])
+  // AD-032: o `SettingsShell`, que o `App` monta como overlay, usa
+  // `agent_catalog` (o perfil padrão) e não `agent_catalog_all`. Mora aqui, no
+  // fallback compartilhado, porque nenhum bloco deste arquivo testa o catálogo
+  // de Configurações — todos só precisam que ele não devolva `undefined`.
+  if (command === 'agent_catalog') return Promise.resolve([])
   if (command === 'project_sandbox_dir') return Promise.resolve('/home/user/.swarmdeck/sandbox')
   if (command === 'project_create') {
     return Promise.resolve({

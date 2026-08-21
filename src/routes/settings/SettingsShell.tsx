@@ -194,15 +194,26 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
   useEffect(() => {
     let cancelled = false
 
-    void invoke<AgentCatalogEntry[]>('agent_catalog').then((entries) => {
-      if (cancelled) return
-      setAgents(entries.map(({ installed: _installed, ...agent }) => agent))
-      setInstalledIds(new Set(entries.filter((entry) => entry.installed).map((entry) => entry.id)))
-    })
+    // `agent_catalog` (não `agent_catalog_all`): Configurações é sobre o perfil
+    // padrão por definição — AD-032. O `.catch` não é decorativo: sem ele uma
+    // leitura que falha vira rejeição não tratada e a seção fica sem lista
+    // **sem nenhum registro** de por quê. Painel vazio é degradação aceitável;
+    // silêncio, não.
+    void invoke<AgentCatalogEntry[]>('agent_catalog')
+      .then((entries) => {
+        if (cancelled) return
+        setAgents(entries.map(({ installed: _installed, ...agent }) => agent))
+        setInstalledIds(
+          new Set(entries.filter((entry) => entry.installed).map((entry) => entry.id)),
+        )
+      })
+      .catch((error) => console.error('falha ao ler o catálogo de agentes', error))
 
-    void invoke<string | null>('agent_default').then((id) => {
-      if (!cancelled) setDefaultAgentId(id)
-    })
+    void invoke<string | null>('agent_default')
+      .then((id) => {
+        if (!cancelled) setDefaultAgentId(id)
+      })
+      .catch((error) => console.error('falha ao ler o agente padrão', error))
 
     void loadProjects()
     void loadTerminalCounts()
