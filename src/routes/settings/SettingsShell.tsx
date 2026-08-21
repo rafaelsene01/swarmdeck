@@ -15,16 +15,16 @@ import UpdateSettings, { type UpdateState } from '../../components/settings/Upda
 
 type SectionId = 'general' | 'agents' | 'projects' | 'updates'
 
-// QUOTA-26: mesma semente da migração 007 — se `quota_prefs_get` falhar, a
-// seção ainda abre com a lista de provedores de fábrica.
+// QUOTA-26: se `quota_prefs_get` falhar, a seção ainda abre com a lista de
+// provedores de fábrica.
+//
+// AD-033: espelha `db::quota_prefs::default_providers`, que passou a ser só
+// `claude-code`. `codex-cli` e `opencode` não têm endpoint de consumo, então
+// não há cota deles a listar — o switch é travado e o popover não os mostra.
 const DEFAULT_QUOTA_PREFS: QuotaPrefs = {
   enabled: true,
   window: 'both',
-  providers: [
-    { id: 'claude-code', enabled: true },
-    { id: 'codex-cli', enabled: true },
-    { id: 'opencode', enabled: true },
-  ],
+  providers: [{ id: 'claude-code', enabled: true }],
 }
 
 // SET-07: ícone por seção — nenhuma escolha específica foi pedida, reaproveita

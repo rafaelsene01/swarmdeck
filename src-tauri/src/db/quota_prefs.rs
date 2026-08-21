@@ -18,16 +18,20 @@ pub struct QuotaProvider {
     pub enabled: bool,
 }
 
-/// Lista semeada pela migração 007, também usada como fallback quando a
-/// coluna guarda JSON ilegível — o indicador nunca fica sem provedor.
+/// Fallback quando a coluna `providers` está ausente do JSON ou guarda JSON
+/// ilegível — o indicador nunca fica sem provedor.
+///
+/// AD-033: só `claude-code`. Deixou de espelhar a semente da migração 007
+/// (que gravou os três ligados): `codex-cli` e `opencode` não têm endpoint de
+/// consumo, então não há cota deles a listar, e a UI trava o switch por isso
+/// (`providerMeta().hasQuota`). A migração 007 **não** foi reescrita nem
+/// migrada: quem consome deriva o comportamento de `hasQuota`, então um banco
+/// com a semente antiga se comporta igual a um novo.
 pub fn default_providers() -> Vec<QuotaProvider> {
-    ["claude-code", "codex-cli", "opencode"]
-        .into_iter()
-        .map(|id| QuotaProvider {
-            id: id.to_string(),
-            enabled: true,
-        })
-        .collect()
+    vec![QuotaProvider {
+        id: "claude-code".to_string(),
+        enabled: true,
+    }]
 }
 
 /// Preferência do indicador de cota. `Serialize`/`Deserialize` porque este
@@ -83,8 +87,12 @@ mod tests {
         Db::open_in_memory().expect("abrir banco em memória")
     }
 
+    // AD-033: `default_providers()` deixou de espelhar a semente da migração
+    // 007, então este teste passa a afirmar o que a migração de fato gravou —
+    // é o dado que um banco existente tem, e o que o app precisa continuar
+    // lendo sem erro. Quem decide o que aparece é `hasQuota`, na UI.
     #[test]
-    fn get_num_banco_recem_migrado_devolve_os_defaults() {
+    fn get_num_banco_recem_migrado_devolve_a_semente_da_migracao_007() {
         let db = open_db();
 
         let prefs = get(db.conn()).expect("get");
@@ -94,8 +102,26 @@ mod tests {
             QuotaPrefs {
                 enabled: true,
                 window: "both".to_string(),
-                providers: default_providers(),
+                providers: ["claude-code", "codex-cli", "opencode"]
+                    .into_iter()
+                    .map(|id| QuotaProvider {
+                        id: id.to_string(),
+                        enabled: true,
+                    })
+                    .collect(),
             }
+        );
+    }
+
+    // AD-033: o fallback é só o provedor com cota real.
+    #[test]
+    fn default_providers_tem_so_o_claude_ligado() {
+        assert_eq!(
+            default_providers(),
+            vec![QuotaProvider {
+                id: "claude-code".to_string(),
+                enabled: true,
+            }]
         );
     }
 

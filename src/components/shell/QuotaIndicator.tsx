@@ -160,6 +160,19 @@ export default function QuotaIndicator({
     })
   }
 
+  /**
+   * AD-033 — revoga a parte de QUOTA-26 que listava provedor **sem** endpoint
+   * de consumo com o selo "sem cota". Um provedor sem cota não tem nada a
+   * relatar aqui, e o switch dele em Configurações › Geral é travado
+   * justamente por isso (`GeneralPanel`, `providerMeta().hasQuota`).
+   *
+   * Filtro derivado de `hasQuota`, e não uma migração das prefs: um banco já
+   * semeado com `codex-cli`/`opencode` ligados (migração 007) passa a se
+   * comportar certo na hora, e no dia em que um deles ganhar endpoint volta ao
+   * popover junto com o switch destravando — sem dado velho para corrigir.
+   */
+  const listedProviderIds = providerIds.filter((id) => providerMeta(id).hasQuota)
+
   const windows = state.status === 'ready' ? state.snapshot.windows : []
   const kinds = KINDS_FOR[windowPref]
   // No popover a leitura vai da janela mais curta para a mais longa: 5h em
@@ -168,7 +181,7 @@ export default function QuotaIndicator({
   const loading = state.status === 'loading'
   // QUOTA-27: o centro do anel leva o glifo do provedor padrão — o primeiro
   // da lista, que é o Claude na configuração de fábrica.
-  const defaultProviderId = providerIds[0] ?? 'claude-code'
+  const defaultProviderId = listedProviderIds[0] ?? providerIds[0] ?? 'claude-code'
 
   const open = () => {
     setHovered(true)
@@ -369,23 +382,10 @@ export default function QuotaIndicator({
             </button>
           </div>
 
-          {providerIds.map((id) => {
+          {/* AD-033: `listedProviderIds` já descartou quem não tem endpoint
+              de consumo, então aqui todo `id` tem cota a mostrar. */}
+          {listedProviderIds.map((id) => {
             const meta = providerMeta(id)
-
-            // QUOTA-26: só o Claude tem endpoint de consumo hoje; os demais
-            // rendem o selo e a frase do motivo, nunca uma barra em 0%.
-            if (!meta.hasQuota) {
-              return (
-                <div className="quota-indicator__provider" key={id} data-provider={id}>
-                  <div className="quota-indicator__provider-head">
-                    <ProviderIcon id={id} size={16} />
-                    <span className="quota-indicator__provider-name">{meta.name}</span>
-                    {meta.badge && <span className="quota-indicator__badge">{meta.badge}</span>}
-                  </div>
-                  {meta.note && <p className="quota-indicator__note">{meta.note}</p>}
-                </div>
-              )
-            }
 
             return (
               <div className="quota-indicator__provider" key={id} data-provider={id}>

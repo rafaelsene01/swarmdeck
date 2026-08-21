@@ -142,23 +142,32 @@ describe('GeneralPanel — catálogo completo com linhas travadas (QUOTA-31)', (
     }
   })
 
-  it('a linha travada mostra o estado gravado, sem inventar valor', () => {
-    renderPanel(
+  // AD-033: a linha travada mostra `false` mesmo com a preferência gravada
+  // dizendo `true` — é o caso real de `codex-cli` e `opencode`, semeados como
+  // ligados pela migração 007. Marcado-e-desabilitado lê como "ligado e você
+  // não pode desligar", e esses provedores não aparecem mais no popover.
+  it('a linha travada mostra false, mesmo gravada como ligada', () => {
+    const onChange = renderPanel(
       {
         enabled: true,
         window: 'both',
         providers: [
           { id: 'claude-code', enabled: true },
           { id: 'codex-cli', enabled: true },
+          { id: 'opencode', enabled: true },
         ],
       },
       CATALOG_IDS,
     )
 
-    // Codex está gravado como ligado: o switch travado continua marcado.
-    expect(screen.getByRole('checkbox', { name: 'Mostrar Codex no popover' })).toBeChecked()
-    // Kimi nunca foi gravado: entra desmarcado.
+    expect(screen.getByRole('checkbox', { name: 'Mostrar Codex no popover' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Mostrar opencode no popover' })).not.toBeChecked()
+    // Kimi nunca foi gravado: entra desmarcado pelo caminho de sempre.
     expect(screen.getByRole('checkbox', { name: 'Mostrar Kimi no popover' })).not.toBeChecked()
+    // Claude tem cota: segue mostrando o valor gravado.
+    expect(screen.getByRole('checkbox', { name: 'Mostrar Claude no popover' })).toBeChecked()
+    // AD-033: é só apresentação — nada é gravado por conta desta correção.
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('id do catálogo já presente nas prefs não vira linha duplicada', () => {

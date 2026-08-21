@@ -81,17 +81,30 @@ export default function GeneralPanel({
    * `onChange`, então nada fora das prefs é gravado.
    *
    * `locked` acompanha `hasQuota`: só o provedor com endpoint de consumo real
-   * (Claude, hoje) tem o que ligar, desligar ou reordenar — para os demais o
-   * popover já rende só o selo e a frase do motivo, e um controle sem efeito
-   * observável seria interface que mente. Quando o segundo provedor ganhar
-   * cota, `hasQuota` vira `true` e a linha destrava sozinha.
+   * (Claude, hoje) tem o que ligar, desligar ou reordenar. Quando o segundo
+   * provedor ganhar cota, `hasQuota` vira `true` e a linha destrava sozinha.
+   *
+   * A linha travada renderiza `false`, **mesmo que a preferência persistida
+   * diga `true`** (é o caso de `codex-cli` e `opencode`, semeados como `true`
+   * pela migração 007 — `db::quota_prefs::default_providers`). Um switch
+   * marcado e desabilitado lê como "ligado e você não pode desligar", que é a
+   * leitura errada: para esses provedores não há cota a mostrar.
+   *
+   * AD-033: as prefs **não** são tocadas — nenhuma migração. Quem passou a
+   * respeitar `hasQuota` do outro lado foi o `QuotaIndicator`, que também
+   * deixou de listar provedor sem cota no popover. Então as duas telas
+   * concordam: travado = `false` aqui, ausente lá. Quando um provedor ganhar
+   * cota, os dois lados voltam juntos, sem dado velho para corrigir.
    */
   const rows = [
     ...providerList.map((provider) => ({ id: provider.id, enabled: provider.enabled })),
     ...agentIds
       .filter((id) => !providerList.some((provider) => provider.id === id))
       .map((id) => ({ id, enabled: false })),
-  ].map((row) => ({ ...row, locked: !providerMeta(row.id).hasQuota }))
+  ].map((row) => {
+    const locked = !providerMeta(row.id).hasQuota
+    return { ...row, locked, enabled: locked ? false : row.enabled }
+  })
 
   const move = (id: string, delta: number) => {
     const index = providerList.findIndex((provider) => provider.id === id)

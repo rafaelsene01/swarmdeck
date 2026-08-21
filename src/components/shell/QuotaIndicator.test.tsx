@@ -216,7 +216,9 @@ describe('QuotaIndicator', () => {
   })
 
   // QUOTA-26: o popover lista os provedores marcados, na ordem recebida.
-  it('popover lista os provedores na ordem de providerIds', async () => {
+  // AD-033: provedor sem endpoint de consumo não entra mais no popover — não
+  // havia o que ele relatasse, e o switch dele em Geral é travado por isso.
+  it('popover lista só os provedores com cota, na ordem de providerIds', async () => {
     invokeMock.mockResolvedValue(okSnapshot())
     render(
       <QuotaIndicator window="both" providerIds={['claude-code', 'codex-cli', 'opencode']} />,
@@ -228,10 +230,8 @@ describe('QuotaIndicator', () => {
 
     expect(
       [...tooltip.querySelectorAll('[data-provider]')].map((el) => el.getAttribute('data-provider')),
-    ).toEqual(['claude-code', 'codex-cli', 'opencode'])
-    // Só o Claude tem cota: os demais mostram o selo, nunca uma barra em 0%.
-    expect(tooltip).toHaveTextContent('sem sessão')
-    expect(tooltip).toHaveTextContent('sem cota')
+    ).toEqual(['claude-code'])
+    expect(tooltip).not.toHaveTextContent('sem cota')
     expect(tooltip.querySelectorAll('[data-window]')).toHaveLength(2)
   })
 
