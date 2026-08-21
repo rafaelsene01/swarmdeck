@@ -1,12 +1,14 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-14), terminal-screenshot (SHOT-13), agent-permission-mode (PERM-01)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-14), terminal-screenshot (SHOT-13), agent-permission-mode (PERM-01), terminal-font (TFONT-01)
 
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 
 // Same `vi.hoisted` pattern as `App.test.tsx` — the `vi.mock` factories below
 // are hoisted above these imports by Vitest's transform.
-const { invokeMock, onDataHandlers, keyHandlers, pasteMock, writeMock } = vi.hoisted(() => ({
+const { invokeMock, onDataHandlers, keyHandlers, pasteMock, writeMock, termOptions } = vi.hoisted(() => ({
   invokeMock: vi.fn(),
+  /** TFONT-01: as options passadas ao construtor do xterm. */
+  termOptions: [] as Array<Record<string, unknown>>,
   onDataHandlers: [] as Array<(data: string) => void>,
   /** TERM-14: os handlers passados a `attachCustomKeyEventHandler`. */
   keyHandlers: [] as Array<(event: KeyboardEvent) => boolean>,
@@ -26,6 +28,9 @@ vi.mock('@xterm/xterm', () => ({
   Terminal: class {
     rows = 24
     cols = 80
+    constructor(options: Record<string, unknown>) {
+      termOptions.push(options)
+    }
     loadAddon() {}
     open() {}
     write(data: string) {
@@ -308,5 +313,25 @@ describe('TerminalPane — modo de permissão (PERM-01)', () => {
     render(<TerminalPane cwd="." agent="codex-cli" />)
 
     expect(spawnArgs()?.permissionMode).toBeNull()
+  })
+})
+
+/**
+ * SPEC: terminal-font (TFONT-01)
+ *
+ * O default do xterm (`courier-new, courier, monospace`) não tem os glifos de
+ * ícone do prompt. A lista precisa terminar na fonte embarcada — e começar
+ * por uma monoespaçada do sistema, que é quem dá a métrica da célula.
+ */
+describe('TerminalPane — fonte do terminal (TFONT-01)', () => {
+  it('cria o xterm com a Nerd Font embarcada como último fallback', () => {
+    invokeMock.mockResolvedValue('t-font')
+    termOptions.length = 0
+
+    render(<TerminalPane cwd="." />)
+
+    const fontFamily = String(termOptions.at(-1)?.fontFamily ?? '')
+    expect(fontFamily).toMatch(/monospace/)
+    expect(fontFamily.trim().endsWith("'Symbols Nerd Font Mono'")).toBe(true)
   })
 })

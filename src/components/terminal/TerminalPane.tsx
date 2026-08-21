@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-06, TERM-14), terminal-chrome (CHROME-01), session-restore (SESS-12, SESS-13), terminal-screenshot (SHOT-13), agent-permission-mode (PERM-01)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-06, TERM-14), terminal-chrome (CHROME-01), session-restore (SESS-12, SESS-13), terminal-screenshot (SHOT-13), agent-permission-mode (PERM-01), terminal-font (TFONT-01, TFONT-02)
 // SPEC: wsl-terminal-profile (WSLP-12)
 // SPEC: terminal-boot-loading (BOOT-02, BOOT-03, BOOT-06)
 
@@ -7,6 +7,16 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { invoke, Channel } from '@tauri-apps/api/core'
 import '@xterm/xterm/css/xterm.css'
+
+/**
+ * SPEC: terminal-font (TFONT-01, TFONT-02)
+ *
+ * Ordem importa: as monoespaçadas do sistema primeiro (é delas que sai a
+ * métrica da célula), a Nerd Font embarcada por último, só como fallback de
+ * glifo. Invertê-la faria o xterm medir a célula por uma fonte de ícones.
+ */
+const TERMINAL_FONT_FAMILY =
+  "ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace, 'Symbols Nerd Font Mono'"
 
 export interface TerminalPaneProps {
   /** Diretório de trabalho da sessão. */
@@ -102,6 +112,12 @@ export default function TerminalPane({
     const terminal = new Terminal({
       convertEol: true,
       cursorBlink: true,
+      // SPEC: terminal-font (TFONT-01) — sem `fontFamily` o xterm usa
+      // `courier-new, courier, monospace`, que não tem os glifos de ícone do
+      // prompt (ramo do git, seta do Powerline). A Nerd Font entra por último:
+      // o texto sai na monoespaçada do sistema e só os pontos de código que
+      // faltam nela caem no arquivo embarcado.
+      fontFamily: TERMINAL_FONT_FAMILY,
       theme: { background: '#0a0a0c', foreground: '#e8e8ea', cursor: '#f5b700' },
     })
     const fitAddon = new FitAddon()

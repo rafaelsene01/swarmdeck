@@ -1,3 +1,17 @@
+/* SPEC: terminal-font (TFONT-01, TFONT-02)
+   Glifos de ícone (Powerline, Devicons, Font Awesome) que prompts de shell
+   como Starship e oh-my-zsh emitem não existem em nenhuma fonte que o sistema
+   garanta. A Symbols Nerd Font Mono viaja no bundle e entra como *fallback*:
+   o texto continua na monoespaçada do sistema e só os pontos de código sem
+   glifo caem nela, resolvidos pelo fallback por caractere do WebView. */
+@font-face {
+  font-family: 'Symbols Nerd Font Mono';
+  src: url('./assets/fonts/SymbolsNerdFontMono-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
 :root {
   --bg: #0d0d0f;
   --fg: #e8e8ea;
