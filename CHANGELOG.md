@@ -1,6 +1,12 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.40] - 2026-08-21
+
+### Correções
+
+- *(wsl)* Corrigir PATH da sonda e perfil de caminho windows
+
 ## [0.1.39] - 2026-08-21
 
 ### Outros
