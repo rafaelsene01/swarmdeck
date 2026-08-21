@@ -11,6 +11,8 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 use thiserror::Error;
 
+use crate::shells::TerminalProfile;
+
 /// Endpoint de uso da Anthropic. Contrato privado, não documentado
 /// publicamente — comportamento verificado contra `JuanjoFuchs/ccburn`
 /// (`src/ccburn/data/usage_client.py`) em 2026-08-15.
@@ -195,8 +197,43 @@ fn read_credential(path: &Path) -> Option<Credential> {
     })
 }
 
-fn credential_path() -> Option<PathBuf> {
-    dirs::home_dir().map(|home| home.join(".claude").join(".credentials.json"))
+/// Caminho da credencial **num** perfil. `Host` é `dirs::home_dir()`, como
+/// sempre; numa distro WSL é o `HOME` de lá em forma UNC
+/// (`shells::home::wsl_home`).
+fn credential_path_in(profile: &TerminalProfile) -> Option<PathBuf> {
+    let home = match profile {
+        TerminalProfile::Host => dirs::home_dir()?,
+        TerminalProfile::Wsl { distro } => crate::shells::home::wsl_home(distro)?,
+    };
+    Some(home.join(".claude").join(".credentials.json"))
+}
+
+/// Ordem em que os perfis são tentados: o padrão primeiro, depois os demais
+/// que `list_profiles` conhece, sem repetir. Puro — recebe a lista já pronta.
+///
+/// O fallback existe porque a credencial descreve uma **conta**, não uma
+/// máquina: a cota que o endpoint devolve é a mesma independentemente de o
+/// `claude login` ter rodado no Windows ou dentro da distro. Então achar em
+/// qualquer perfil é melhor que não mostrar nada — o caso real que motivou
+/// isto é um Windows com tudo configurado no Ubuntu da WSL, onde
+/// `dirs::home_dir()` nunca teve `.claude/`.
+///
+/// O padrão vem primeiro, e não é só estética: se host e distro tiverem
+/// contas **diferentes** logadas, a cota mostrada tem de ser a do perfil que
+/// o usuário escolheu para rodar os agentes.
+fn credential_candidates(
+    default_profile: &TerminalProfile,
+    available: &[String],
+) -> Vec<TerminalProfile> {
+    let mut candidates = vec![default_profile.clone()];
+    for id in available {
+        if let Some(profile) = TerminalProfile::parse_id(id) {
+            if profile != *default_profile {
+                candidates.push(profile);
+            }
+        }
+    }
+    candidates
 }
 
 fn retry_at_from(retry_after_secs: Option<u64>, now_ms: i64) -> i64 {
@@ -296,8 +333,19 @@ fn real_now_ms() -> i64 {
         .unwrap_or(0)
 }
 
-fn real_read_credential() -> Option<Credential> {
-    read_credential(&credential_path()?)
+/// Percorre os candidatos e devolve a primeira credencial legível. `None`
+/// quando nenhum perfil tem `.claude/.credentials.json` utilizável — é o que
+/// vira `state: "no_credential"` na UI.
+fn real_read_credential(default_profile: &TerminalProfile) -> Option<Credential> {
+    let available: Vec<String> = crate::shells::list::list_profiles()
+        .into_iter()
+        .map(|entry| entry.id)
+        .collect();
+
+    credential_candidates(default_profile, &available)
+        .iter()
+        .filter_map(credential_path_in)
+        .find_map(|path| read_credential(&path))
 }
 
 /// Piso de cache: uma leitura com menos de 5 minutos é servida sem nova
@@ -369,8 +417,85 @@ where
 
 /// Versão de produção: caminho real, `reqwest` real, relógio real, cache
 /// de `state`.
-pub async fn fetch(state: &QuotaCache, force: bool) -> Result<(ClaudeQuota, i64), QuotaError> {
-    fetch_cached_with(state, force, real_read_credential, real_http, real_now_ms).await
+///
+/// `default_profile` decide de onde a credencial é lida (QUOTA-15): num
+/// Windows cujo Claude Code vive dentro da distro, o `.claude/` do host não
+/// existe — ver `credential_candidates`.
+pub async fn fetch(
+    state: &QuotaCache,
+    force: bool,
+    default_profile: &TerminalProfile,
+) -> Result<(ClaudeQuota, i64), QuotaError> {
+    fetch_cached_with(
+        state,
+        force,
+        || real_read_credential(default_profile),
+        real_http,
+        real_now_ms,
+    )
+    .await
+}
+
+#[cfg(test)]
+mod credential_profile_tests {
+    use super::*;
+
+    fn wsl(distro: &str) -> TerminalProfile {
+        TerminalProfile::Wsl {
+            distro: distro.to_string(),
+        }
+    }
+
+    // QUOTA-15: o caso que motivou a mudança — Windows com tudo configurado
+    // na distro. O padrão é a distro, e ela é o primeiro lugar procurado.
+    #[test]
+    fn candidatos_comecam_pelo_perfil_padrao() {
+        let candidates = credential_candidates(
+            &wsl("Ubuntu-24.04"),
+            &[
+                "host".to_string(),
+                "wsl:Ubuntu-24.04".to_string(),
+                "wsl:Debian".to_string(),
+            ],
+        );
+
+        assert_eq!(
+            candidates,
+            vec![wsl("Ubuntu-24.04"), TerminalProfile::Host, wsl("Debian")]
+        );
+    }
+
+    // O padrão nunca é tentado duas vezes, mesmo estando na lista.
+    #[test]
+    fn candidatos_nao_repetem_o_perfil_padrao() {
+        let candidates = credential_candidates(
+            &TerminalProfile::Host,
+            &["host".to_string(), "wsl:Ubuntu-24.04".to_string()],
+        );
+
+        assert_eq!(candidates, vec![TerminalProfile::Host, wsl("Ubuntu-24.04")]);
+    }
+
+    // Sem WSL registrada, o comportamento é exatamente o de antes desta
+    // mudança: um candidato só, o host.
+    #[test]
+    fn sem_wsl_registrada_o_unico_candidato_e_o_host() {
+        let candidates = credential_candidates(&TerminalProfile::Host, &["host".to_string()]);
+
+        assert_eq!(candidates, vec![TerminalProfile::Host]);
+    }
+
+    // Id ilegível na lista é descartado, não vira candidato nem derruba a
+    // busca — `list_profiles` monta os ids, então isto é cinto de segurança.
+    #[test]
+    fn id_invalido_na_lista_e_ignorado() {
+        let candidates = credential_candidates(
+            &TerminalProfile::Host,
+            &["lixo".to_string(), "wsl:Ubuntu-24.04".to_string()],
+        );
+
+        assert_eq!(candidates, vec![TerminalProfile::Host, wsl("Ubuntu-24.04")]);
+    }
 }
 
 #[cfg(test)]

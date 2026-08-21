@@ -47,7 +47,6 @@ function renderWizard(props: Partial<Parameters<typeof PaneWizard>[0]> = {}) {
     <PaneWizard
       agents={CATALOG}
       installedIds={new Set(CATALOG.map((a) => a.id))}
-      defaultAgentId="claude-code"
       onConfirm={vi.fn()}
       onCancel={vi.fn()}
       {...props}
@@ -100,7 +99,7 @@ describe('PaneWizard', () => {
     const onConfirm = vi.fn()
     // Sem padrão, para o `claude-code` do resultado provar que veio do
     // clique e não da pré-seleção.
-    renderWizard({ onConfirm, defaultAgentId: null })
+    renderWizard({ onConfirm })
     await waitForList()
 
     fireEvent.click(screen.getByRole('button', { name: /alpha/ }))
@@ -140,8 +139,9 @@ describe('PaneWizard', () => {
     await waitFor(() => expect(activeStep()).toBe('2'))
     expect(screen.getByText('/data/swarmdeck/sandbox')).toBeInTheDocument()
 
+    // AD-035: nenhum ladrilho foi clicado, então vale "Terminal" (shell puro).
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
-    expect(onConfirm).toHaveBeenCalledWith('/data/swarmdeck/sandbox', 'claude-code', null, 'auto')
+    expect(onConfirm).toHaveBeenCalledWith('/data/swarmdeck/sandbox', null, null, null)
   })
 
   it('"Import Project" com pasta nova chama project_create com o nome da última pasta e avança (P2 AC4)', async () => {
@@ -176,7 +176,7 @@ describe('PaneWizard', () => {
     await waitFor(() => expect(activeStep()).toBe('2'))
 
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
-    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/novo-projeto', 'claude-code', 'n', 'auto')
+    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/novo-projeto', null, 'n', null)
   })
 
   it('"Import Project" com pasta já registrada seleciona o projeto existente e avança (P2 AC5)', async () => {
@@ -191,7 +191,7 @@ describe('PaneWizard', () => {
     expect(invokeMock).not.toHaveBeenCalledWith('project_create', expect.anything())
 
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
-    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/alpha', 'claude-code', 'a', 'auto')
+    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/alpha', null, 'a', null)
   })
 
   it('"New Project" abre o formulário; confirmar chama project_create_in e avança com o projeto criado (P2 AC7)', async () => {
@@ -237,7 +237,7 @@ describe('PaneWizard', () => {
     await waitFor(() => expect(activeStep()).toBe('2'))
 
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
-    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/teste-git', 'claude-code', 'c', 'auto')
+    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/teste-git', null, 'c', null)
   })
 
   it('falha de project_list mantém a etapa PROJECT e exibe a mensagem', async () => {
@@ -370,6 +370,9 @@ describe('PaneWizard — modo de permissão (PERM-05)', () => {
     renderWizard({ onConfirm })
 
     fireEvent.click(await screen.findByText('alpha'))
+    // AD-035: o agente precisa ser escolhido — o seletor de modo só aparece
+    // depois, porque é o agente selecionado que declara os modos (PERM-05).
+    fireEvent.click(await screen.findByRole('button', { name: 'Claude Code' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Sem verificação' }))
     fireEvent.click(screen.getByRole('button', { name: 'Nova sessão' }))
 
@@ -381,9 +384,13 @@ describe('PaneWizard — modo de permissão (PERM-05)', () => {
     )
   })
 
-  it('agente sem modos declarados não manda modo nenhum', async () => {
+  // AD-035: a pré-seleção passou a ser "Terminal" (shell puro), que não
+  // declara modo nenhum — é este o caminho que antes era coberto por um
+  // `defaultAgentId: 'codex-cli'`. Mesma invariante: sem modos declarados,
+  // nenhum modo vai no `onConfirm`.
+  it('sem agente escolhido não mostra seletor de modo nem manda modo', async () => {
     const onConfirm = vi.fn()
-    renderWizard({ onConfirm, defaultAgentId: 'codex-cli' })
+    renderWizard({ onConfirm })
 
     fireEvent.click(await screen.findByText('alpha'))
     const confirm = await screen.findByRole('button', { name: 'Nova sessão' })
@@ -392,7 +399,7 @@ describe('PaneWizard — modo de permissão (PERM-05)', () => {
 
     fireEvent.click(confirm)
 
-    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/alpha', 'codex-cli', 'a', null)
+    expect(onConfirm).toHaveBeenCalledWith('/home/user/dev/alpha', null, 'a', null)
   })
 })
 
@@ -454,7 +461,10 @@ describe('PaneWizard — agentes do terminal do caminho', () => {
     expect(screen.getByRole('button', { name: 'Claude Code' })).toBeEnabled()
   })
 
-  it('pasta no host mantém desabilitado o agente que só existe na distro', async () => {
+  // AD-035: a grade lista somente o instalado naquele terminal, então o agente
+  // que só existe na distro não aparece — antes aparecia desabilitado. Sobra o
+  // ladrilho "Terminal", que é a pré-seleção e não depende de comando nenhum.
+  it('pasta no host não lista o agente que só existe na distro', async () => {
     mockProfile('host')
     renderWizard({ profileCatalogs: PROFILES, installedIds: new Set(['claude-code']) })
 
@@ -462,7 +472,8 @@ describe('PaneWizard — agentes do terminal do caminho', () => {
     await waitFor(() => expect(activeStep()).toBe('2'))
 
     expect(screen.getByText('Windows (padrão)')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Claude Code' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Claude Code' })).toBeNull()
+    expect(screen.getByRole('button', { name: /^Terminal$/ })).toBeInTheDocument()
   })
 
   it('consulta de perfil que falha cai no catálogo das props, como antes', async () => {

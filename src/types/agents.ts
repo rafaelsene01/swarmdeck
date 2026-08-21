@@ -22,7 +22,8 @@ export interface AgentCatalogEntry extends AgentDescriptor {
 
 /** Um perfil de terminal e os agentes instalados **nele** (BOOT-10). */
 export interface ProfileCatalogEntry {
-  /** `"host"` ou `"wsl:<distro>"` — o mesmo id de `shell_profiles_list`. */
+  /** `"host"` ou `"wsl:<distro>"` — a forma de `TerminalProfile::id()`, a
+   * mesma que `shell_profile_for_path` devolve. */
   profileId: string
   /** Rótulo de exibição: "Windows (padrão)", "Ubuntu-24.04", "… (WSL1)". */
   label: string

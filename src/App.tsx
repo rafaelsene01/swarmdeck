@@ -220,7 +220,6 @@ export default function App() {
    * **nele**. Repassado ao wizard, que escolhe a entrada pelo caminho da pasta
    * em vez de usar sempre a do perfil padrão (BOOT-12). */
   const [profileCatalogs, setProfileCatalogs] = useState<ProfileCatalogEntry[]>([])
-  const [defaultAgentId, setDefaultAgentId] = useState<string | null>(null)
   // Agente escolhido por sessão (AGT-03): sobrescreve o padrão só para o
   // terminal criado com aquela escolha, sem tocar a preferência global.
   const [agentByTerminalId, setAgentByTerminalId] = useState<Record<string, string | null>>({})
@@ -626,9 +625,9 @@ export default function App() {
         if (!cancelled) setAgentCatalogSettled(true)
       })
 
-    void invoke<string | null>('agent_default').then((id) => {
-      if (!cancelled) setDefaultAgentId(id)
-    })
+    // AD-035: `agent_default` saiu daqui. O wizard pré-marca "Terminal", não
+    // um agente, então não há o que pré-resolver. O comando segue registrado e
+    // é usado por Configurações › Agentes, que é onde a preferência vive.
 
     return () => {
       cancelled = true
@@ -974,7 +973,6 @@ export default function App() {
                       <PaneWizard
                         agents={agents}
                         installedIds={installedIds}
-                        defaultAgentId={defaultAgentId}
                         // SPEC: terminal-boot-loading (BOOT-12) — a etapa
                         // AGENT escolhe o catálogo pelo caminho da pasta.
                         profileCatalogs={profileCatalogs}

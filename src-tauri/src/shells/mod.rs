@@ -1,4 +1,5 @@
 // SPEC: wsl-terminal-profile (WSLP-07, WSLP-08)
+// SPEC: quota-indicator (QUOTA-15)
 
 //! Qual máquina um terminal, uma sonda de CLI, ou um `git init` deve usar.
 //! `TerminalProfile` é a única representação disso: `Host` (comportamento
@@ -10,6 +11,9 @@
 
 use std::path::Path;
 
+// SPEC: quota-indicator (QUOTA-15) — `home` chama `wsl.exe`, como `wrap`; a
+// nota "sem I/O" acima vale para o corpo deste módulo, não para os filhos.
+pub mod home;
 pub mod list;
 pub mod prefs;
 pub mod wrap;

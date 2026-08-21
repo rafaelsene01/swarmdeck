@@ -224,69 +224,31 @@ describe('SettingsShell — seção Geral do indicador de cota (QUOTA-08/09/10)'
   })
 })
 
-// SPEC: wsl-terminal-profile (WSLP-02)
-describe('SettingsShell — seletor de perfil de terminal (WSLP-02)', () => {
-  const PROFILES = [
-    { id: 'host', label: 'Windows (padrão)', wsl1: false },
-    { id: 'wsl:Ubuntu-24.04', label: 'Ubuntu-24.04', wsl1: false },
-  ]
-
+// AD-035: WSLP-01/02/13/19 revogados — o seletor "Perfil de terminal" saiu, e
+// com ele os comandos `shell_profiles_list`/`shell_profile_get`/
+// `shell_profile_set`. O perfil é derivado do caminho da pasta
+// (`shell_profile_for_path`, WSLP-07/WSLP-08).
+describe('SettingsShell — sem seletor de perfil de terminal (AD-035)', () => {
   beforeEach(() => {
-    // `invokeMock` acumula histórico entre testes deste arquivo (sem
-    // `clearMocks` no vite.config.ts) — limpa aqui para a contagem de
-    // chamadas ("uma vez cada") valer só para o `render` deste teste.
     invokeMock.mockClear()
     invokeMock.mockImplementation((command: string) => {
       if (command === 'agent_catalog') return Promise.resolve([])
       if (command === 'agent_default') return Promise.resolve(null)
       if (command === 'project_list') return Promise.resolve([])
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
-      if (command === 'shell_profiles_list') return Promise.resolve(PROFILES)
-      if (command === 'shell_profile_get') return Promise.resolve('host')
-      if (command === 'shell_profile_set') return Promise.resolve(undefined)
       return Promise.resolve(null)
     })
   })
 
-  it('abrir a seção Geral chama shell_profiles_list e shell_profile_get uma vez cada', async () => {
+  it('abrir a seção Geral não consulta mais os comandos de perfil', async () => {
     render(<SettingsShell />)
 
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('shell_profiles_list'))
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('shell_profile_get'))
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('quota_prefs_get'))
 
-    expect(invokeMock.mock.calls.filter(([command]) => command === 'shell_profiles_list')).toHaveLength(1)
-    expect(invokeMock.mock.calls.filter(([command]) => command === 'shell_profile_get')).toHaveLength(1)
-  })
-
-  it('escolher um perfil chama shell_profile_set com o id escolhido', async () => {
-    render(<SettingsShell />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('shell_profile_get'))
-
-    fireEvent.click(await screen.findByRole('radio', { name: 'Ubuntu-24.04' }))
-
-    expect(invokeMock).toHaveBeenCalledWith('shell_profile_set', { id: 'wsl:Ubuntu-24.04' })
-  })
-
-  it('shell_profile_set rejeitado mantém o valor anterior exibido', async () => {
-    invokeMock.mockImplementation((command: string) => {
-      if (command === 'agent_catalog') return Promise.resolve([])
-      if (command === 'agent_default') return Promise.resolve(null)
-      if (command === 'project_list') return Promise.resolve([])
-      if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
-      if (command === 'shell_profiles_list') return Promise.resolve(PROFILES)
-      if (command === 'shell_profile_get') return Promise.resolve('host')
-      if (command === 'shell_profile_set') return Promise.reject(new Error('perfil inválido'))
-      return Promise.resolve(null)
-    })
-
-    render(<SettingsShell />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('shell_profile_get'))
-
-    const ubuntu = await screen.findByRole('radio', { name: 'Ubuntu-24.04' })
-    fireEvent.click(ubuntu)
-
-    await waitFor(() => expect(screen.getByRole('radio', { name: 'Windows (padrão)' })).toBeChecked())
-    expect(ubuntu).not.toBeChecked()
+    for (const command of ['shell_profiles_list', 'shell_profile_get', 'shell_profile_set']) {
+      expect(invokeMock.mock.calls.filter(([name]) => name === command)).toHaveLength(0)
+    }
+    expect(screen.queryByRole('group', { name: 'Perfil de terminal' })).toBeNull()
   })
 })
 

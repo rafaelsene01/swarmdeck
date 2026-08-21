@@ -1,5 +1,4 @@
 // SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10, QUOTA-31), silent-update (SILENT-09, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-42), projects (PROJ-19, PROJ-23, PROJ-24)
-// SPEC: wsl-terminal-profile (WSLP-02)
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -8,7 +7,7 @@ import { getVersion } from '@tauri-apps/api/app'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { Download, FolderOpen, SlidersHorizontal, Users, X } from 'lucide-react'
 import AgentPanel, { type AgentDescriptor } from './AgentPanel'
-import GeneralPanel, { type ProfileEntry, type QuotaPrefs } from './GeneralPanel'
+import GeneralPanel, { type QuotaPrefs } from './GeneralPanel'
 import ProjectsPanel, { countTerminalsByProject, type ProjectRow } from './ProjectsPanel'
 import ProjectFormModal, { type ProjectFormValues } from '../../components/project/ProjectFormModal'
 import UpdateSettings, { type UpdateState } from '../../components/settings/UpdateSettings'
@@ -92,12 +91,6 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
   // o default local em vez de travar a seção — mesmo tratamento do bloco de
   // Atualizações abaixo (SET-09).
   const [quotaPrefs, setQuotaPrefs] = useState<QuotaPrefs>(DEFAULT_QUOTA_PREFS)
-
-  // Perfil de terminal (WSLP-01/02): mesmo tratamento acima — `profiles`
-  // nunca vira `null` (o `?? []` absorve um mock/borda que devolva isso),
-  // `selectedProfileId` fica `null` de propósito quando não há preferência.
-  const [profiles, setProfiles] = useState<ProfileEntry[]>([])
-  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
 
   // Agentes (AGT-01/03/04): dado real, via `agent_catalog`/`agent_default`,
   // já registrados no `invoke_handler!` — mesmo padrão de busca do `App.tsx`.
@@ -284,31 +277,10 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
     void invoke('quota_prefs_set', { prefs: next })
   }
 
-  // WSLP-01/02: mesmo padrão do bloco de cota acima — carrega ao abrir a
-  // seção "Geral", um `invoke` por comando.
-  useEffect(() => {
-    if (section !== 'general') return
-    let cancelled = false
-    invoke<ProfileEntry[]>('shell_profiles_list').then((list) => {
-      if (!cancelled) setProfiles(list ?? [])
-    })
-    invoke<string | null>('shell_profile_get').then((id) => {
-      if (!cancelled) setSelectedProfileId(id ?? null)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [section])
-
-  // WSLP-02: otimista — atualiza a tela na hora, mas desfaz se `invoke`
-  // rejeitar, para nunca mostrar uma seleção que não foi de fato salva.
-  const handleChangeProfile = (id: string) => {
-    const previous = selectedProfileId
-    setSelectedProfileId(id)
-    invoke('shell_profile_set', { id }).catch(() => {
-      setSelectedProfileId(previous)
-    })
-  }
+  // AD-035: o seletor de "Perfil de terminal" saiu. O perfil é derivado do
+  // caminho da pasta (`shell_profile_for_path`, WSLP-07/WSLP-08), então uma
+  // preferência global não tinha o que decidir — e escolher errado ali
+  // escondia os agentes da distro. WSLP-01/02/13/19 revogados.
 
   // SILENT-32: a mesma consulta serve à abertura da seção e ao botão
   // "Buscar atualizações" — um caminho só, para os dois não divergirem.
@@ -568,9 +540,6 @@ export default function SettingsShell({ onClose }: SettingsShellProps = {}) {
               prefs={quotaPrefs}
               onChange={handleChangeQuotaPrefs}
               agentIds={agents.map((agent) => agent.id)}
-              profiles={profiles}
-              selectedProfileId={selectedProfileId}
-              onProfileChange={handleChangeProfile}
             />
           )}
 

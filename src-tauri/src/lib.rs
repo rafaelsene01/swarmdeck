@@ -171,10 +171,6 @@ pub fn run() {
             commands::quota::quota_claude,
             // SPEC: terminal-screenshot (SHOT-16)
             commands::screenshot::screenshot_save,
-            // SPEC: wsl-terminal-profile (WSLP-01, WSLP-02)
-            commands::shells::shell_profiles_list,
-            commands::shells::shell_profile_get,
-            commands::shells::shell_profile_set,
             // SPEC: terminal-boot-loading (BOOT-11)
             commands::shells::shell_profile_for_path,
         ])

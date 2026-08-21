@@ -49,9 +49,9 @@ function samePath(a: string, b: string): boolean {
 }
 
 export interface PaneWizardProps {
+  /** Catálogo do perfil padrão — fallback de `profileCatalogs`. */
   agents: AgentDescriptor[]
   installedIds: Set<string>
-  defaultAgentId: string | null
   /**
    * SPEC: terminal-boot-loading (BOOT-10, BOOT-12) — catálogo por perfil,
    * varrido no boot. A etapa AGENT usa a entrada do perfil que o **caminho
@@ -100,7 +100,6 @@ interface Selection {
 export default function PaneWizard({
   agents,
   installedIds,
-  defaultAgentId,
   profileCatalogs,
   onConfirm,
   onCancel,
@@ -108,13 +107,21 @@ export default function PaneWizard({
   const [projects, setProjects] = useState<ProjectRow[]>([])
   const [query, setQuery] = useState('')
   const [selection, setSelection] = useState<Selection | null>(null)
-  /** `null` = o usuário ainda não escolheu; o padrão vale enquanto isso. O
-   * catálogo chega por IPC depois do mount (`App.tsx`), então guardar o
-   * `defaultAgentId` em estado congelaria um `null` inicial. O envelope
-   * `{ id }` separa "não escolheu" de "escolheu terminal limpo" (PROJ-21),
-   * que também é um `id` nulo. */
+  /** AD-035 — `null` = o usuário ainda não escolheu, e nesse estado vale
+   * "Terminal" (shell puro, PROJ-21), não um agente.
+   *
+   * Antes valia `defaultAgentId`, que vinha de `agent_default` →
+   * `resolve_effective_default`: sem preferência utilizável, ele devolve *o
+   * primeiro instalado na ordem do catálogo*. Num Windows com o `claude`
+   * dentro da distro e o Antigravity no host, esse primeiro era
+   * `antigravity-cli` — um ladrilho que a grade nem deixa escolher
+   * (`AgentStep.SELECTABLE`). Pré-marcar shell puro nunca erra: ele não
+   * depende de comando nenhum estar instalado.
+   *
+   * O envelope `{ id }` continua separando "não escolheu" de "escolheu
+   * terminal limpo", que também é um `id` nulo. */
   const [chosen, setChosen] = useState<{ id: string | null } | null>(null)
-  const selectedAgentId = chosen === null ? defaultAgentId : chosen.id
+  const selectedAgentId = chosen?.id ?? null
   /** SPEC: agent-permission-mode (PERM-05) — escolha do passo AGENT. Nasce
    * no padrão e sobrevive a trocar de agente e voltar para a etapa PROJECT:
    * quem já disse "sem verificação" não quer redizer a cada ida e volta. */
@@ -245,10 +252,15 @@ export default function PaneWizard({
     // que sumiu da lista), cai nas props de sempre.
     const profile =
       profileCatalogs?.find((entry) => entry.profileId === selection.profileId) ?? null
-    const stepAgents = profile?.agents ?? agents
-    const stepInstalledIds = profile
-      ? new Set(profile.agents.filter((agent) => agent.installed).map((agent) => agent.id))
-      : installedIds
+    // AD-035: a grade lista **somente** o que está instalado naquele
+    // terminal. Antes listava o catálogo inteiro com os ausentes
+    // desabilitados, o que num host sem agente nenhum era uma parede de
+    // ladrilhos mortos. Sem perfil correspondente (varredura ausente), o
+    // filtro cai em `installedIds`, que é a mesma informação vinda por prop.
+    const stepAgents = profile
+      ? profile.agents.filter((agent) => agent.installed)
+      : agents.filter((agent) => installedIds.has(agent.id))
+    const stepInstalledIds = new Set(stepAgents.map((agent) => agent.id))
 
     return (
       <AgentStep

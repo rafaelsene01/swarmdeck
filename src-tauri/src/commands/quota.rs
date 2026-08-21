@@ -1,4 +1,4 @@
-// SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-11, QUOTA-17)
+// SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-11, QUOTA-15, QUOTA-17)
 
 //! Comandos do indicador de cota. Invólucros finos, mesmo padrão de
 //! `commands/update.rs`: regra de negócio mora em `db::quota_prefs` e
@@ -162,16 +162,30 @@ where
 /// rede quando a preferência está desligada (QUOTA-17).
 #[tauri::command]
 pub async fn quota_claude(app: AppHandle, force: bool) -> Result<QuotaSnapshot, String> {
-    let enabled = {
+    // QUOTA-15: o perfil padrão sai da mesma trava do `enabled` — é ele que
+    // diz onde a credencial mora (host ou dentro de uma distro WSL).
+    //
+    // `default_profile` (valor cru gravado), e **não** `resolve_default`: este
+    // comando roda a cada passada de mouse no anel, e `resolve_default` chama
+    // `list_profiles` — ou seja, um `wsl.exe -l -v` por hover. A validação
+    // contra a lista viva acontece onde importa e só quando o cache não
+    // responde, dentro de `quota::fetch`; distro que sumiu simplesmente não
+    // tem `HOME` a devolver e a busca segue para o próximo candidato.
+    let (enabled, profile) = {
         let db_state = app.state::<Mutex<Db>>();
         let db = db_state.lock().map_err(|e| e.to_string())?;
-        quota_prefs::get(db.conn())
-            .map_err(|e| e.to_string())?
-            .enabled
+        (
+            quota_prefs::get(db.conn())
+                .map_err(|e| e.to_string())?
+                .enabled,
+            crate::shells::prefs::default_profile(db.conn())
+                .map_err(|e| e.to_string())?
+                .unwrap_or_default(),
+        )
     };
 
     let cache_state = app.state::<QuotaCache>();
-    Ok(quota_claude_with(enabled, || quota::fetch(&cache_state, force)).await)
+    Ok(quota_claude_with(enabled, || quota::fetch(&cache_state, force, &profile)).await)
 }
 
 #[cfg(test)]

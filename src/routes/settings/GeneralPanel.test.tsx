@@ -185,71 +185,15 @@ describe('GeneralPanel — catálogo completo com linhas travadas (QUOTA-31)', (
   })
 })
 
-// SPEC: wsl-terminal-profile (WSLP-01, WSLP-13, WSLP-19)
-describe('GeneralPanel — seletor de perfil de terminal', () => {
-  const HOST = { id: 'host', label: 'Windows (padrão)', wsl1: false }
-  const UBUNTU = { id: 'wsl:Ubuntu-24.04', label: 'Ubuntu-24.04', wsl1: false }
-  const UBUNTU_20_WSL1 = { id: 'wsl:Ubuntu-20.04', label: 'Ubuntu-20.04 (WSL1)', wsl1: true }
-
-  it('some quando a lista de perfis tem só uma entrada', () => {
-    render(
-      <GeneralPanel
-        prefs={{ providers: PROVIDERS, enabled: true, window: 'both' }}
-        onChange={vi.fn()}
-        profiles={[HOST]}
-        selectedProfileId="host"
-      />,
-    )
+// AD-035: o seletor "Perfil de terminal" foi removido (WSLP-01/02/13/19
+// revogados). O perfil é derivado do caminho da pasta, então este painel não
+// tem mais nada a escolher — o teste abaixo é o que impede a seção de voltar
+// por acidente.
+describe('GeneralPanel — sem seletor de perfil de terminal (AD-035)', () => {
+  it('não renderiza mais o grupo "Perfil de terminal"', () => {
+    renderPanel({ enabled: true, window: 'both' }, CATALOG_IDS)
 
     expect(screen.queryByRole('group', { name: 'Perfil de terminal' })).toBeNull()
-  })
-
-  it('lista cada perfil com seu rótulo, incluindo o sufixo WSL1', () => {
-    render(
-      <GeneralPanel
-        prefs={{ providers: PROVIDERS, enabled: true, window: 'both' }}
-        onChange={vi.fn()}
-        profiles={[HOST, UBUNTU, UBUNTU_20_WSL1]}
-        selectedProfileId="host"
-      />,
-    )
-
-    expect(screen.getByRole('radio', { name: 'Windows (padrão)' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Ubuntu-24.04' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Ubuntu-20.04 (WSL1)' })).toBeInTheDocument()
-  })
-
-  it('perfil salvo ausente da lista não aparece selecionado e avisa indisponibilidade', () => {
-    render(
-      <GeneralPanel
-        prefs={{ providers: PROVIDERS, enabled: true, window: 'both' }}
-        onChange={vi.fn()}
-        profiles={[HOST, UBUNTU]}
-        selectedProfileId="wsl:Ubuntu-20.04"
-      />,
-    )
-
-    expect(screen.getByRole('radio', { name: 'Windows (padrão)' })).not.toBeChecked()
-    expect(screen.getByRole('radio', { name: 'Ubuntu-24.04' })).not.toBeChecked()
-    expect(screen.getByText('O perfil salvo não está mais disponível. Escolha outro.')).toBeInTheDocument()
-  })
-
-  it('escolher um perfil chama onProfileChange com o id, sem persistir sozinho', () => {
-    const onChange = vi.fn()
-    const onProfileChange = vi.fn()
-    render(
-      <GeneralPanel
-        prefs={{ providers: PROVIDERS, enabled: true, window: 'both' }}
-        onChange={onChange}
-        profiles={[HOST, UBUNTU]}
-        selectedProfileId="host"
-        onProfileChange={onProfileChange}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('radio', { name: 'Ubuntu-24.04' }))
-
-    expect(onProfileChange).toHaveBeenCalledWith('wsl:Ubuntu-24.04')
-    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.queryByText('Perfil de terminal')).toBeNull()
   })
 })

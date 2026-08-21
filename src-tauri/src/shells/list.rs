@@ -1,4 +1,7 @@
-// SPEC: wsl-terminal-profile (WSLP-01, WSLP-16, WSLP-17, WSLP-18, WSLP-19, WSLP-20)
+// SPEC: wsl-terminal-profile (WSLP-16, WSLP-17, WSLP-18, WSLP-20; WSLP-01 e
+// WSLP-19 REVOKED by AD-035 — não há mais seletor a alimentar, mas
+// `list_profiles` segue sendo a fonte de `agent_catalog_all`, de
+// `prefs::resolve_default` e da busca de credencial da cota)
 // SPEC: terminal-boot-loading (BOOT-01)
 
 //! Enumera os perfis selecionáveis: `Host` sempre primeiro, seguido de uma
@@ -18,8 +21,9 @@ pub struct DistroEntry {
     pub wsl1: bool,
 }
 
-/// Espelha `ProfileEntry` do `design.md` (IPC payload) — ver
-/// `commands::shells::shell_profiles_list`.
+/// Espelha `ProfileEntry` do `design.md`. Deixou de ser payload de IPC com
+/// AD-035 (`shell_profiles_list` saiu); hoje só circula dentro do Rust e
+/// dentro de `ProfileCatalogEntry` (`commands::agents::agent_catalog_all`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProfileEntry {

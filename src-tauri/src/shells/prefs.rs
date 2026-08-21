@@ -1,4 +1,6 @@
-// SPEC: wsl-terminal-profile (WSLP-02, WSLP-13)
+// SPEC: wsl-terminal-profile (WSLP-02, WSLP-13 — REVOKED by AD-035: o
+// seletor saiu, mas o valor gravado sobrevive como fallback de
+// `profile_for_path` para um caminho que não nomeia distro)
 
 //! Persiste o perfil de terminal padrão e resolve o efetivo: o valor
 //! salvo quando sua distro ainda está listada, senão `Host`.
