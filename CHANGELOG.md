@@ -1,6 +1,12 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.35] - 2026-08-21
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.34] - 2026-08-20
 
 ### Funcionalidades
@@ -8,6 +14,8 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 - *(shells)* Add TerminalProfile and path-based profile derivation
 
 - *(shells)* Add WSL terminal profile selection and routing
+
+- *(terminal)* Add boot overlay and suppress console window flash
 
 ## [0.1.33] - 2026-08-20
 
