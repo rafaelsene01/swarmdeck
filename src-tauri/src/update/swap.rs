@@ -1,4 +1,5 @@
 // SPEC: silent-update (SILENT-04, SILENT-05, SILENT-18, SILENT-19, SILENT-22, SILENT-23, SILENT-26, SILENT-39)
+// SPEC: terminal-boot-loading (BOOT-01)
 
 //! Troca de executável na pasta do app — vale para os dois flavors,
 //! instalado e portátil (SILENT-05, SILENT-18): a instalação real via NSIS
@@ -200,19 +201,20 @@ pub const UNINSTALL_KEY: &str =
 /// lugar antes desta chamada rodar.
 #[cfg(windows)]
 pub fn set_registry_display_version(key: &str, version: &str) -> std::io::Result<()> {
-    let status = std::process::Command::new("reg")
-        .args([
-            "add",
-            key,
-            "/v",
-            "DisplayVersion",
-            "/t",
-            "REG_SZ",
-            "/d",
-            version,
-            "/f",
-        ])
-        .status()?;
+    let mut cmd = std::process::Command::new("reg");
+    cmd.args([
+        "add",
+        key,
+        "/v",
+        "DisplayVersion",
+        "/t",
+        "REG_SZ",
+        "/d",
+        version,
+        "/f",
+    ]);
+    // BOOT-01: the silent update must stay silent — no console window.
+    let status = crate::proc::hide_console(&mut cmd).status()?;
     if status.success() {
         Ok(())
     } else {

@@ -1,4 +1,5 @@
 // SPEC: wsl-terminal-profile (WSLP-01, WSLP-16, WSLP-17, WSLP-18, WSLP-19, WSLP-20)
+// SPEC: terminal-boot-loading (BOOT-01)
 
 //! Enumera os perfis selecionáveis: `Host` sempre primeiro, seguido de uma
 //! entrada por distro WSL registrada. `parse_distro_list` é o núcleo puro
@@ -110,13 +111,10 @@ pub fn list_profiles() -> Vec<ProfileEntry> {
 
 #[cfg(windows)]
 fn wsl_profiles() -> Vec<ProfileEntry> {
-    use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-    let output = match std::process::Command::new("wsl.exe")
-        .args(["-l", "-v"])
-        .creation_flags(CREATE_NO_WINDOW)
-        .output()
-    {
+    let mut cmd = std::process::Command::new("wsl.exe");
+    cmd.args(["-l", "-v"]);
+    // BOOT-01: was the only site with the flag inline; now shares `proc`.
+    let output = match crate::proc::hide_console(&mut cmd).output() {
         Ok(out) if out.status.success() => out,
         _ => return Vec::new(),
     };

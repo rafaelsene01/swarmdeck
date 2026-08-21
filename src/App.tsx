@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), editor-launch (EDITOR-02), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), settings-shell (SET-01, SET-04, SET-05), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), window-chrome (WIN-01, WIN-02, WIN-03), minimized-tray (MIN-01, MIN-02, MIN-04, MIN-05, MIN-06, MIN-07), projects (PROJ-11, PROJ-12, PROJ-13, PROJ-14, PROJ-16)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), editor-launch (EDITOR-02), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), settings-shell (SET-01, SET-04, SET-05), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), window-chrome (WIN-01, WIN-02, WIN-03), minimized-tray (MIN-01, MIN-02, MIN-04, MIN-05, MIN-06, MIN-07), projects (PROJ-11, PROJ-12, PROJ-13, PROJ-14, PROJ-16), terminal-boot-loading (BOOT-04, BOOT-05, BOOT-06, BOOT-07)
 
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -29,6 +29,7 @@ interface QuotaPrefsPayload {
   window: QuotaIndicatorProps['window']
   providers?: { id: string; enabled: boolean }[]
 }
+import BootSplash from './components/shell/BootSplash'
 import EmptyState from './components/shell/EmptyState'
 import InlineRename from './components/shell/InlineRename'
 import RestoreSessionDialog, {
@@ -97,6 +98,13 @@ const SAVE_DEBOUNCE_MS = 500
  * disso. Mais que 4 terminais abertos ao mesmo tempo cabe agora em outra aba
  * (TAB-01), não em mais células. */
 const MAX_TERMINALS = 4
+
+/** SPEC: terminal-boot-loading (BOOT-07) — teto sem progresso para o overlay
+ * de boot. Cada terminal que reporta PTY vivo rearma a contagem, então isto é
+ * "15 s sem nenhum avanço", não "15 s de boot". Sem este teto um painel cujo
+ * `pty_spawn` nunca resolve (distro que subiu pela metade, ConPTY travado)
+ * prenderia a janela inteira para sempre. */
+const BOOT_STALL_MS = 15_000
 
 /** Um conjunto de terminais visível de cada vez (TAB-01). As abas inativas
  * continuam montadas — só saem de vista —, então o PTY e o scrollback de cada
@@ -325,6 +333,49 @@ export default function App() {
    * é isso que garante que nenhum PTY sobe antes da escolha. */
   const [pendingRestore, setPendingRestore] = useState<WorkspaceTab[] | null>(null)
 
+  /** SPEC: terminal-boot-loading (BOOT-04, BOOT-06, BOOT-07) — enquanto isto
+   * não é `null`, `BootSplash` cobre a janela.
+   *
+   * `total: 0` é a fase de verificação (leitura do workspace, catálogo de
+   * agentes, escolha no modal): não há o que contar, e a barra fica
+   * indeterminada. Depois da escolha, `pending` lista os terminais que ainda
+   * não reportaram PTY vivo e `total` congela quantos eram — é o que dá a
+   * barra determinada e o contador "N/M terminais prontos". */
+  const [boot, setBoot] = useState<{ pending: string[]; total: number } | null>({
+    pending: [],
+    total: 0,
+  })
+
+  /** SPEC: terminal-boot-loading (BOOT-06) — um `TerminalPane` avisou que o
+   * `pty_spawn` dele resolveu (ou falhou, BOOT-03). Atualização funcional de
+   * propósito: o `onReady` que o painel captura no mount não é recriado a cada
+   * render, então ler `boot` por closure aqui leria um valor velho. */
+  const handlePaneReady = (id: string) => {
+    setBoot((prev) =>
+      prev ? { ...prev, pending: prev.pending.filter((entry) => entry !== id) } : prev,
+    )
+  }
+
+  // BOOT-06: último terminal pronto libera a tela.
+  useEffect(() => {
+    if (boot && boot.total > 0 && boot.pending.length === 0) setBoot(null)
+  }, [boot])
+
+  // BOOT-07: o teto só corre quando a espera é do app. Com o modal aberto a
+  // espera é do usuário, e derrubar o overlay ali revelaria a área de painéis
+  // vazia atrás dele. `boot` troca de identidade a cada terminal pronto, o que
+  // rearma o `setTimeout` — o teto passa a valer por falta de progresso.
+  useEffect(() => {
+    if (!boot || pendingRestore) return
+
+    const timer = setTimeout(() => {
+      console.error('boot excedeu o tempo sem progresso; liberando a tela')
+      setBoot(null)
+    }, BOOT_STALL_MS)
+
+    return () => clearTimeout(timer)
+  }, [boot, pendingRestore])
+
   /** Aplica um workspace ao estado do app. Usado pelo caminho sem modal
    * (SESS-02) e pela confirmação do modal (SESS-06). */
   const applyWorkspace = (saved: WorkspaceTab[], resumeByTerminalId: Record<string, boolean>) => {
@@ -377,6 +428,8 @@ export default function App() {
         // `EmptyState` — LAYOUT-24, que preserva EMPTY-03.
         if (!saved?.length) {
           hydrated.current = true
+          // BOOT-07: nada salvo, nada a esperar — libera para o `EmptyState`.
+          setBoot(null)
           return
         }
 
@@ -390,12 +443,17 @@ export default function App() {
         }
 
         applyWorkspace(saved, {})
+        // BOOT-07: abas sem terminal nenhum não têm PTY a esperar.
+        setBoot(null)
       })
       // LAYOUT-26: leitura que falha registra o erro e deixa o app abrir na
       // aba vazia; nunca impede a abertura — e sem modal.
       .catch((error) => {
         console.error('falha ao restaurar o workspace de terminais', error)
-        if (!cancelled) hydrated.current = true
+        if (cancelled) return
+        hydrated.current = true
+        // BOOT-07: a falha não pode virar um overlay eterno.
+        setBoot(null)
       })
 
     return () => {
@@ -409,16 +467,22 @@ export default function App() {
     const keptTabs = new Set(selection.tabIds)
     const keptTerminals = new Set(selection.terminalIds)
 
-    applyWorkspace(
-      saved
-        .filter((tab) => keptTabs.has(tab.id))
-        .map((tab) => ({
-          ...tab,
-          terminals: tab.terminals.filter((terminal) => keptTerminals.has(terminal.id)),
-        })),
-      selection.resumeByTerminalId,
-    )
+    const kept = saved
+      .filter((tab) => keptTabs.has(tab.id))
+      .map((tab) => ({
+        ...tab,
+        terminals: tab.terminals.filter((terminal) => keptTerminals.has(terminal.id)),
+      }))
+
+    applyWorkspace(kept, selection.resumeByTerminalId)
     setPendingRestore(null)
+
+    // SPEC: terminal-boot-loading (BOOT-06) — o overlay continua até cada um
+    // destes painéis reportar PTY vivo. Os ids vêm do workspace filtrado, e
+    // não de `selection.terminalIds`, porque uma aba desmarcada leva os
+    // terminais dela embora mesmo que estejam marcados (SESS-05).
+    const restoring = kept.flatMap((tab) => tab.terminals.map((terminal) => terminal.id))
+    setBoot(restoring.length > 0 ? { pending: restoring, total: restoring.length } : null)
   }
 
   /** SPEC: session-restore (SESS-07, SESS-08) — "Começar do zero", o × e
@@ -430,6 +494,8 @@ export default function App() {
     setAgentByTerminalId({})
     hydrated.current = true
     setPendingRestore(null)
+    // BOOT-07: nenhum terminal sobe, então não há o que esperar.
+    setBoot(null)
   }
 
   // SPEC: terminal-layout-options (LAYOUT-21, LAYOUT-22)
@@ -847,6 +913,10 @@ export default function App() {
                         permissionMode={permissionModeByTerminalId[terminal.id] ?? null}
                         sessionId={terminal.agentSessionId ?? null}
                         resume={terminal.resumeSession ?? false}
+                        // SPEC: terminal-boot-loading (BOOT-06) — painel criado
+                        // depois do boot também chama, e `handlePaneReady` só
+                        // remove de `boot.pending`: id que não está lá é no-op.
+                        onReady={() => handlePaneReady(terminal.id)}
                         // SPEC: terminal-screenshot (SHOT-13)
                         onTerminal={(term) => {
                           if (term) terminalsRef.current.set(terminal.id, term)
@@ -1191,6 +1261,27 @@ export default function App() {
       )}
 
       <div className="app-grid-area">{tabs.map(renderTab)}</div>
+
+      {/* SPEC: terminal-boot-loading (BOOT-04, BOOT-05, BOOT-06) — cobre a
+          janela desde o primeiro quadro. Fica ABAIXO do backdrop do modal de
+          restauração (z-index 900 contra 1000), então o modal aparece por
+          cima do carregamento em vez de esperar por ele. */}
+      {boot && (
+        <BootSplash
+          label={
+            boot.total > 0
+              ? 'Abrindo os terminais salvos…'
+              : pendingRestore
+                ? 'Sessão anterior encontrada'
+                : 'Verificando a sessão anterior…'
+          }
+          progress={
+            boot.total > 0
+              ? { done: boot.total - boot.pending.length, total: boot.total }
+              : null
+          }
+        />
+      )}
 
       {/* SPEC: session-restore (SESS-01) — enquanto isto está montado nenhum
           `TerminalPane` existe: `tabs` continua sendo a aba vazia inicial. */}

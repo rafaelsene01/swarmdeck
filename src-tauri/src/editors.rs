@@ -1,4 +1,5 @@
 // SPEC: editor-launch (EDITOR-02, EDITOR-04, EDITOR-05)
+// SPEC: terminal-boot-loading (BOOT-01)
 
 //! Catálogo estático dos editores de código suportados, detecção de qual
 //! deles está instalado, e a montagem do comando que abre uma pasta neles.
@@ -188,23 +189,13 @@ pub fn open(id: &str, dir: &str) -> Result<(), String> {
         .ok_or_else(|| format!("`{}` não está no PATH", editor.command))?;
 
     let mut cmd = build_open_command(&program, dir);
-    hide_console(&mut cmd);
-    cmd.spawn()
+    // BOOT-01: `crate::proc` is now the single owner of `CREATE_NO_WINDOW`;
+    // the private copy that used to live here was one of two duplicates.
+    crate::proc::hide_console(&mut cmd)
+        .spawn()
         .map(|_| ())
         .map_err(|e| format!("falha ao abrir {}: {e}", editor.name))
 }
-
-/// Impede o flash de janela de console no Windows quando o editor resolve
-/// para um `.cmd` (`CREATE_NO_WINDOW`). No-op nas outras plataformas.
-#[cfg(windows)]
-fn hide_console(cmd: &mut Command) {
-    use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-    cmd.creation_flags(CREATE_NO_WINDOW);
-}
-
-#[cfg(not(windows))]
-fn hide_console(_cmd: &mut Command) {}
 
 #[cfg(test)]
 mod tests {

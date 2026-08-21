@@ -1,7 +1,7 @@
 // SPEC: multi-terminal (TERM-01, TERM-02, TERM-14), terminal-screenshot (SHOT-13), agent-permission-mode (PERM-01)
 
 import { describe, expect, it, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 
 // Same `vi.hoisted` pattern as `App.test.tsx` — the `vi.mock` factories below
 // are hoisted above these imports by Vitest's transform.
@@ -153,6 +153,48 @@ describe('TerminalPane — falha de spawn (WSLP-12)', () => {
     await vi.waitFor(() => expect(invokeMock).toHaveBeenCalledWith('pty_spawn', expect.anything()))
     const payload = invokeMock.mock.calls.find(([cmd]) => cmd === 'pty_spawn')?.[1]
     expect(payload).not.toHaveProperty('shell')
+  })
+})
+
+// SPEC: terminal-boot-loading (BOOT-02, BOOT-03) — o painel mostra que está
+// subindo a sessão, e avisa quem o montou quando o `pty_spawn` assenta.
+describe('TerminalPane — carregamento do painel', () => {
+  const BOOT_LABEL = 'iniciando sessão…'
+
+  it('mostra o carregamento até `pty_spawn` resolver, e só então chama `onReady`', async () => {
+    invokeMock.mockReset()
+    let resolveSpawn: (id: string) => void = () => {}
+    invokeMock.mockImplementation((cmd: string) => {
+      if (cmd === 'pty_spawn') return new Promise<string>((r) => (resolveSpawn = r))
+      return Promise.resolve()
+    })
+    const onReady = vi.fn()
+
+    render(<TerminalPane cwd="." onReady={onReady} />)
+
+    expect(screen.getByText(BOOT_LABEL)).toBeInTheDocument()
+    expect(onReady).not.toHaveBeenCalled()
+
+    resolveSpawn('term-1')
+
+    await waitFor(() => expect(screen.queryByText(BOOT_LABEL)).not.toBeInTheDocument())
+    expect(onReady).toHaveBeenCalledTimes(1)
+  })
+
+  // BOOT-03: sem isto a mensagem de erro que WSLP-12 escreve ficaria atrás do
+  // esqueleto, e o overlay de boot (BOOT-06) esperaria para sempre.
+  it('spawn rejeitado encerra o carregamento e chama `onReady` do mesmo jeito', async () => {
+    invokeMock.mockReset()
+    invokeMock.mockImplementation((cmd: string) => {
+      if (cmd === 'pty_spawn') return Promise.reject('perfil `wsl:Ubuntu` indisponível: x')
+      return Promise.resolve()
+    })
+    const onReady = vi.fn()
+
+    render(<TerminalPane cwd="." onReady={onReady} />)
+
+    await waitFor(() => expect(screen.queryByText(BOOT_LABEL)).not.toBeInTheDocument())
+    expect(onReady).toHaveBeenCalledTimes(1)
   })
 })
 

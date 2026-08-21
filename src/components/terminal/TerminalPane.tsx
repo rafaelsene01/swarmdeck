@@ -1,7 +1,8 @@
 // SPEC: multi-terminal (TERM-01, TERM-02, TERM-06, TERM-14), terminal-chrome (CHROME-01), session-restore (SESS-12, SESS-13), terminal-screenshot (SHOT-13), agent-permission-mode (PERM-01)
 // SPEC: wsl-terminal-profile (WSLP-12)
+// SPEC: terminal-boot-loading (BOOT-02, BOOT-03, BOOT-06)
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { invoke, Channel } from '@tauri-apps/api/core'
@@ -47,6 +48,14 @@ export interface TerminalPaneProps {
    * buffer do painel que o usuário clicou no modo de captura.
    */
   onTerminal?: (term: Terminal | null) => void
+  /**
+   * SPEC: terminal-boot-loading (BOOT-03, BOOT-06) — fires once, when the
+   * pane stops loading: `pty_spawn` resolved, or it rejected and the error is
+   * already on screen. Both count as "done" on purpose — the boot overlay
+   * (BOOT-06) waits on this, and a pane whose profile is unavailable would
+   * otherwise hold the whole window hostage.
+   */
+  onReady?: () => void
 }
 
 /** ConPTY tem custo real em resize; arrastar divisória dispararia dezenas
@@ -72,8 +81,16 @@ export default function TerminalPane({
   permissionMode,
   onSessionId,
   onTerminal,
+  onReady,
 }: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  /**
+   * SPEC: terminal-boot-loading (BOOT-02) — `false` from mount until
+   * `pty_spawn` settles. Drives the skeleton below; the xterm element itself
+   * is always mounted, because the DSR handshake needs it alive before the
+   * first byte arrives (see the note on this component).
+   */
+  const [started, setStarted] = useState(false)
 
   useEffect(() => {
     const container = containerRef.current
@@ -205,9 +222,18 @@ export default function TerminalPane({
         }
         onSessionId?.(id)
         syncSize()
+        // BOOT-02: the PTY is live — drop the skeleton and release the boot
+        // overlay, in that order.
+        setStarted(true)
+        onReady?.()
       })
       .catch((error) => {
         terminal.write(`\r\nfalha ao iniciar o terminal: ${String(error)}\r\n`)
+        // BOOT-03: a failed spawn still ends the loading state, otherwise the
+        // message it just wrote would sit behind the skeleton.
+        if (disposed) return
+        setStarted(true)
+        onReady?.()
       })
 
     let resizeTimer: ReturnType<typeof setTimeout> | undefined
@@ -231,5 +257,84 @@ export default function TerminalPane({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cwd, agent])
 
-  return <div className="terminal-pane" ref={containerRef} />
+  return (
+    <div className="terminal-pane">
+      {/* SPEC: terminal-boot-loading (BOOT-02, BOOT-08) — skeleton over the
+          live xterm host. Overlay instead of a swap because the xterm element
+          has to exist before the ConPTY's DSR query arrives; unmounting it
+          while the session starts is exactly the black-pane bug documented
+          above. */}
+      <style>{`
+        .terminal-pane { position: relative; }
+        .terminal-pane__host { width: 100%; height: 100%; }
+        .terminal-pane__boot {
+          position: absolute;
+          inset: 0;
+          z-index: 2;
+          display: flex;
+          flex-direction: column;
+          gap: 0.65rem;
+          padding: 0.15rem 0.1rem;
+          background: var(--surface-2);
+        }
+        .terminal-pane__boot-status {
+          margin: 0;
+          display: flex;
+          align-items: center;
+          gap: 0.45rem;
+          color: var(--muted);
+          font-size: 11px;
+          letter-spacing: 0.04em;
+        }
+        .terminal-pane__boot-caret {
+          width: 7px;
+          height: 13px;
+          flex: 0 0 auto;
+          background: var(--accent);
+          animation: terminal-pane-blink 1s steps(2, start) infinite;
+        }
+        .terminal-pane__boot-line {
+          height: 8px;
+          border-radius: 999px;
+          background: linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.04) 0%,
+            rgba(255, 255, 255, 0.1) 50%,
+            rgba(255, 255, 255, 0.04) 100%
+          );
+          background-size: 220% 100%;
+          animation: terminal-pane-sweep 1.6s ease-in-out infinite;
+        }
+        .terminal-pane__boot-line:nth-of-type(1) { width: 54%; animation-delay: 0s; }
+        .terminal-pane__boot-line:nth-of-type(2) { width: 78%; animation-delay: 0.12s; }
+        .terminal-pane__boot-line:nth-of-type(3) { width: 38%; animation-delay: 0.24s; }
+        @keyframes terminal-pane-sweep {
+          0% { background-position: 120% 0; }
+          100% { background-position: -120% 0; }
+        }
+        @keyframes terminal-pane-blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.2; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .terminal-pane__boot-caret,
+          .terminal-pane__boot-line { animation: none; }
+        }
+      `}</style>
+
+      <div className="terminal-pane__host" ref={containerRef} />
+
+      {!started && (
+        <div className="terminal-pane__boot" role="status" aria-live="polite">
+          <p className="terminal-pane__boot-status">
+            <span className="terminal-pane__boot-caret" aria-hidden="true" />
+            iniciando sessão…
+          </p>
+          <span className="terminal-pane__boot-line" />
+          <span className="terminal-pane__boot-line" />
+          <span className="terminal-pane__boot-line" />
+        </div>
+      )}
+    </div>
+  )
 }

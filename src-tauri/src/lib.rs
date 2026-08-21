@@ -11,6 +11,8 @@ pub mod db;
 pub mod editors;
 pub mod ipc;
 pub mod paths;
+// SPEC: terminal-boot-loading (BOOT-01)
+pub mod proc;
 pub mod projects;
 // SPEC: quota-indicator (QUOTA-15, QUOTA-19, QUOTA-25)
 pub mod quota;

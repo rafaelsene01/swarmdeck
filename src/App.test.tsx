@@ -77,12 +77,14 @@ vi.mock('./components/terminal/TerminalPane', async () => {
       sessionId,
       resume,
       onTerminal,
+      onReady,
     }: {
       cwd: string
       agent?: string
       sessionId?: string | null
       resume?: boolean
       onTerminal?: (term: unknown) => void
+      onReady?: () => void
     }) => {
       useEffect(() => {
         void invokeMock('pty_spawn', { cwd, agent, sessionId, resume })
@@ -90,6 +92,10 @@ vi.mock('./components/terminal/TerminalPane', async () => {
         // e `null` no cleanup; o dublê espelha esse contrato. O `cwd`
         // reservado abaixo simula o painel sem instância viva.
         if (cwd !== '/sem-xterm') onTerminal?.({ cwd })
+        // SPEC: terminal-boot-loading (BOOT-06) — o painel real chama `onReady`
+        // quando o `pty_spawn` assenta. O `cwd` reservado abaixo simula o
+        // painel cujo spawn nunca resolve, que é o que prende o overlay.
+        if (cwd !== '/nunca-pronto') onReady?.()
         return () => {
           onTerminal?.(null)
           // PROJ-12: o `pty_kill` do painel real mora na limpeza deste efeito
@@ -1686,5 +1692,137 @@ describe('App - projects: painel de rascunho', () => {
     const pane = await screen.findByTestId('terminal-pane-stub')
     expect(pane.dataset.cwd).toBe('/home/user/.swarmdeck/sandbox')
     expect(invokeMock).not.toHaveBeenCalledWith('project_touch', expect.anything())
+  })
+})
+
+// SPEC: terminal-boot-loading (BOOT-04, BOOT-05, BOOT-06, BOOT-07)
+describe('App - terminal-boot-loading: overlay de boot', () => {
+  /** Um terminal salvo, na forma que `terminal_workspace_get` devolve. */
+  function savedTerminal(id: string, cwd: string) {
+    return {
+      id,
+      slot: 0,
+      fracW: 0.5,
+      fracH: 1,
+      cwd,
+      minimized: false,
+      agentId: 'claude-code',
+      agentSessionId: `sessao-${id}`,
+    }
+  }
+
+  function savedTab(terminals: ReturnType<typeof savedTerminal>[]) {
+    return [
+      {
+        id: 'tab-a',
+        slot: 0,
+        name: 'Deploy',
+        layoutMode: 'horizontal',
+        layoutSpan: 'first',
+        terminals,
+      },
+    ]
+  }
+
+  function mockBoot(saved: unknown) {
+    invokeMock.mockImplementation((command: string, args?: Record<string, unknown>) => {
+      if (command === 'agent_catalog') {
+        return Promise.resolve([
+          {
+            id: 'claude-code',
+            name: 'Claude Code',
+            vendor: 'Anthropic',
+            command: 'claude',
+            beta: false,
+            installed: true,
+            supportsSessionResume: true,
+          },
+        ])
+      }
+      if (command === 'agent_default') return Promise.resolve('claude-code')
+      if (command === 'quota_prefs_get') return Promise.resolve({ enabled: false, window: 'both' })
+      if (command === 'terminal_workspace_get') {
+        return saved instanceof Error ? Promise.reject(saved) : Promise.resolve(saved)
+      }
+      return projectInvoke(command, args)
+    })
+  }
+
+  // BOOT-04: o overlay existe no primeiro quadro, antes de qualquer resposta.
+  it('a janela abre em carregamento, antes da leitura do workspace resolver', () => {
+    mockBoot([])
+
+    render(<App />)
+
+    expect(screen.getByText(/Verificando a sessão anterior/)).toBeInTheDocument()
+  })
+
+  // BOOT-07: nada salvo não tem o que esperar.
+  it('workspace vazio libera a tela', async () => {
+    mockBoot([])
+
+    render(<App />)
+
+    await waitFor(() =>
+      expect(screen.queryByText(/Verificando a sessão anterior/)).not.toBeInTheDocument(),
+    )
+    expect(screen.getByText('No Terminals Active')).toBeInTheDocument()
+  })
+
+  // BOOT-07: falha de leitura não pode virar overlay eterno.
+  it('leitura que falha libera a tela', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockBoot(new Error('banco corrompido'))
+
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByText('No Terminals Active')).toBeInTheDocument())
+    expect(screen.queryByText(/Verificando a sessão anterior/)).not.toBeInTheDocument()
+    consoleError.mockRestore()
+  })
+
+  // BOOT-05: o modal vem POR CIMA do carregamento, não no lugar dele.
+  it('o modal de restauração aparece com o overlay ainda montado', async () => {
+    mockBoot(savedTab([savedTerminal('t-0', '/projeto')]))
+
+    render(<App />)
+
+    await screen.findByRole('dialog', { name: 'restaurar sessão anterior' })
+    expect(screen.getByText('Sessão anterior encontrada')).toBeInTheDocument()
+  })
+
+  // BOOT-06: todos prontos, tela liberada.
+  it('o overlay só sai depois que todos os terminais restaurados reportam PTY vivo', async () => {
+    mockBoot(savedTab([savedTerminal('t-0', '/projeto'), savedTerminal('t-1', '/api')]))
+
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Restaurar selecionados' }))
+
+    await waitFor(() => expect(screen.getAllByTestId('terminal-pane-stub')).toHaveLength(2))
+    expect(screen.queryByText(/terminais prontos/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Abrindo os terminais salvos…')).not.toBeInTheDocument()
+  })
+
+  // BOOT-06, o caso que discrimina: um painel que não reporta segura a tela, e
+  // o contador mostra exatamente quantos já subiram.
+  it('um terminal que não reporta mantém o overlay e o contador parcial', async () => {
+    mockBoot(savedTab([savedTerminal('t-0', '/projeto'), savedTerminal('t-1', '/nunca-pronto')]))
+
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Restaurar selecionados' }))
+
+    await waitFor(() => expect(screen.getByText('1/2 terminais prontos')).toBeInTheDocument())
+    expect(screen.getByText('Abrindo os terminais salvos…')).toBeInTheDocument()
+  })
+
+  // BOOT-07: "Começar do zero" não sobe terminal nenhum, então não espera nada.
+  it('"Começar do zero" libera a tela na hora', async () => {
+    mockBoot(savedTab([savedTerminal('t-0', '/projeto')]))
+
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Começar do zero' }))
+
+    await waitFor(() => expect(screen.getByText('No Terminals Active')).toBeInTheDocument())
+    expect(screen.queryByText('Sessão anterior encontrada')).not.toBeInTheDocument()
   })
 })

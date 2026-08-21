@@ -1,4 +1,5 @@
 // SPEC: wsl-terminal-profile (WSLP-03, WSLP-04, WSLP-05, WSLP-09)
+// SPEC: terminal-boot-loading (BOOT-01)
 
 //! Traduz (perfil, programa, args, env, cwd) no `CommandBuilder` que de
 //! fato roda. `Host` é hoje: `new_default_prog()` sem programa, ou o
@@ -103,10 +104,10 @@ pub fn login_path(_distro: &str) -> Option<String> {
 
 #[cfg(windows)]
 fn fetch_login_path(distro: &str) -> Option<String> {
-    let output = std::process::Command::new("wsl.exe")
-        .args(["-d", distro, "--", "bash", "-lc", "printenv PATH"])
-        .output()
-        .ok()?;
+    let mut cmd = std::process::Command::new("wsl.exe");
+    cmd.args(["-d", distro, "--", "bash", "-lc", "printenv PATH"]);
+    // BOOT-01: part of the terminal-open path (once per distro, then cached).
+    let output = crate::proc::hide_console(&mut cmd).output().ok()?;
     if !output.status.success() {
         return None;
     }

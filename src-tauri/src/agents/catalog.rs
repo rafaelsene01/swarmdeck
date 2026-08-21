@@ -1,4 +1,5 @@
 // SPEC: agent-selection (AGT-01, AGT-02), session-restore (SESS-11, SESS-12, SESS-13)
+// SPEC: terminal-boot-loading (BOOT-01)
 // SPEC: editor-launch (EDITOR-02) — `resolve_command_in_path` é a mesma
 // resolução de PATH, agora devolvendo o caminho resolvido: `editors.rs`
 // precisa dele para lançar `code.cmd`/`cursor.cmd` no Windows.
@@ -317,8 +318,10 @@ fn detect_installed_in_wsl_with(
 fn real_wsl_probe(distro: &str) -> String {
     let commands: Vec<&str> = CATALOG.iter().map(|agent| agent.command).collect();
     let script = format!("type -P {}", commands.join(" "));
-    std::process::Command::new("wsl.exe")
-        .args(["-d", distro, "--", "bash", "-lc", &script])
+    let mut cmd = std::process::Command::new("wsl.exe");
+    cmd.args(["-d", distro, "--", "bash", "-lc", &script]);
+    // BOOT-01: no console window for the agent-detection probe.
+    crate::proc::hide_console(&mut cmd)
         .output()
         .map(|out| String::from_utf8_lossy(&out.stdout).into_owned())
         .unwrap_or_default()

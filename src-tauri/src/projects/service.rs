@@ -1,5 +1,6 @@
 // SPEC: projects (PROJ-01, PROJ-02, PROJ-09, PROJ-13, PROJ-14, PROJ-18)
 // SPEC: wsl-terminal-profile (WSLP-14, WSLP-15)
+// SPEC: terminal-boot-loading (BOOT-01)
 
 //! `ProjectService`: create/update/delete for the `projects` table created
 //! by migration `003_tasks.sql` (mcp-task-server/T1).
@@ -517,7 +518,9 @@ fn run_git_init(dir: &Path) -> Result<(), ProjectError> {
         cmd.current_dir(dir);
     }
 
-    let status = cmd.status()?;
+    // BOOT-01: `git init` inside a project folder flashed a console window
+    // just like the `wsl.exe` probes did.
+    let status = crate::proc::hide_console(&mut cmd).status()?;
     if !status.success() {
         return Err(ProjectError::GitInitFailed(format!(
             "git init exited with {status}"

@@ -1,5 +1,6 @@
 // SPEC: multi-terminal (TERM-01, TERM-03), session-restore (SESS-12, SESS-13, SESS-14), projects (PROJ-14)
 // SPEC: wsl-terminal-profile (WSLP-03, WSLP-04, WSLP-10, WSLP-11)
+// SPEC: terminal-boot-loading (BOOT-01)
 
 //! `TerminalManager`: registro das sessões PTY vivas.
 //!
@@ -83,10 +84,14 @@ fn check_profile_available(profile: &TerminalProfile, cwd: &Path) -> Result<(), 
 
 #[cfg(windows)]
 fn check_wsl_profile(distro: &str, cwd: &Path) -> Result<(), String> {
-    let output = std::process::Command::new("wsl.exe")
-        .args(["-d", distro, "--cd"])
+    let mut cmd = std::process::Command::new("wsl.exe");
+    cmd.args(["-d", distro, "--cd"])
         .arg(cwd)
-        .args(["--", "true"])
+        .args(["--", "true"]);
+    // BOOT-01: this probe runs immediately before the interactive session is
+    // opened, so its console window is the flash the user sees when clicking
+    // "new terminal".
+    let output = crate::proc::hide_console(&mut cmd)
         .output()
         .map_err(|e| e.to_string())?;
     if output.status.success() {
