@@ -1,7 +1,18 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.42] - 2026-08-21
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.41] - 2026-08-21
+
+### Funcionalidades
+
+- *(update)* Avisar nova versão com toast na tela inicial
+
 
 ### Correções
 
