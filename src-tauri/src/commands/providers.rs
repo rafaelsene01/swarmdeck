@@ -75,7 +75,7 @@ fn merge_scan(previous: &[ProviderPref], found: &FoundIn) -> Vec<ProviderPref> {
                     .iter()
                     .find(|pref| pref.id == agent.id)
                     // Sem registro anterior, um provedor achado nasce ligado.
-                    .map_or(true, |pref| pref.enabled);
+                    .is_none_or(|pref| pref.enabled);
             ProviderPref {
                 id: agent.id.to_string(),
                 enabled,

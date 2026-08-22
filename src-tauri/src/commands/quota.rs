@@ -1,4 +1,4 @@
-// SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-11, QUOTA-15, QUOTA-17)
+// SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-11, QUOTA-15, QUOTA-17), quota-provider-source (QSRC-05)
 
 //! Comandos do indicador de cota. Invólucros finos, mesmo padrão de
 //! `commands/update.rs`: regra de negócio mora em `db::quota_prefs` e
@@ -15,6 +15,7 @@ use crate::agents::catalog::CATALOG;
 use crate::db::quota_prefs::{self, QuotaPrefs};
 use crate::db::Db;
 use crate::quota::{self, ClaudeQuota, QuotaCache, QuotaError};
+use crate::shells::TerminalProfile;
 
 const VALID_WINDOWS: [&str; 3] = ["five_hour", "weekly", "both"];
 
@@ -144,6 +145,18 @@ impl QuotaSnapshot {
     }
 }
 
+/// SPEC: quota-provider-source (QSRC-05) — perfil marcado para um provedor,
+/// se houver. `None` quando o usuário não escolheu (QSRC-06) ou quando o id
+/// gravado não é mais um perfil válido.
+fn chosen_profile(prefs: &QuotaPrefs, provider_id: &str) -> Option<TerminalProfile> {
+    prefs
+        .providers
+        .iter()
+        .find(|provider| provider.id == provider_id)
+        .and_then(|provider| provider.profile_id.as_deref())
+        .and_then(TerminalProfile::parse_id)
+}
+
 /// Núcleo testável de `quota_claude`: o guard de `enabled` decide antes de
 /// `fetch` ser sequer chamado (QUOTA-17) — com `enabled = false`, `fetch`
 /// nunca roda, então pode ser um closure que dá `panic!` se invocado.
@@ -171,13 +184,17 @@ pub async fn quota_claude(app: AppHandle, force: bool) -> Result<QuotaSnapshot, 
     // contra a lista viva acontece onde importa e só quando o cache não
     // responde, dentro de `quota::fetch`; distro que sumiu simplesmente não
     // tem `HOME` a devolver e a busca segue para o próximo candidato.
-    let (enabled, profile) = {
+    let (enabled, chosen, profile) = {
         let db_state = app.state::<Mutex<Db>>();
         let db = db_state.lock().map_err(|e| e.to_string())?;
+        let prefs = quota_prefs::get(db.conn()).map_err(|e| e.to_string())?;
         (
-            quota_prefs::get(db.conn())
-                .map_err(|e| e.to_string())?
-                .enabled,
+            prefs.enabled,
+            // SPEC: quota-provider-source (QSRC-05) — o terminal marcado para
+            // o Claude em Configurações › Geral. Id ilegível (perfil que saiu
+            // do sistema) volta a `None`, e a busca recai na cadeia de
+            // candidatos (QSRC-06) em vez de procurar num perfil inexistente.
+            chosen_profile(&prefs, "claude-code"),
             crate::shells::prefs::default_profile(db.conn())
                 .map_err(|e| e.to_string())?
                 .unwrap_or_default(),
@@ -185,7 +202,10 @@ pub async fn quota_claude(app: AppHandle, force: bool) -> Result<QuotaSnapshot, 
     };
 
     let cache_state = app.state::<QuotaCache>();
-    Ok(quota_claude_with(enabled, || quota::fetch(&cache_state, force, &profile)).await)
+    Ok(quota_claude_with(enabled, || {
+        quota::fetch(&cache_state, force, &profile, chosen.as_ref())
+    })
+    .await)
 }
 
 #[cfg(test)]
@@ -256,7 +276,8 @@ mod tests {
             &db,
             &with(vec![QuotaProvider {
                 id: "nao-existe".to_string(),
-                enabled: true
+                enabled: true,
+                profile_id: None
             }])
         )
         .is_err());
@@ -266,17 +287,56 @@ mod tests {
             &with(vec![
                 QuotaProvider {
                     id: "claude-code".to_string(),
-                    enabled: true
+                    enabled: true,
+                    profile_id: None
                 },
                 QuotaProvider {
                     id: "claude-code".to_string(),
-                    enabled: false
+                    enabled: false,
+                    profile_id: None
                 },
             ])
         )
         .is_err());
 
         assert_eq!(quota_prefs::get(db.conn()).unwrap(), before);
+    }
+
+    // SPEC: quota-provider-source (QSRC-05, QSRC-06) — a escolha gravada vira
+    // perfil; sem escolha, ou com id que não é mais um perfil, volta `None` e
+    // a busca recai na cadeia de candidatos.
+    #[test]
+    fn chosen_profile_le_a_escolha_do_provedor() {
+        use crate::db::quota_prefs::QuotaProvider;
+
+        let prefs = |profile_id: Option<&str>| QuotaPrefs {
+            enabled: true,
+            window: "both".to_string(),
+            providers: vec![QuotaProvider {
+                id: "claude-code".to_string(),
+                enabled: true,
+                profile_id: profile_id.map(|id| id.to_string()),
+            }],
+        };
+
+        assert_eq!(
+            chosen_profile(&prefs(Some("wsl:Ubuntu-24.04")), "claude-code"),
+            Some(TerminalProfile::Wsl {
+                distro: "Ubuntu-24.04".to_string()
+            })
+        );
+        assert_eq!(
+            chosen_profile(&prefs(Some("host")), "claude-code"),
+            Some(TerminalProfile::Host)
+        );
+        assert_eq!(chosen_profile(&prefs(None), "claude-code"), None);
+        assert_eq!(chosen_profile(&prefs(Some("lixo")), "claude-code"), None);
+        // Provedor sem linha nas prefs não tem escolha a herdar de outro.
+        assert_eq!(
+            chosen_profile(&prefs(Some("host")), "codex-cli"),
+            None,
+            "a escolha de um provedor não vale para outro"
+        );
     }
 
     #[tokio::test]

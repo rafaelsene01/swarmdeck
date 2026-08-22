@@ -1,4 +1,4 @@
-// SPEC: providers-panel (PROV-01, PROV-05, PROV-06, PROV-08, PROV-09)
+// SPEC: providers-panel (PROV-01, PROV-05, PROV-06, PROV-08, PROV-09), quota-provider-source (QSRC-01, QSRC-03, QSRC-07)
 // SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10, QUOTA-31), silent-update (SILENT-09, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-42), projects (PROJ-19, PROJ-23, PROJ-24), update-toast (TOAST-06, TOAST-08, TOAST-10)
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -12,6 +12,7 @@ import GeneralPanel, { type QuotaPrefs } from './GeneralPanel'
 import ProjectsPanel, { countTerminalsByProject, type ProjectRow } from './ProjectsPanel'
 import ProjectFormModal, { type ProjectFormValues } from '../../components/project/ProjectFormModal'
 import UpdateSettings, { type UpdateState } from '../../components/settings/UpdateSettings'
+import type { ProfileCatalog, ProfileCatalogEntry } from '../../types/agents'
 
 type SectionId = 'general' | 'agents' | 'projects' | 'updates'
 
@@ -97,6 +98,12 @@ export default function SettingsShell({ onClose, initialSection }: SettingsShell
   const [providers, setProviders] = useState<ProviderRow[]>([])
   /** SPEC: providers-panel (PROV-08) */
   const [scanning, setScanning] = useState(false)
+  /** SPEC: quota-provider-source (QSRC-03, QSRC-07) — perfis de terminal do
+   * app, para casar cada rótulo de `foundIn` com o `profileId` que a escolha
+   * de origem da cota persiste. Buscado aqui, e não recebido por prop, porque
+   * este shell também roda na janela `settings`, onde não há `App` acima. */
+  const [profiles, setProfiles] = useState<ProfileCatalogEntry[]>([])
+  const [defaultProfileId, setDefaultProfileId] = useState<string | undefined>(undefined)
 
   // Projetos (PROJ-05): dado real, via `project_list`, já registrado.
   const [projects, setProjects] = useState<ProjectRow[]>([])
@@ -203,6 +210,19 @@ export default function SettingsShell({ onClose, initialSection }: SettingsShell
         if (!cancelled) setProviders(rows ?? [])
       })
       .catch((error) => console.error('falha ao ler os provedores', error))
+
+    // SPEC: quota-provider-source (QSRC-07) — os perfis existentes. Falha só
+    // custa o seletor de origem da cota: sem par para o rótulo, a linha do
+    // provedor aparece sem opções e a busca segue no perfil padrão (QSRC-06).
+    void invoke<ProfileCatalog>('agent_catalog_all')
+      .then((catalog) => {
+        if (cancelled) return
+        // Resposta ausente (backend antigo, mock de teste) não é erro: sem
+        // perfis o seletor de origem simplesmente não aparece.
+        setProfiles(catalog?.profiles ?? [])
+        setDefaultProfileId(catalog?.defaultProfileId)
+      })
+      .catch((error) => console.error('falha ao ler os perfis de terminal', error))
 
     void loadProjects()
     void loadTerminalCounts()
@@ -578,7 +598,12 @@ export default function SettingsShell({ onClose, initialSection }: SettingsShell
             <GeneralPanel
               prefs={quotaPrefs}
               onChange={handleChangeQuotaPrefs}
-              agentIds={providers.map((provider) => provider.id)}
+              // SPEC: quota-provider-source (QSRC-01, QSRC-03, QSRC-07) — a
+              // mesma varredura que alimenta Provedores decide quem aparece
+              // aqui, e os perfis do app dão o `profileId` de cada rótulo.
+              providers={providers}
+              profiles={profiles}
+              defaultProfileId={defaultProfileId}
             />
           )}
 

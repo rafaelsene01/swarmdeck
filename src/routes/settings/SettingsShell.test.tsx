@@ -36,6 +36,75 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({
   open: () => Promise.resolve('/home/user/dev'),
 }))
 
+// SPEC: quota-provider-source (QSRC-01, QSRC-03) — o wiring: a lista de Geral
+// vem da mesma varredura da seção Provedores, e os perfis vêm de
+// `agent_catalog_all`.
+describe('SettingsShell — origem da cota na seção Geral (QSRC-01, QSRC-03)', () => {
+  beforeEach(() => {
+    invokeMock.mockClear()
+    invokeMock.mockImplementation((command: string) => {
+      if (command === 'provider_prefs_get') {
+        return Promise.resolve([
+          { id: 'claude-code', enabled: true, foundIn: ['Windows', 'Ubuntu-24.04'] },
+          { id: 'kimi-code', enabled: false, foundIn: [] },
+        ])
+      }
+      if (command === 'agent_catalog_all') {
+        return Promise.resolve({
+          defaultProfileId: 'host',
+          profiles: [
+            { profileId: 'host', label: 'Windows', wsl1: false, agents: [] },
+            { profileId: 'wsl:Ubuntu-24.04', label: 'Ubuntu-24.04', wsl1: false, agents: [] },
+          ],
+        })
+      }
+      if (command === 'quota_prefs_get') {
+        return Promise.resolve({
+          enabled: true,
+          window: 'both',
+          providers: [{ id: 'claude-code', enabled: true }],
+        })
+      }
+      if (command === 'project_list') return Promise.resolve([])
+      return Promise.resolve(null)
+    })
+  })
+
+  it('Geral lista o provedor achado e oferece os dois terminais dele', async () => {
+    render(<SettingsShell />)
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-provider="claude-code"]')).not.toBeNull(),
+    )
+    // QSRC-01: o não achado não vira linha.
+    expect(document.querySelector('[data-provider="kimi-code"]')).toBeNull()
+
+    // QSRC-03: os dois rótulos casaram com perfis e viraram opções; o padrão
+    // (`host` = "Windows") é o marcado enquanto nada foi escolhido.
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: 'Ubuntu-24.04' })).toBeInTheDocument(),
+    )
+    expect(screen.getByRole('radio', { name: 'Windows' })).toBeChecked()
+  })
+
+  it('marcar um terminal persiste via quota_prefs_set', async () => {
+    render(<SettingsShell />)
+
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: 'Ubuntu-24.04' })).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByRole('radio', { name: 'Ubuntu-24.04' }))
+
+    expect(invokeMock).toHaveBeenCalledWith('quota_prefs_set', {
+      prefs: {
+        enabled: true,
+        window: 'both',
+        providers: [{ id: 'claude-code', enabled: true, profileId: 'wsl:Ubuntu-24.04' }],
+      },
+    })
+  })
+})
+
 describe('SettingsShell — seção Provedores (PROV-05/06/08/09)', () => {
   const CLAUDE = { id: 'claude-code', enabled: true, foundIn: ['Windows', 'Ubuntu-24.04'] }
   const CODEX = { id: 'codex-cli', enabled: false, foundIn: [] }

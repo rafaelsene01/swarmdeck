@@ -1,4 +1,6 @@
-// SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-26, QUOTA-31)
+// SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-26; QUOTA-31 — REVOKED by
+// AD-044), quota-provider-source (QSRC-01, QSRC-02, QSRC-03, QSRC-04, QSRC-07,
+// QSRC-09)
 
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -10,17 +12,32 @@ const PROVIDERS = [
   { id: 'opencode', enabled: true },
 ]
 
-/** Ordem de `agents::catalog::CATALOG`. Os dois últimos não estão na semente
- *  da migração 007 — é o caso que QUOTA-31 cobre. */
-const CATALOG_IDS = ['claude-code', 'codex-cli', 'antigravity-cli', 'opencode', 'kimi-code']
+/** SPEC: quota-provider-source (QSRC-01) — a lista agora nasce da varredura.
+ * O default cobre os testes que só olham switch mestre/janela: os três
+ * provedores da semente, todos achados no host. */
+function foundRows(ids: string[] = PROVIDERS.map((p) => p.id), places = ['Windows']) {
+  return ids.map((id) => ({ id, enabled: true, foundIn: places }))
+}
+
+const PROFILES = [
+  { profileId: 'host', label: 'Windows', wsl1: false, agents: [] },
+  { profileId: 'wsl:Ubuntu-24.04', label: 'Ubuntu-24.04', wsl1: false, agents: [] },
+]
 
 function renderPanel(
   prefs: Omit<QuotaPrefs, 'providers'> & { providers?: QuotaPrefs['providers'] },
-  agentIds: string[] = [],
+  providers: { id: string; enabled: boolean; foundIn: string[] }[] = foundRows(),
+  options: { profiles?: typeof PROFILES; defaultProfileId?: string } = {},
 ) {
   const onChange = vi.fn()
   render(
-    <GeneralPanel prefs={{ providers: PROVIDERS, ...prefs }} onChange={onChange} agentIds={agentIds} />,
+    <GeneralPanel
+      prefs={{ providers: PROVIDERS, ...prefs }}
+      onChange={onChange}
+      providers={providers}
+      profiles={options.profiles ?? PROFILES}
+      defaultProfileId={options.defaultProfileId}
+    />,
   )
   return onChange
 }
@@ -112,76 +129,159 @@ describe('GeneralPanel', () => {
   })
 })
 
-// SPEC: quota-indicator (QUOTA-31) — o catálogo inteiro aparece na lista, e só
-// quem tem cota real é controlável, como o passo 2 do wizard já faz.
-describe('GeneralPanel — catálogo completo com linhas travadas (QUOTA-31)', () => {
-  it('acrescenta os agentes do catálogo que faltam nas prefs, no fim da lista', () => {
-    renderPanel({ enabled: true, window: 'both' }, CATALOG_IDS)
+// SPEC: quota-provider-source (QSRC-01, QSRC-02, QSRC-03, QSRC-04, QSRC-07,
+// QSRC-09) — AD-044 revoga QUOTA-31: a lista deixou de mostrar o catálogo
+// inteiro e passou a mostrar o que a varredura achou.
+describe('GeneralPanel — só os provedores encontrados (QSRC-01)', () => {
+  it('lista só os provedores encontrados na varredura', () => {
+    renderPanel({ enabled: true, window: 'both' }, [
+      { id: 'claude-code', enabled: true, foundIn: ['Windows'] },
+      { id: 'codex-cli', enabled: true, foundIn: [] },
+      { id: 'opencode', enabled: true, foundIn: ['Ubuntu-24.04'] },
+    ])
 
     const rows = [...document.querySelectorAll('[data-provider]')].map((row) =>
       row.getAttribute('data-provider'),
     )
-    expect(rows).toEqual([
-      'claude-code',
-      'codex-cli',
-      'opencode',
-      'antigravity-cli',
-      'kimi-code',
+    expect(rows).toEqual(['claude-code', 'opencode'])
+  })
+
+  it('provedor achado que não está nas prefs entra no fim da lista', () => {
+    renderPanel(
+      { enabled: true, window: 'both', providers: [{ id: 'claude-code', enabled: true }] },
+      [
+        { id: 'claude-code', enabled: true, foundIn: ['Windows'] },
+        { id: 'kimi-code', enabled: true, foundIn: ['Windows'] },
+      ],
+    )
+
+    const rows = [...document.querySelectorAll('[data-provider]')].map((row) =>
+      row.getAttribute('data-provider'),
+    )
+    expect(rows).toEqual(['claude-code', 'kimi-code'])
+  })
+
+  it('varredura vazia não renderiza linha nenhuma', () => {
+    renderPanel({ enabled: true, window: 'both' }, [])
+
+    expect(document.querySelectorAll('[data-provider]')).toHaveLength(0)
+  })
+
+  // QSRC-02: AD-033 continua valendo — achado, mas sem endpoint de consumo.
+  it('provedor achado sem cota segue travado e desmarcado', () => {
+    const onChange = renderPanel({ enabled: true, window: 'both' }, [
+      { id: 'claude-code', enabled: true, foundIn: ['Windows'] },
+      { id: 'codex-cli', enabled: true, foundIn: ['Windows'] },
     ])
-  })
 
-  it('só o provedor com cota real tem switch e setas ativos', () => {
-    renderPanel({ enabled: true, window: 'both' }, CATALOG_IDS)
-
+    const codex = screen.getByRole('checkbox', { name: 'Mostrar Codex no popover' })
+    expect(codex).toBeDisabled()
+    expect(codex).not.toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Mostrar Claude no popover' })).toBeEnabled()
+    expect(onChange).not.toHaveBeenCalled()
+  })
+})
 
-    for (const name of ['Codex', 'Antigravity', 'opencode', 'Kimi']) {
-      expect(screen.getByRole('checkbox', { name: `Mostrar ${name} no popover` })).toBeDisabled()
-      expect(screen.getByRole('button', { name: `Subir ${name}` })).toBeDisabled()
-      expect(screen.getByRole('button', { name: `Descer ${name}` })).toBeDisabled()
-    }
+describe('GeneralPanel — terminal de origem da cota (QSRC-03, QSRC-04, QSRC-07)', () => {
+  const doisTerminais = [
+    { id: 'claude-code', enabled: true, foundIn: ['Windows', 'Ubuntu-24.04'] },
+  ]
+
+  it('achado em dois terminais mostra o seletor, com o padrão marcado', () => {
+    renderPanel({ enabled: true, window: 'both' }, doisTerminais, {
+      defaultProfileId: 'wsl:Ubuntu-24.04',
+    })
+
+    const group = screen.getByRole('radiogroup', { name: 'Terminal de origem da cota de Claude' })
+    expect(group).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Ubuntu-24.04' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Windows' })).not.toBeChecked()
   })
 
-  // AD-033: a linha travada mostra `false` mesmo com a preferência gravada
-  // dizendo `true` — é o caso real de `codex-cli` e `opencode`, semeados como
-  // ligados pela migração 007. Marcado-e-desabilitado lê como "ligado e você
-  // não pode desligar", e esses provedores não aparecem mais no popover.
-  it('a linha travada mostra false, mesmo gravada como ligada', () => {
+  it('achado em um terminal só não mostra seletor', () => {
+    renderPanel({ enabled: true, window: 'both' }, [
+      { id: 'claude-code', enabled: true, foundIn: ['Windows'] },
+    ])
+
+    expect(screen.queryByRole('radiogroup', { name: /Terminal de origem/ })).toBeNull()
+  })
+
+  it('marcar um terminal persiste a escolha no provedor certo', () => {
+    const onChange = renderPanel(
+      { enabled: true, window: 'both', providers: [{ id: 'claude-code', enabled: true }] },
+      doisTerminais,
+    )
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Ubuntu-24.04' }))
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providers: [{ id: 'claude-code', enabled: true, profileId: 'wsl:Ubuntu-24.04' }],
+      }),
+    )
+  })
+
+  it('a escolha gravada é a que aparece marcada, não o padrão', () => {
+    renderPanel(
+      {
+        enabled: true,
+        window: 'both',
+        providers: [{ id: 'claude-code', enabled: true, profileId: 'wsl:Ubuntu-24.04' }],
+      },
+      doisTerminais,
+      { defaultProfileId: 'host' },
+    )
+
+    expect(screen.getByRole('radio', { name: 'Ubuntu-24.04' })).toBeChecked()
+  })
+
+  // QSRC-09: o switch mexe em `enabled` e não encosta na escolha gravada.
+  it('alternar o switch preserva o terminal marcado', () => {
     const onChange = renderPanel(
       {
         enabled: true,
         window: 'both',
-        providers: [
-          { id: 'claude-code', enabled: true },
-          { id: 'codex-cli', enabled: true },
-          { id: 'opencode', enabled: true },
-        ],
+        providers: [{ id: 'claude-code', enabled: true, profileId: 'wsl:Ubuntu-24.04' }],
       },
-      CATALOG_IDS,
+      doisTerminais,
     )
 
-    expect(screen.getByRole('checkbox', { name: 'Mostrar Codex no popover' })).not.toBeChecked()
-    expect(screen.getByRole('checkbox', { name: 'Mostrar opencode no popover' })).not.toBeChecked()
-    // Kimi nunca foi gravado: entra desmarcado pelo caminho de sempre.
-    expect(screen.getByRole('checkbox', { name: 'Mostrar Kimi no popover' })).not.toBeChecked()
-    // Claude tem cota: segue mostrando o valor gravado.
-    expect(screen.getByRole('checkbox', { name: 'Mostrar Claude no popover' })).toBeChecked()
-    // AD-033: é só apresentação — nada é gravado por conta desta correção.
-    expect(onChange).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Mostrar Claude no popover' }))
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providers: [{ id: 'claude-code', enabled: false, profileId: 'wsl:Ubuntu-24.04' }],
+      }),
+    )
   })
 
-  it('id do catálogo já presente nas prefs não vira linha duplicada', () => {
-    renderPanel({ enabled: true, window: 'both' }, CATALOG_IDS)
+  // QSRC-07: rótulo que não casa com perfil nenhum não vira opção — e com
+  // uma opção sobrando não há seletor a mostrar.
+  it('rótulo sem perfil correspondente não vira opção', () => {
+    renderPanel(
+      { enabled: true, window: 'both' },
+      [{ id: 'claude-code', enabled: true, foundIn: ['Windows', 'Distro-Que-Sumiu'] }],
+    )
 
-    expect(document.querySelectorAll('[data-provider="claude-code"]')).toHaveLength(1)
-    expect(document.querySelectorAll('[data-provider="opencode"]')).toHaveLength(1)
+    expect(screen.queryByRole('radio', { name: 'Distro-Que-Sumiu' })).toBeNull()
+    expect(screen.queryByRole('radiogroup', { name: /Terminal de origem/ })).toBeNull()
   })
 
-  it('sem catálogo a lista continua sendo só as prefs', () => {
-    renderPanel({ enabled: true, window: 'both' })
+  // QSRC-04: provedor achado que nunca foi gravado recebe a escolha via
+  // acréscimo, em vez de a interação virar no-op.
+  it('provedor fora das prefs recebe a escolha como entrada nova', () => {
+    const onChange = renderPanel(
+      { enabled: true, window: 'both', providers: [] },
+      doisTerminais,
+    )
 
-    expect(document.querySelectorAll('[data-provider]')).toHaveLength(3)
-    expect(document.querySelector('[data-provider="kimi-code"]')).toBeNull()
+    fireEvent.click(screen.getByRole('radio', { name: 'Ubuntu-24.04' }))
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providers: [{ id: 'claude-code', enabled: true, profileId: 'wsl:Ubuntu-24.04' }],
+      }),
+    )
   })
 })
 
@@ -191,7 +291,7 @@ describe('GeneralPanel — catálogo completo com linhas travadas (QUOTA-31)', (
 // por acidente.
 describe('GeneralPanel — sem seletor de perfil de terminal (AD-035)', () => {
   it('não renderiza mais o grupo "Perfil de terminal"', () => {
-    renderPanel({ enabled: true, window: 'both' }, CATALOG_IDS)
+    renderPanel({ enabled: true, window: 'both' })
 
     expect(screen.queryByRole('group', { name: 'Perfil de terminal' })).toBeNull()
     expect(screen.queryByText('Perfil de terminal')).toBeNull()

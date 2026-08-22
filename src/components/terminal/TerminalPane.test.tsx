@@ -5,8 +5,21 @@ import { render, screen, waitFor } from '@testing-library/react'
 
 // Same `vi.hoisted` pattern as `App.test.tsx` — the `vi.mock` factories below
 // are hoisted above these imports by Vitest's transform.
-const { invokeMock, onDataHandlers, keyHandlers, pasteMock, writeMock, termOptions } = vi.hoisted(() => ({
+const {
+  invokeMock,
+  onDataHandlers,
+  keyHandlers,
+  pasteMock,
+  writeMock,
+  termOptions,
+  fitMock,
+  proposed,
+} = vi.hoisted(() => ({
   invokeMock: vi.fn(),
+  /** TRSZ-01: cada `fit()` que o painel aplicou de fato. */
+  fitMock: vi.fn(),
+  /** TRSZ-01: proposta que o `FitAddon` mockado devolve. */
+  proposed: { value: { cols: 120, rows: 30 } as { cols: number; rows: number } | undefined },
   /** TFONT-01: as options passadas ao construtor do xterm. */
   termOptions: [] as Array<Record<string, unknown>>,
   onDataHandlers: [] as Array<(data: string) => void>,
@@ -50,9 +63,16 @@ vi.mock('@xterm/xterm', () => ({
   },
 }))
 
+// TRSZ-01: o piso de colunas decide pela proposta do addon, então o mock
+// precisa devolver uma proposta controlável e registrar cada `fit()`.
 vi.mock('@xterm/addon-fit', () => ({
   FitAddon: class {
-    fit() {}
+    fit() {
+      fitMock()
+    }
+    proposeDimensions() {
+      return proposed.value
+    }
   },
 }))
 
@@ -333,5 +353,106 @@ describe('TerminalPane — fonte do terminal (TFONT-01)', () => {
     const fontFamily = String(termOptions.at(-1)?.fontFamily ?? '')
     expect(fontFamily).toMatch(/monospace/)
     expect(fontFamily.trim().endsWith("'Symbols Nerd Font Mono'")).toBe(true)
+  })
+})
+
+/**
+ * SPEC: terminal-resize-floor (TRSZ-01, TRSZ-02, TRSZ-03)
+ *
+ * O `FitAddon` grampeia a proposta em `MINIMUM_COLS = 2` em vez de desistir.
+ * Aplicar isso manda o provedor redesenhar em duas colunas, e cada caractere
+ * vira uma linha lógica que o alargamento nunca refunde — o histórico fica
+ * uma tira de um caractere.
+ */
+describe('TerminalPane — piso de colunas (TRSZ)', () => {
+  /** jsdom mede todo elemento com 0; sem isto `syncSize` desiste antes do
+   * piso e nenhum dos casos abaixo exercita o que interessa. */
+  const withMeasuredBox = () => {
+    const patch = (name: 'clientWidth' | 'clientHeight', value: number) => {
+      const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, name)
+      Object.defineProperty(HTMLElement.prototype, name, { configurable: true, value })
+      return () => {
+        if (original) Object.defineProperty(HTMLElement.prototype, name, original)
+        else Reflect.deleteProperty(HTMLElement.prototype, name)
+      }
+    }
+    const undo = [patch('clientWidth', 900), patch('clientHeight', 600)]
+    return () => undo.forEach((fn) => fn())
+  }
+
+  it('não redimensiona quando a caixa é medida abaixo do piso de colunas', async () => {
+    const restore = withMeasuredBox()
+    try {
+      fitMock.mockClear()
+      invokeMock.mockClear()
+      invokeMock.mockResolvedValue('t-floor')
+      // O que o FitAddon devolve quando a caixa é estreita: o piso dele.
+      proposed.value = { cols: 2, rows: 24 }
+
+      render(<TerminalPane cwd="." />)
+
+      await vi.waitFor(() =>
+        expect(invokeMock).toHaveBeenCalledWith('pty_spawn', expect.anything()),
+      )
+      expect(fitMock).not.toHaveBeenCalled()
+      expect(invokeMock).not.toHaveBeenCalledWith('pty_resize', expect.anything())
+    } finally {
+      restore()
+      proposed.value = { cols: 120, rows: 30 }
+    }
+  })
+
+  it('redimensiona normalmente quando a proposta está acima do piso', async () => {
+    const restore = withMeasuredBox()
+    try {
+      fitMock.mockClear()
+      invokeMock.mockClear()
+      invokeMock.mockResolvedValue('t-wide')
+      proposed.value = { cols: 120, rows: 30 }
+
+      render(<TerminalPane cwd="." />)
+
+      // TRSZ-02: o fit inicial passa pelo mesmo piso — e passa.
+      expect(fitMock).toHaveBeenCalled()
+      await vi.waitFor(() =>
+        expect(invokeMock).toHaveBeenCalledWith('pty_resize', {
+          id: 't-wide',
+          rows: 24,
+          cols: 80,
+        }),
+      )
+    } finally {
+      restore()
+    }
+  })
+
+  it('proposta indisponível também não redimensiona', async () => {
+    const restore = withMeasuredBox()
+    try {
+      fitMock.mockClear()
+      invokeMock.mockClear()
+      invokeMock.mockResolvedValue('t-undef')
+      proposed.value = undefined
+
+      render(<TerminalPane cwd="." />)
+
+      await vi.waitFor(() =>
+        expect(invokeMock).toHaveBeenCalledWith('pty_spawn', expect.anything()),
+      )
+      expect(fitMock).not.toHaveBeenCalled()
+      expect(invokeMock).not.toHaveBeenCalledWith('pty_resize', expect.anything())
+    } finally {
+      restore()
+      proposed.value = { cols: 120, rows: 30 }
+    }
+  })
+
+  it('cria o xterm com scrollback acima do padrão da biblioteca', () => {
+    invokeMock.mockResolvedValue('t-scroll')
+    termOptions.length = 0
+
+    render(<TerminalPane cwd="." />)
+
+    expect(Number(termOptions.at(-1)?.scrollback)).toBeGreaterThan(1000)
   })
 })

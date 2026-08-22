@@ -1,6 +1,7 @@
 // SPEC: quota-indicator (QUOTA-15, QUOTA-16, QUOTA-19, QUOTA-20, QUOTA-21, QUOTA-22, QUOTA-23, QUOTA-24, QUOTA-25;
 // QUOTA-18 — REVOKED by AD-043: o arquivo de credencial deixou de ser somente leitura),
-// quota-token-refresh (QTR-01, QTR-02, QTR-03, QTR-04, QTR-05, QTR-06, QTR-07, QTR-08, QTR-09, QTR-13, QTR-14, QTR-15)
+// quota-token-refresh (QTR-01, QTR-02, QTR-03, QTR-04, QTR-05, QTR-06, QTR-07, QTR-08, QTR-09, QTR-13, QTR-14, QTR-15),
+// quota-provider-source (QSRC-05, QSRC-06 — a cadeia de candidatos de QUOTA-15 passa a valer só sem escolha gravada)
 
 //! Núcleo de cota do Claude: decodificação da resposta de uso (pura, sem
 //! I/O — T4) e a leitura de credencial + busca HTTP (T5). O cache com piso
@@ -285,7 +286,16 @@ fn credential_path_in(profile: &TerminalProfile) -> Option<PathBuf> {
 fn credential_candidates(
     default_profile: &TerminalProfile,
     available: &[String],
+    chosen: Option<&TerminalProfile>,
 ) -> Vec<TerminalProfile> {
+    // SPEC: quota-provider-source (QSRC-05) — escolha explícita encerra a
+    // lista: o usuário disse de qual terminal a cota vem, e cair em outro
+    // mostraria a cota de outra conta como se fosse a dele. Sem escolha
+    // (QSRC-06) a cadeia é a de sempre, e é ela que cobre o Windows cujo
+    // `.claude/` só existe dentro da distro.
+    if let Some(profile) = chosen {
+        return vec![profile.clone()];
+    }
     let mut candidates = vec![default_profile.clone()];
     for id in available {
         if let Some(profile) = TerminalProfile::parse_id(id) {
@@ -397,8 +407,11 @@ fn real_now_ms() -> i64 {
 /// Percorre os candidatos e devolve a primeira credencial legível. `None`
 /// quando nenhum perfil tem `.claude/.credentials.json` utilizável — é o que
 /// vira `state: "no_credential"` na UI.
-fn real_read_credential(default_profile: &TerminalProfile) -> Option<Credential> {
-    locate_credential(default_profile).map(|(_, _, credential)| credential)
+fn real_read_credential(
+    default_profile: &TerminalProfile,
+    chosen: Option<&TerminalProfile>,
+) -> Option<Credential> {
+    locate_credential(default_profile, chosen).map(|(_, _, credential)| credential)
 }
 
 /// Só a credencial, sem o JSON cru. `#[cfg(test)]` porque o código de
@@ -413,13 +426,22 @@ fn read_credential(path: &Path) -> Option<Credential> {
 /// Igual a `real_read_credential`, mas devolve **onde** a credencial estava e
 /// o JSON inteiro do arquivo. É o que a renovação precisa: regravar o mesmo
 /// arquivo que foi lido, e não outro candidato (QTR-02).
-fn locate_credential(default_profile: &TerminalProfile) -> Option<(PathBuf, Value, Credential)> {
-    let available: Vec<String> = crate::shells::list::list_profiles()
-        .into_iter()
-        .map(|entry| entry.id)
-        .collect();
+fn locate_credential(
+    default_profile: &TerminalProfile,
+    chosen: Option<&TerminalProfile>,
+) -> Option<(PathBuf, Value, Credential)> {
+    // QSRC-05: com escolha explícita a lista viva de perfis não é sequer
+    // consultada — um `wsl.exe -l -v` que não decide nada.
+    let available: Vec<String> = if chosen.is_some() {
+        Vec::new()
+    } else {
+        crate::shells::list::list_profiles()
+            .into_iter()
+            .map(|entry| entry.id)
+            .collect()
+    };
 
-    credential_candidates(default_profile, &available)
+    credential_candidates(default_profile, &available, chosen)
         .iter()
         .filter_map(credential_path_in)
         .find_map(|path| {
@@ -631,11 +653,12 @@ fn refresh_lock() -> &'static tokio::sync::Mutex<()> {
 /// Versão de produção da renovação. Best-effort por construção: não devolve
 /// erro porque nenhum desfecho dela muda o que a busca de cota faz em
 /// seguida — ela apenas pode ter deixado um token melhor no disco.
-async fn ensure_fresh(default_profile: &TerminalProfile) {
+async fn ensure_fresh(default_profile: &TerminalProfile, chosen: Option<&TerminalProfile>) {
     let _guard = refresh_lock().lock().await;
     let profile = default_profile.clone();
+    let chosen = chosen.cloned();
     ensure_fresh_with(
-        move || locate_credential(&profile),
+        move || locate_credential(&profile, chosen.as_ref()),
         real_refresh_http,
         |path, value| write_credential_atomic(path, value).map_err(|err| err.to_string()),
         real_now_ms(),
@@ -720,17 +743,18 @@ pub async fn fetch(
     state: &QuotaCache,
     force: bool,
     default_profile: &TerminalProfile,
+    chosen: Option<&TerminalProfile>,
 ) -> Result<(ClaudeQuota, i64), QuotaError> {
     // SPEC: quota-token-refresh (QTR-01) — a renovação vem **antes** da
     // busca: é ela que faz a cota já estar pronta quando o overlay de boot
     // solta (BOOT-09), em vez de o boot mandar um token vencido, tomar 401 e
     // o anel nascer em "sessão expirada".
-    ensure_fresh(default_profile).await;
+    ensure_fresh(default_profile, chosen).await;
 
     fetch_cached_with(
         state,
         force,
-        || real_read_credential(default_profile),
+        || real_read_credential(default_profile, chosen),
         real_http,
         real_now_ms,
     )
@@ -1119,6 +1143,7 @@ mod credential_profile_tests {
                 "wsl:Ubuntu-24.04".to_string(),
                 "wsl:Debian".to_string(),
             ],
+            None,
         );
 
         assert_eq!(
@@ -1133,6 +1158,7 @@ mod credential_profile_tests {
         let candidates = credential_candidates(
             &TerminalProfile::Host,
             &["host".to_string(), "wsl:Ubuntu-24.04".to_string()],
+            None,
         );
 
         assert_eq!(candidates, vec![TerminalProfile::Host, wsl("Ubuntu-24.04")]);
@@ -1142,9 +1168,35 @@ mod credential_profile_tests {
     // mudança: um candidato só, o host.
     #[test]
     fn sem_wsl_registrada_o_unico_candidato_e_o_host() {
-        let candidates = credential_candidates(&TerminalProfile::Host, &["host".to_string()]);
+        let candidates = credential_candidates(&TerminalProfile::Host, &["host".to_string()], None);
 
         assert_eq!(candidates, vec![TerminalProfile::Host]);
+    }
+
+    // SPEC: quota-provider-source (QSRC-05) — escolha explícita: um candidato
+    // só, e nem o perfil padrão entra na lista.
+    #[test]
+    fn candidatos_com_escolha_explicita_tem_so_o_escolhido() {
+        let candidates = credential_candidates(
+            &TerminalProfile::Host,
+            &["host".to_string(), "wsl:Ubuntu-24.04".to_string()],
+            Some(&wsl("Ubuntu-24.04")),
+        );
+
+        assert_eq!(candidates, vec![wsl("Ubuntu-24.04")]);
+    }
+
+    // SPEC: quota-provider-source (QSRC-06) — sem escolha nada muda: padrão
+    // primeiro, demais depois. É o que não regride quem nunca abriu a tela.
+    #[test]
+    fn candidatos_sem_escolha_mantem_padrao_e_demais() {
+        let candidates = credential_candidates(
+            &TerminalProfile::Host,
+            &["host".to_string(), "wsl:Ubuntu-24.04".to_string()],
+            None,
+        );
+
+        assert_eq!(candidates, vec![TerminalProfile::Host, wsl("Ubuntu-24.04")]);
     }
 
     // Id ilegível na lista é descartado, não vira candidato nem derruba a
@@ -1154,6 +1206,7 @@ mod credential_profile_tests {
         let candidates = credential_candidates(
             &TerminalProfile::Host,
             &["lixo".to_string(), "wsl:Ubuntu-24.04".to_string()],
+            None,
         );
 
         assert_eq!(candidates, vec![TerminalProfile::Host, wsl("Ubuntu-24.04")]);

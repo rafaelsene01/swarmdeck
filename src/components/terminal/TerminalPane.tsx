@@ -1,6 +1,7 @@
 // SPEC: multi-terminal (TERM-01, TERM-02, TERM-06, TERM-14), terminal-chrome (CHROME-01), session-restore (SESS-12, SESS-13), terminal-screenshot (SHOT-13), agent-permission-mode (PERM-01), terminal-font (TFONT-01, TFONT-02)
 // SPEC: wsl-terminal-profile (WSLP-12)
 // SPEC: terminal-boot-loading (BOOT-02, BOOT-03, BOOT-06)
+// SPEC: terminal-resize-floor (TRSZ-01, TRSZ-02, TRSZ-03)
 
 import { useEffect, useRef, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
@@ -73,6 +74,22 @@ export interface TerminalPaneProps {
 const RESIZE_DEBOUNCE_MS = 100
 
 /**
+ * SPEC: terminal-resize-floor (TRSZ-01, TRSZ-02) — piso de colunas abaixo do
+ * qual nenhuma dimensão proposta é aplicada, nem ao xterm nem ao PTY.
+ *
+ * Nunca morde um layout legítimo: `tauri.conf.json` fixa `minWidth: 900`, o
+ * que dá ~442 px por célula no grid 2×2 — cerca de 55 colunas. Painel medido
+ * abaixo disso é ilegível de qualquer forma; congelar o tamanho anterior é
+ * melhor que repassar a largura degenerada ao provedor.
+ */
+const MIN_COLS = 20
+
+/** SPEC: terminal-resize-floor (TRSZ-03) — acima do padrão de 1000 da
+ * biblioteca, para o re-wrap de um estreitamento legítimo não descartar
+ * histórico. */
+const TERMINAL_SCROLLBACK = 10_000
+
+/**
  * Casa uma instância de xterm.js com uma sessão do backend.
  *
  * ⚠️ Ordem importa: o teclado (`onData` → `pty_write`) e a saída
@@ -118,12 +135,17 @@ export default function TerminalPane({
       // o texto sai na monoespaçada do sistema e só os pontos de código que
       // faltam nela caem no arquivo embarcado.
       fontFamily: TERMINAL_FONT_FAMILY,
+      // SPEC: terminal-resize-floor (TRSZ-03) — o padrão da biblioteca é 1000
+      // linhas. Estreitar a caixa re-wrappa o histórico e multiplica a
+      // contagem de linhas; no padrão, o excedente é descartado (medido em
+      // @xterm/headless: 600 linhas viram 11 ao encolher para 2 colunas e
+      // voltar).
+      scrollback: TERMINAL_SCROLLBACK,
       theme: { background: '#0a0a0c', foreground: '#e8e8ea', cursor: '#f5b700' },
     })
     const fitAddon = new FitAddon()
     terminal.loadAddon(fitAddon)
     terminal.open(container)
-    fitAddon.fit()
     onTerminal?.(terminal)
 
     let terminalId: string | null = null
@@ -162,14 +184,32 @@ export default function TerminalPane({
      *
      * Container de tamanho zero (aba inativa, painel minimizado) é ignorado:
      * `fit()` ali produziria dimensões degeneradas e mandaria o PTY para elas.
+     *
+     * SPEC: terminal-resize-floor (TRSZ-01, TRSZ-02) — caixa medida estreita
+     * (mas não zero) é ignorada do mesmo jeito, e por um motivo pior: o
+     * `FitAddon` não desiste nesse caso, ele grampeia a proposta no piso
+     * dele, `MINIMUM_COLS = 2`. Aplicar isso manda o provedor redesenhar em
+     * duas colunas, e um CLI de Ink emite `\r\n` por segmento — cada
+     * caractere vira uma LINHA LÓGICA, que o reflow de alargamento nunca
+     * refunde (só refunde o que está marcado `isWrapped`). O histórico fica
+     * uma tira de um caractere para sempre. Consultar `proposeDimensions()`
+     * antes de `fit()` é o que deixa esta função recusar em vez de aplicar.
      */
     const syncSize = () => {
       if (disposed) return
       if (container.clientWidth === 0 || container.clientHeight === 0) return
+      const proposed = fitAddon.proposeDimensions()
+      if (!proposed || proposed.cols < MIN_COLS) return
       fitAddon.fit()
       if (!terminalId) return
       void invoke('pty_resize', { id: terminalId, rows: terminal.rows, cols: terminal.cols })
     }
+
+    // TRSZ-02: o ajuste inicial passa pelo mesmo piso — antes ele chamava
+    // `fit()` cru, sem guarda nenhuma, e podia aplicar a largura degenerada
+    // antes do primeiro byte chegar. `terminalId` ainda é `null` aqui, então
+    // o `pty_resize` de fato acontece no `then` de `pty_spawn`.
+    syncSize()
 
     /**
      * SPEC: multi-terminal (TERM-14) — Ctrl+V (e Ctrl+Shift+V) colam o texto

@@ -1,13 +1,23 @@
-// SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-26, QUOTA-31)
+// SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-26; QUOTA-31 — REVOKED by
+// AD-044: a lista deixou de mostrar o catálogo inteiro), quota-provider-source
+// (QSRC-01, QSRC-02, QSRC-03, QSRC-04, QSRC-07, QSRC-09)
 
 import { ChevronDown, ChevronUp, Gauge } from 'lucide-react'
 import ProviderIcon, { providerMeta } from '../../components/shell/ProviderIcon'
+import type { ProviderRow } from './AgentPanel'
+import type { ProfileCatalogEntry } from '../../types/agents'
 
 /** Espelha `QuotaProvider` de `src-tauri/src/db/quota_prefs.rs`. A ordem do
  * vetor **é** a ordem de exibição no popover — não há campo de índice. */
 export interface QuotaProviderPref {
   id: string
   enabled: boolean
+  /**
+   * SPEC: quota-provider-source (QSRC-04) — id do perfil de terminal de onde a
+   * cota deste provedor é buscada. Ausente = o usuário não escolheu, e a busca
+   * mantém a cadeia de candidatos de sempre (QSRC-06).
+   */
+  profileId?: string | null
 }
 
 export interface QuotaPrefs {
@@ -24,13 +34,28 @@ export interface GeneralPanelProps {
    * mesmo contrato que `UpdateSettings` já segue. */
   onChange: (next: QuotaPrefs) => void
   /**
-   * SPEC: quota-indicator (QUOTA-31) — ids de `agents::catalog::CATALOG`, na
-   * ordem do catálogo. A lista persistida (semente da migração 007) só tem os
-   * três provedores de então; os que faltam entram como linhas travadas, do
-   * mesmo jeito que o passo 2 do wizard mostra o catálogo inteiro e só deixa
-   * escolher quem está integrado (`AgentStep.tsx`). Ausente = só as prefs.
+   * SPEC: quota-provider-source (QSRC-01) — o estado da última varredura, uma
+   * entrada por provedor do catálogo (`provider_prefs_get`). Só quem tem
+   * `foundIn` não vazio vira linha: o resto não está instalado em terminal
+   * nenhum e não tem cota a mostrar.
+   *
+   * AD-044 revoga QUOTA-31, que mandava listar o catálogo inteiro com os
+   * ausentes travados. Vazio (ou ainda carregando) = nenhuma linha.
    */
-  agentIds?: string[]
+  providers?: ProviderRow[]
+  /**
+   * SPEC: quota-provider-source (QSRC-07) — perfis de terminal do app
+   * (`agent_catalog_all`), usados para casar o rótulo de `foundIn` com o
+   * `profileId` que é o valor persistido. Rótulo sem par aqui não vira opção.
+   */
+  profiles?: ProfileCatalogEntry[]
+  /**
+   * SPEC: quota-provider-source (QSRC-03) — perfil padrão do app. É o que fica
+   * marcado quando o usuário ainda não escolheu, porque é ele que a busca tenta
+   * primeiro nesse caso (QSRC-06) — marcar outro mentiria sobre de onde a cota
+   * está vindo.
+   */
+  defaultProfileId?: string
 }
 
 const WINDOW_OPTIONS: ReadonlyArray<{ value: QuotaPrefs['window']; label: string }> = [
@@ -48,15 +73,18 @@ const WINDOW_OPTIONS: ReadonlyArray<{ value: QuotaPrefs['window']; label: string
 export default function GeneralPanel({
   prefs,
   onChange,
-  agentIds = [],
+  providers = [],
+  profiles = [],
+  defaultProfileId,
 }: GeneralPanelProps) {
   const providerList = prefs.providers ?? []
 
   /**
-   * SPEC: quota-indicator (QUOTA-31) — as prefs persistidas primeiro, na ordem
-   * gravada, e depois os agentes do catálogo que ainda não estão nelas. As
-   * linhas extras são só de exibição: nunca entram no vetor que vai para
-   * `onChange`, então nada fora das prefs é gravado.
+   * SPEC: quota-provider-source (QSRC-01) — só provedor achado pela varredura
+   * vira linha. A ordem é a das prefs (é ela que ordena o popover, QUOTA-26) e
+   * os achados que ainda não estão nas prefs entram no fim, na ordem do
+   * catálogo — o mesmo encaixe que QUOTA-31 fazia, agora filtrado pelo que
+   * existe na máquina.
    *
    * `locked` acompanha `hasQuota`: só o provedor com endpoint de consumo real
    * (Claude, hoje) tem o que ligar, desligar ou reordenar. Quando o segundo
@@ -66,22 +94,41 @@ export default function GeneralPanel({
    * diga `true`** (é o caso de `codex-cli` e `opencode`, semeados como `true`
    * pela migração 007 — `db::quota_prefs::default_providers`). Um switch
    * marcado e desabilitado lê como "ligado e você não pode desligar", que é a
-   * leitura errada: para esses provedores não há cota a mostrar.
-   *
-   * AD-033: as prefs **não** são tocadas — nenhuma migração. Quem passou a
-   * respeitar `hasQuota` do outro lado foi o `QuotaIndicator`, que também
-   * deixou de listar provedor sem cota no popover. Então as duas telas
-   * concordam: travado = `false` aqui, ausente lá. Quando um provedor ganhar
-   * cota, os dois lados voltam juntos, sem dado velho para corrigir.
+   * leitura errada: para esses provedores não há cota a mostrar (AD-033).
    */
+  const foundById = new Map(
+    providers.filter((provider) => provider.foundIn.length > 0).map((p) => [p.id, p]),
+  )
+
+  /**
+   * SPEC: quota-provider-source (QSRC-07) — rótulo de `foundIn` casado com o
+   * perfil de mesmo rótulo. `foundIn` guarda rótulos (PROV-02) e o valor
+   * persistido é o `profileId`; casar aqui evita mudar o schema de
+   * `provider_prefs` e o painel de Provedores, que já mostra esses rótulos.
+   */
+  const profileOptionsFor = (id: string) =>
+    (foundById.get(id)?.foundIn ?? [])
+      .map((label) => profiles.find((profile) => profile.label === label))
+      .filter((profile): profile is ProfileCatalogEntry => Boolean(profile))
+
   const rows = [
-    ...providerList.map((provider) => ({ id: provider.id, enabled: provider.enabled })),
-    ...agentIds
+    ...providerList.filter((provider) => foundById.has(provider.id)),
+    ...[...foundById.keys()]
       .filter((id) => !providerList.some((provider) => provider.id === id))
-      .map((id) => ({ id, enabled: false })),
+      .map((id) => ({ id, enabled: false, profileId: null })),
   ].map((row) => {
     const locked = !providerMeta(row.id).hasQuota
-    return { ...row, locked, enabled: locked ? false : row.enabled }
+    const options = profileOptionsFor(row.id)
+    /**
+     * QSRC-03: exatamente um marcado. Sem escolha gravada, o marcado é o perfil
+     * padrão — é o primeiro que a busca tenta nesse caso (QSRC-06). Padrão fora
+     * das opções cai na primeira, que é a ordem de `list_profiles`.
+     */
+    const selected =
+      options.find((option) => option.profileId === row.profileId)?.profileId ??
+      options.find((option) => option.profileId === defaultProfileId)?.profileId ??
+      options[0]?.profileId
+    return { ...row, locked, enabled: locked ? false : row.enabled, options, selected }
   })
 
   const move = (id: string, delta: number) => {
@@ -95,10 +142,32 @@ export default function GeneralPanel({
     onChange({ ...prefs, providers })
   }
 
+  /**
+   * QSRC-09: o switch mexe só em `enabled` — o `profileId` gravado atravessa
+   * intacto. E QSRC-01 trouxe linhas que podem não estar nas prefs (achadas
+   * pela varredura, nunca gravadas): para essas, alternar **acrescenta** a
+   * entrada em vez de virar um no-op.
+   */
   const toggleProvider = (id: string) => {
-    const providers = providerList.map((provider) =>
-      provider.id === id ? { ...provider, enabled: !provider.enabled } : provider,
-    )
+    const known = providerList.some((provider) => provider.id === id)
+    const providers = known
+      ? providerList.map((provider) =>
+          provider.id === id ? { ...provider, enabled: !provider.enabled } : provider,
+        )
+      : [...providerList, { id, enabled: true }]
+    onChange({ ...prefs, providers })
+  }
+
+  /**
+   * SPEC: quota-provider-source (QSRC-04) — grava de qual terminal a cota deste
+   * provedor vem. Mesmo upsert do switch: um provedor achado e nunca gravado
+   * precisa poder receber a escolha.
+   */
+  const chooseProfile = (id: string, profileId: string) => {
+    const known = providerList.some((provider) => provider.id === id)
+    const providers = known
+      ? providerList.map((provider) => (provider.id === id ? { ...provider, profileId } : provider))
+      : [...providerList, { id, enabled: true, profileId }]
     onChange({ ...prefs, providers })
   }
 
@@ -215,6 +284,44 @@ export default function GeneralPanel({
         }
         .general-panel__reorder button:hover:not(:disabled) { color: var(--fg); background: rgba(255,255,255,0.06); }
         .general-panel__reorder button:disabled { opacity: 0.35; cursor: default; }
+        /* SPEC: quota-provider-source (QSRC-03) — chips de terminal, no molde
+           do .providers-panel__place de Provedores, mas selecionáveis: radio
+           nativo por baixo, então foco e leitor de tela seguem sendo os do
+           navegador (mesma escolha do segmented control acima). */
+        .general-panel__places {
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          flex: 0 0 auto;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+        .general-panel__place {
+          position: relative;
+          padding: 0.1rem 0.45rem;
+          border: 1px solid var(--border, #26262d);
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.04);
+          color: var(--muted, #8a8a92);
+          font-size: 0.68rem;
+          white-space: nowrap;
+          cursor: pointer;
+        }
+        .general-panel__place input {
+          position: absolute;
+          inset: 0;
+          margin: 0;
+          opacity: 0;
+          cursor: pointer;
+        }
+        .general-panel__place:has(input:checked) {
+          border-color: var(--accent);
+          background: rgba(245, 183, 0, 0.16);
+          color: var(--accent);
+          font-weight: 600;
+        }
+        .general-panel__place:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .general-panel__place:has(input:disabled) { cursor: default; }
         .general-panel__provider-name { display: flex; align-items: baseline; gap: 0.5rem; }
         .general-panel__provider-hint { color: var(--muted); font-size: 0.75rem; }
         /* Linha travada: o mesmo esmaecido que o passo 2 do wizard usa nos
@@ -320,6 +427,32 @@ export default function GeneralPanel({
                   {row.locked ? (meta.hint ?? 'sem cota') : meta.hint}
                 </span>
               </div>
+
+              {/* SPEC: quota-provider-source (QSRC-03) — achado em mais de um
+                  terminal, o centro da linha escolhe de qual deles a cota vem.
+                  Um terminal só não paga a coluna: não há empate a desfazer —
+                  mesmo critério do painel de Provedores (PROV-03). */}
+              {row.options.length > 1 && (
+                <div
+                  className="general-panel__places"
+                  role="radiogroup"
+                  aria-label={`Terminal de origem da cota de ${meta.name}`}
+                >
+                  {row.options.map((option) => (
+                    <label key={option.profileId} className="general-panel__place">
+                      <input
+                        type="radio"
+                        name={`quota-source-${row.id}`}
+                        value={option.profileId}
+                        checked={row.selected === option.profileId}
+                        disabled={row.locked}
+                        onChange={() => chooseProfile(row.id, option.profileId)}
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
+              )}
 
               <span className="general-panel__switch">
                 <input

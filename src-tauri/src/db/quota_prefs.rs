@@ -1,4 +1,4 @@
-// SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-26)
+// SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-26), quota-provider-source (QSRC-04)
 
 //! Preferência do indicador de cota: ligado/desligado, qual janela
 //! rastrear e quais provedores o popover lista. Linha única (`id = 1`),
@@ -16,6 +16,16 @@ pub struct QuotaProvider {
     /// Id do catálogo (`agents::catalog::CATALOG`). Validado pelo chamador.
     pub id: String,
     pub enabled: bool,
+    /// SPEC: quota-provider-source (QSRC-04) — id do perfil de terminal
+    /// (`shells::TerminalProfile::id()`) de onde a cota deste provedor deve ser
+    /// buscada. `None` = o usuário não escolheu, e aí a busca mantém a cadeia
+    /// de candidatos de sempre (QSRC-06).
+    ///
+    /// Mora no JSON da coluna `providers`, não numa coluna nova: `#[serde(default)]`
+    /// faz um registro gravado antes desta feature ler como `None`, então não há
+    /// migração a rodar.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub profile_id: Option<String>,
 }
 
 /// Fallback quando a coluna `providers` está ausente do JSON ou guarda JSON
@@ -31,6 +41,7 @@ pub fn default_providers() -> Vec<QuotaProvider> {
     vec![QuotaProvider {
         id: "claude-code".to_string(),
         enabled: true,
+        profile_id: None,
     }]
 }
 
@@ -107,6 +118,7 @@ mod tests {
                     .map(|id| QuotaProvider {
                         id: id.to_string(),
                         enabled: true,
+                        profile_id: None,
                     })
                     .collect(),
             }
@@ -121,6 +133,7 @@ mod tests {
             vec![QuotaProvider {
                 id: "claude-code".to_string(),
                 enabled: true,
+                profile_id: None,
             }]
         );
     }
@@ -136,16 +149,62 @@ mod tests {
                 QuotaProvider {
                     id: "codex-cli".to_string(),
                     enabled: false,
+                    profile_id: None,
                 },
                 QuotaProvider {
                     id: "claude-code".to_string(),
                     enabled: true,
+                    profile_id: Some("wsl:Ubuntu-24.04".to_string()),
                 },
             ],
         };
         set(db.conn(), &written).expect("set");
 
         assert_eq!(get(db.conn()).expect("get"), written);
+    }
+
+    // SPEC: quota-provider-source (QSRC-04) — a escolha de terminal sobrevive
+    // à gravação, e um registro sem ela lê como `None` (nenhuma migração).
+    #[test]
+    fn set_seguido_de_get_preserva_o_profile_id() {
+        let db = open_db();
+
+        let written = QuotaPrefs {
+            enabled: true,
+            window: "both".to_string(),
+            providers: vec![
+                QuotaProvider {
+                    id: "claude-code".to_string(),
+                    enabled: true,
+                    profile_id: Some("wsl:Ubuntu-24.04".to_string()),
+                },
+                QuotaProvider {
+                    id: "codex-cli".to_string(),
+                    enabled: false,
+                    profile_id: None,
+                },
+            ],
+        };
+        set(db.conn(), &written).expect("set");
+
+        assert_eq!(get(db.conn()).expect("get"), written);
+    }
+
+    // QSRC-04: JSON gravado antes desta feature (sem `profileId`) continua
+    // legível — é o que dispensa migração.
+    #[test]
+    fn json_antigo_sem_profile_id_le_como_none() {
+        let providers: Vec<QuotaProvider> =
+            serde_json::from_str(r#"[{"id":"claude-code","enabled":true}]"#).expect("parse");
+
+        assert_eq!(
+            providers,
+            vec![QuotaProvider {
+                id: "claude-code".to_string(),
+                enabled: true,
+                profile_id: None,
+            }]
+        );
     }
 
     #[test]
