@@ -1,4 +1,5 @@
 // SPEC: multi-terminal (TERM-01, TERM-02, TERM-14), terminal-screenshot (SHOT-13), agent-permission-mode (PERM-01), terminal-font (TFONT-01)
+// SPEC: terminal-glyph-metrics (TGLY-01, TGLY-02, TGLY-03)
 
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -14,10 +15,17 @@ const {
   termOptions,
   fitMock,
   proposed,
+  metricLog,
 } = vi.hoisted(() => ({
   invokeMock: vi.fn(),
   /** TRSZ-01: cada `fit()` que o painel aplicou de fato. */
   fitMock: vi.fn(),
+  /**
+   * TGLY-02, TGLY-03: escritas em `options.fontFamily` e `fit()` na ordem em
+   * que aconteceram. É a ordem que prova a invalidação ANTES do fit, e a
+   * sequência que prova que ela passa por um valor diferente do canônico.
+   */
+  metricLog: [] as string[],
   /** TRSZ-01: proposta que o `FitAddon` mockado devolve. */
   proposed: { value: { cols: 120, rows: 30 } as { cols: number; rows: number } | undefined },
   /** TFONT-01: as options passadas ao construtor do xterm. */
@@ -41,6 +49,18 @@ vi.mock('@xterm/xterm', () => ({
   Terminal: class {
     rows = 24
     cols = 80
+    /**
+     * TGLY-03: o painel invalida o cache de glifo escrevendo em
+     * `terminal.options.fontFamily`, então o mock precisa registrar cada
+     * escrita — um `Record` cru perderia a sequência.
+     */
+    options: Record<string, unknown> = new Proxy({} as Record<string, unknown>, {
+      set(target, prop, value) {
+        if (prop === 'fontFamily') metricLog.push(`font:${String(value)}`)
+        target[prop as string] = value
+        return true
+      },
+    })
     constructor(options: Record<string, unknown>) {
       termOptions.push(options)
     }
@@ -68,6 +88,7 @@ vi.mock('@xterm/xterm', () => ({
 vi.mock('@xterm/addon-fit', () => ({
   FitAddon: class {
     fit() {
+      metricLog.push('fit')
       fitMock()
     }
     proposeDimensions() {
@@ -77,10 +98,34 @@ vi.mock('@xterm/addon-fit', () => ({
 }))
 
 // jsdom não implementa `ResizeObserver`, e o painel observa o container.
+// TGLY-02: o callback é guardado para os testes poderem simular um resize
+// assentado, que é o caminho onde a invalidação precisa acontecer.
+const resizeCallbacks: ResizeObserverCallback[] = []
 globalThis.ResizeObserver = class {
+  constructor(callback: ResizeObserverCallback) {
+    resizeCallbacks.push(callback)
+  }
   observe() {}
   disconnect() {}
 } as unknown as typeof ResizeObserver
+
+/**
+ * jsdom mede todo elemento com 0; sem isto `syncSize` desiste antes do piso
+ * de colunas e nenhum dos casos que dependem de um fit aplicado exercita o
+ * que interessa.
+ */
+const withMeasuredBox = () => {
+  const patch = (name: 'clientWidth' | 'clientHeight', value: number) => {
+    const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, name)
+    Object.defineProperty(HTMLElement.prototype, name, { configurable: true, value })
+    return () => {
+      if (original) Object.defineProperty(HTMLElement.prototype, name, original)
+      else Reflect.deleteProperty(HTMLElement.prototype, name)
+    }
+  }
+  const undo = [patch('clientWidth', 900), patch('clientHeight', 600)]
+  return () => undo.forEach((fn) => fn())
+}
 
 import TerminalPane from './TerminalPane'
 
@@ -365,21 +410,6 @@ describe('TerminalPane — fonte do terminal (TFONT-01)', () => {
  * uma tira de um caractere.
  */
 describe('TerminalPane — piso de colunas (TRSZ)', () => {
-  /** jsdom mede todo elemento com 0; sem isto `syncSize` desiste antes do
-   * piso e nenhum dos casos abaixo exercita o que interessa. */
-  const withMeasuredBox = () => {
-    const patch = (name: 'clientWidth' | 'clientHeight', value: number) => {
-      const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, name)
-      Object.defineProperty(HTMLElement.prototype, name, { configurable: true, value })
-      return () => {
-        if (original) Object.defineProperty(HTMLElement.prototype, name, original)
-        else Reflect.deleteProperty(HTMLElement.prototype, name)
-      }
-    }
-    const undo = [patch('clientWidth', 900), patch('clientHeight', 600)]
-    return () => undo.forEach((fn) => fn())
-  }
-
   it('não redimensiona quando a caixa é medida abaixo do piso de colunas', async () => {
     const restore = withMeasuredBox()
     try {
@@ -454,5 +484,195 @@ describe('TerminalPane — piso de colunas (TRSZ)', () => {
     render(<TerminalPane cwd="." />)
 
     expect(Number(termOptions.at(-1)?.scrollback)).toBeGreaterThan(1000)
+  })
+})
+
+/**
+ * SPEC: terminal-glyph-metrics (TGLY-01, TGLY-02, TGLY-03)
+ *
+ * O `WidthCache` do renderizador DOM grava `0` quando a caixa mede zero, e
+ * nada limpa esse cache depois — nem o `/clear` do CLI, que só reescreve o
+ * texto. O painel força a remedida trocando `options.fontFamily` por um valor
+ * diferente e voltando ao canônico.
+ */
+describe('TerminalPane — métrica de glifo (TGLY)', () => {
+  /** Controla o `document.fonts.ready` que o painel encadeia no mount. */
+  const withFonts = (ready: Promise<unknown>) => {
+    const original = Object.getOwnPropertyDescriptor(document, 'fonts')
+    Object.defineProperty(document, 'fonts', { configurable: true, value: { ready } })
+    return () => {
+      if (original) Object.defineProperty(document, 'fonts', original)
+      else Reflect.deleteProperty(document, 'fonts')
+    }
+  }
+
+  /** Promise que nunca assenta: isola o caminho do resize do da fonte. */
+  const fontsNeverReady = () => withFonts(new Promise<void>(() => {}))
+
+  const fitCount = () => metricLog.filter((entry) => entry === 'fit').length
+
+  /** TGLY-02: nenhum `fit()` pode aparecer sem a invalidação imediatamente antes. */
+  const everyFitPrecededByRefresh = (canonical: string) =>
+    metricLog.every((entry, i) => entry !== 'fit' || metricLog[i - 1] === `font:${canonical}`)
+
+  // TGLY-01: a Nerd Font tem `font-display: block` e ninguém espera
+  // `document.fonts` antes do `open()`. O xterm não escuta `FontFaceSet`, então
+  // sem isto a métrica fica obsoleta sem evento que a corrija.
+  it('remedia a métrica quando a fonte termina de carregar', async () => {
+    let resolveFonts: () => void = () => {}
+    const restoreFonts = withFonts(new Promise<void>((r) => (resolveFonts = r)))
+    try {
+      metricLog.length = 0
+      termOptions.length = 0
+      invokeMock.mockReset()
+      invokeMock.mockResolvedValue('t-fonts')
+
+      // Caixa não medida de propósito (jsdom devolve 0): `syncSize` desiste
+      // antes do fit, então tudo que sobrar no log vem da fonte.
+      render(<TerminalPane cwd="." />)
+
+      expect(metricLog).toEqual([])
+
+      resolveFonts()
+
+      await vi.waitFor(() => expect(metricLog.length).toBe(2))
+      // TGLY-03 vale nos DOIS pontos de chamada, não só no do resize: se um dia
+      // o caminho da fonte divergir e escrever só o valor canônico, a
+      // invalidação ali vira no-op silencioso e este teste é quem pega.
+      const canonical = String(termOptions.at(-1)?.fontFamily)
+      expect(metricLog[0]).toMatch(/^font:/)
+      expect(metricLog[0]).not.toBe(`font:${canonical}`)
+      expect(metricLog[1]).toBe(`font:${canonical}`)
+    } finally {
+      restoreFonts()
+    }
+  })
+
+  it('painel desmontado antes da fonte resolver não toca no terminal descartado', async () => {
+    let resolveFonts: () => void = () => {}
+    const restoreFonts = withFonts(new Promise<void>((r) => (resolveFonts = r)))
+    try {
+      metricLog.length = 0
+      invokeMock.mockReset()
+      invokeMock.mockResolvedValue('t-gone')
+
+      const { unmount } = render(<TerminalPane cwd="." />)
+      unmount()
+      resolveFonts()
+
+      // Duas voltas de microtask: a do `.then` e a do corpo dele.
+      await Promise.resolve()
+      await Promise.resolve()
+
+      expect(metricLog).toEqual([])
+    } finally {
+      restoreFonts()
+    }
+  })
+
+  it('remedia a métrica antes de cada fit aplicado, inclusive num resize entre dois tamanhos legítimos', async () => {
+    const restoreBox = withMeasuredBox()
+    const restoreFonts = fontsNeverReady()
+    try {
+      metricLog.length = 0
+      termOptions.length = 0
+      resizeCallbacks.length = 0
+      invokeMock.mockReset()
+      invokeMock.mockResolvedValue('t-metric')
+      proposed.value = { cols: 120, rows: 30 }
+
+      render(<TerminalPane cwd="." />)
+
+      const canonical = String(termOptions.at(-1)?.fontFamily)
+      await vi.waitFor(() =>
+        expect(invokeMock).toHaveBeenCalledWith('pty_resize', expect.anything()),
+      )
+      expect(everyFitPrecededByRefresh(canonical)).toBe(true)
+
+      // Resize assentado entre dois tamanhos legítimos: o caminho do arraste.
+      const before = fitCount()
+      proposed.value = { cols: 100, rows: 28 }
+      resizeCallbacks.at(-1)!([], {} as ResizeObserver)
+
+      await vi.waitFor(() => expect(fitCount()).toBeGreaterThan(before))
+      expect(everyFitPrecededByRefresh(canonical)).toBe(true)
+    } finally {
+      restoreBox()
+      restoreFonts()
+      proposed.value = { cols: 120, rows: 30 }
+    }
+  })
+
+  // TGLY-02: a invalidação vive DEPOIS das guardas. Um resize recusado não
+  // aplica nada, então não tem métrica a remedir.
+  it('resize recusado pela guarda não invalida nada', async () => {
+    const restoreFonts = fontsNeverReady()
+    const restoreBox = withMeasuredBox()
+    try {
+      metricLog.length = 0
+      invokeMock.mockReset()
+      invokeMock.mockResolvedValue('t-refuse')
+      proposed.value = { cols: 2, rows: 24 }
+
+      const abaixoDoPiso = render(<TerminalPane cwd="." />)
+
+      await vi.waitFor(() =>
+        expect(invokeMock).toHaveBeenCalledWith('pty_spawn', expect.anything()),
+      )
+      expect(metricLog).toEqual([])
+      abaixoDoPiso.unmount()
+
+      // Caixa zero: a outra guarda, e o mesmo desfecho.
+      restoreBox()
+      proposed.value = { cols: 120, rows: 30 }
+      invokeMock.mockReset()
+      invokeMock.mockResolvedValue('t-zero')
+
+      render(<TerminalPane cwd="." />)
+
+      await vi.waitFor(() =>
+        expect(invokeMock).toHaveBeenCalledWith('pty_spawn', expect.anything()),
+      )
+      expect(metricLog).toEqual([])
+    } finally {
+      restoreFonts()
+      proposed.value = { cols: 120, rows: 30 }
+    }
+  })
+
+  // TGLY-03: `OptionsService` só emite `onOptionChange` quando o valor difere
+  // do guardado. Reatribuir o mesmo valor é no-op silencioso — este teste falha
+  // se alguém "simplificar" para uma atribuição só.
+  it('a invalidação passa por um valor de fontFamily diferente antes de voltar ao canônico', async () => {
+    const restoreBox = withMeasuredBox()
+    const restoreFonts = fontsNeverReady()
+    try {
+      metricLog.length = 0
+      termOptions.length = 0
+      invokeMock.mockReset()
+      invokeMock.mockResolvedValue('t-shape')
+      proposed.value = { cols: 120, rows: 30 }
+
+      render(<TerminalPane cwd="." />)
+
+      const canonical = String(termOptions.at(-1)?.fontFamily)
+      const fitAt = metricLog.indexOf('fit')
+      expect(fitAt).toBeGreaterThanOrEqual(2)
+      expect(metricLog[fitAt - 1]).toBe(`font:${canonical}`)
+      expect(metricLog[fitAt - 2]).toMatch(/^font:/)
+      expect(metricLog[fitAt - 2]).not.toBe(`font:${canonical}`)
+
+      // Deixa o `pty_spawn` assentar antes do `finally` restaurar a caixa
+      // medida, senão o `syncSize` do `then` roda contra o estado do teste
+      // seguinte. (Não silencia o aviso de `act(...)`: ele sai em quase todo
+      // teste deste arquivo, porque o `setStarted` do painel resolve numa
+      // promise que nenhum teste envolve em `act`.)
+      await vi.waitFor(() =>
+        expect(invokeMock).toHaveBeenCalledWith('pty_spawn', expect.anything()),
+      )
+    } finally {
+      restoreBox()
+      restoreFonts()
+    }
   })
 })

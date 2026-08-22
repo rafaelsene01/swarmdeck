@@ -2,6 +2,7 @@
 // SPEC: wsl-terminal-profile (WSLP-12)
 // SPEC: terminal-boot-loading (BOOT-02, BOOT-03, BOOT-06)
 // SPEC: terminal-resize-floor (TRSZ-01, TRSZ-02, TRSZ-03)
+// SPEC: terminal-glyph-metrics (TGLY-01, TGLY-02, TGLY-03)
 
 import { useEffect, useRef, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
@@ -90,6 +91,31 @@ const MIN_COLS = 20
 const TERMINAL_SCROLLBACK = 10_000
 
 /**
+ * SPEC: terminal-glyph-metrics (TGLY-01, TGLY-02, TGLY-03) — força o xterm a
+ * remedir a célula e a descartar o cache de largura de glifo.
+ *
+ * O renderizador DOM guarda a largura medida por ponto de código e, quando a
+ * medida sai `0` (caixa transitoriamente degenerada — arraste/reordenação do
+ * painel, `display: none` de aba inativa ou de irmão maximizado), ele
+ * **grava o zero** (`WidthCache._measure`), ao contrário do `CharSizeService`,
+ * que preserva o valor anterior. Nada limpa esse cache depois: só `setFont()`
+ * ou um evento de mudança de métrica — que nunca chega, porque a fonte do
+ * sistema não mudou. Todo repaint seguinte reusa a largura zerada, e o
+ * próximo `fit()` reflowa a buffer contra a célula errada. É o que produz a
+ * tira de caracteres à esquerda, as letras em offsets irregulares e o corte
+ * no meio da palavra na borda direita.
+ *
+ * TGLY-03: a atribuição precisa passar por um valor **diferente** do canônico.
+ * O `OptionsService` só emite `onOptionChange` quando o valor atribuído difere
+ * do guardado, então reatribuir o mesmo valor é um no-op silencioso que não
+ * invalida nada.
+ */
+const refreshMetrics = (terminal: Terminal) => {
+  terminal.options.fontFamily = `${TERMINAL_FONT_FAMILY}, monospace`
+  terminal.options.fontFamily = TERMINAL_FONT_FAMILY
+}
+
+/**
  * Casa uma instância de xterm.js com uma sessão do backend.
  *
  * ⚠️ Ordem importa: o teclado (`onData` → `pty_write`) e a saída
@@ -163,6 +189,19 @@ export default function TerminalPane({
      */
     let pending: number[] = []
 
+    /**
+     * TGLY-01: a Nerd Font embarcada é declarada com `font-display: block` e
+     * nada espera `document.fonts` antes de `terminal.open()`. O xterm não
+     * registra listener de `FontFaceSet`, então uma fonte que resolve depois do
+     * `open()` deixa a métrica da célula e o cache de largura obsoletos sem
+     * nenhum evento que os corrija. `document.fonts` pode não existir (jsdom),
+     * por isso o acesso é opcional.
+     */
+    void document.fonts?.ready.then(() => {
+      if (disposed) return
+      refreshMetrics(terminal)
+    })
+
     const sendToPty = (data: number[]) => {
       if (!terminalId) {
         pending.push(...data)
@@ -200,6 +239,11 @@ export default function TerminalPane({
       if (container.clientWidth === 0 || container.clientHeight === 0) return
       const proposed = fitAddon.proposeDimensions()
       if (!proposed || proposed.cols < MIN_COLS) return
+      // TGLY-02: depois das guardas e antes do `fit()`, incondicionalmente. O
+      // gatilho confirmado pelo usuário é o próprio resize/arraste, não a volta
+      // de um painel oculto, então não há transição a detectar — e detectar
+      // qual frame mediu zero seria mais código para cobertura menor.
+      refreshMetrics(terminal)
       fitAddon.fit()
       if (!terminalId) return
       void invoke('pty_resize', { id: terminalId, rows: terminal.rows, cols: terminal.cols })

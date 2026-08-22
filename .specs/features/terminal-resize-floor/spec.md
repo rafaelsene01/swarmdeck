@@ -46,7 +46,11 @@ at all, so it can apply the degenerate width before the first byte arrives.
   measures, and a second floor in a second language is a second thing to keep
   in sync.
 - Repairing scrollback already corrupted by an earlier session. The damage is in
-  the xterm buffer of a live pane; restarting the terminal clears it.
+  the xterm buffer of a live pane; restarting the terminal clears it. The part
+  of the corruption that is **not** buffer damage — a glyph width cache poisoned
+  by a zero measurement, which repainting cannot reach — became its own feature,
+  `terminal-glyph-metrics` (AD-046). No `TRSZ-xx` is revoked by it: the floor
+  still holds, and that cache lives one layer lower, inside the renderer.
 - Finding which specific event measures the narrow box. The floor makes every
   such event harmless, whichever it is — window restore, a layout frame, an OS
   resize.

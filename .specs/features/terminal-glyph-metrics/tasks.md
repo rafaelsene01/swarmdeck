@@ -79,15 +79,15 @@ opcional.
 
 **Done when**:
 
-- [ ] Fonte resolvida depois do `open()` dispara a invalidação uma vez (TGLY-01)
-- [ ] Todo `fit()` aplicado é precedido da invalidação, inclusive num resize entre dois tamanhos legítimos (TGLY-02)
-- [ ] Resize recusado pela guarda (caixa zero, ou proposta abaixo de `MIN_COLS`) **não** invalida nada — a invalidação vive depois das guardas (TGLY-02)
-- [ ] A sequência de escritas em `options.fontFamily` tem um valor diferente do canônico antes de voltar ao canônico — o teste falha se alguém "simplificar" para uma atribuição só (TGLY-03)
-- [ ] Painel desmontado antes do `fonts.ready` resolver não toca no terminal descartado
-- [ ] Mock do xterm no teste ganha `options` que registra as escritas; mock do `ResizeObserver` ganha captura do callback, sem quebrar os testes existentes do arquivo
-- [ ] Marcador `SPEC:` de `TerminalPane.tsx` e de `TerminalPane.test.tsx` atualizado com `terminal-glyph-metrics (TGLY-01, TGLY-02, TGLY-03)`
-- [ ] Gate check passa: `npm test`
-- [ ] Test count: 4 testes novos em `TerminalPane.test.tsx`
+- [x] Fonte resolvida depois do `open()` dispara a invalidação uma vez (TGLY-01)
+- [x] Todo `fit()` aplicado é precedido da invalidação, inclusive num resize entre dois tamanhos legítimos (TGLY-02)
+- [x] Resize recusado pela guarda (caixa zero, ou proposta abaixo de `MIN_COLS`) **não** invalida nada — a invalidação vive depois das guardas (TGLY-02)
+- [x] A sequência de escritas em `options.fontFamily` tem um valor diferente do canônico antes de voltar ao canônico — o teste falha se alguém "simplificar" para uma atribuição só (TGLY-03)
+- [x] Painel desmontado antes do `fonts.ready` resolver não toca no terminal descartado
+- [x] Mock do xterm no teste ganha `options` que registra as escritas; mock do `ResizeObserver` ganha captura do callback, sem quebrar os testes existentes do arquivo
+- [x] Marcador `SPEC:` de `TerminalPane.tsx` e de `TerminalPane.test.tsx` atualizado com `terminal-glyph-metrics (TGLY-01, TGLY-02, TGLY-03)`
+- [x] Gate check passa: `npm test`
+- [x] Test count: 5 testes novos em `TerminalPane.test.tsx` (4 previstos + o do painel desmontado, exigido pelo penúltimo item)
 
 **Tests**: unit
 **Gate**: quick
@@ -121,11 +121,11 @@ Non-goal de reparo apontando que a parte **não-reparada** virou
 
 **Done when**:
 
-- [ ] `grep -n "AD-046" .specs/project/STATE.md` acha a decisão com contexto, escolha, alternativa rejeitada e trade-off
-- [ ] `terminal-resize-floor/spec.md` aponta para esta feature e nenhum `TRSZ-xx` foi alterado (`git diff` mostra só linha adicionada)
-- [ ] `validate_spec.py` em `terminal-resize-floor/spec.md` continua no mesmo veredito de antes da edição
-- [ ] Gate check passa: `npm test`
-- [ ] Test count: 0 testes novos (task de registro)
+- [x] `grep -n "AD-046" .specs/project/STATE.md` acha a decisão com contexto, escolha, alternativa rejeitada e trade-off
+- [x] `terminal-resize-floor/spec.md` aponta para esta feature e nenhum `TRSZ-xx` foi alterado (`git diff`: 5 adições, 1 remoção — a linha final do bullet foi estendida, não substituída; nenhum requisito tocado)
+- [x] `validate_spec.py` em `terminal-resize-floor/spec.md` continua no mesmo veredito de antes da edição
+- [x] Gate check passa: `npm test`
+- [x] Test count: 0 testes novos (task de registro)
 
 **Tests**: none
 **Gate**: quick
