@@ -177,21 +177,21 @@ N/A: esta fase não faz I/O, não persiste e não fala com ninguém.
 
 | Requirement ID | Story | Phase | Status |
 | -------------- | ----- | ----- | ------ |
-| FEED-01 | P1: Alcançar a tela de feedback | Tasks | Pending |
-| FEED-02 | P1: Preencher categoria, título e descrição | Tasks | Pending |
-| FEED-03 | P1: Preencher categoria, título e descrição | Tasks | Pending |
-| FEED-04 | P1: Preencher categoria, título e descrição | Tasks | Pending |
-| FEED-05 | P1: Preencher categoria, título e descrição | Tasks | Pending |
-| FEED-06 | P1: Anexar imagens dentro dos limites | Tasks | Pending |
-| FEED-07 | P1: Anexar imagens dentro dos limites | Tasks | Pending |
-| FEED-08 | P1: Anexar imagens dentro dos limites | Tasks | Pending |
-| FEED-09 | P1: Enviar e limpar sem mentir | Tasks | Pending |
-| FEED-10 | P1: Enviar e limpar sem mentir | Tasks | Pending |
-| FEED-11 | P1: Anexar imagens dentro dos limites | Tasks | Pending |
-| FEED-12 | P1: Enviar e limpar sem mentir | Tasks | Pending |
-| FEED-13 | P1: Ver o Markdown renderizado enquanto escreve | Tasks | Pending |
-| FEED-14 | P1: Ver o Markdown renderizado enquanto escreve | Tasks | Pending |
-| FEED-15 | P1: Ver o Markdown renderizado enquanto escreve | Tasks | Pending |
+| FEED-01 | P1: Alcançar a tela de feedback | Execute | Implemented |
+| FEED-02 | P1: Preencher categoria, título e descrição | Execute | Implemented |
+| FEED-03 | P1: Preencher categoria, título e descrição | Execute | Implemented |
+| FEED-04 | P1: Preencher categoria, título e descrição | Execute | Implemented |
+| FEED-05 | P1: Preencher categoria, título e descrição | Execute | Implemented |
+| FEED-06 | P1: Anexar imagens dentro dos limites | Execute | Implemented |
+| FEED-07 | P1: Anexar imagens dentro dos limites | Execute | Implemented |
+| FEED-08 | P1: Anexar imagens dentro dos limites | Execute | Implemented |
+| FEED-09 | P1: Enviar e limpar sem mentir | Execute | Implemented |
+| FEED-10 | P1: Enviar e limpar sem mentir | Execute | Implemented |
+| FEED-11 | P1: Anexar imagens dentro dos limites | Execute | Implemented |
+| FEED-12 | P1: Enviar e limpar sem mentir | Execute | Implemented |
+| FEED-13 | P1: Ver o Markdown renderizado enquanto escreve | Execute | Implemented |
+| FEED-14 | P1: Ver o Markdown renderizado enquanto escreve | Execute | Implemented |
+| FEED-15 | P1: Ver o Markdown renderizado enquanto escreve | Execute | Implemented |
 
 **Coverage:** 15 requisitos, 15 mapeados para tarefas, 0 sem mapeamento.
 

@@ -17,7 +17,7 @@ Nunca commitar (instrução global do usuário): a task termina com o gate verde
 
 **Spec**: `.specs/features/feedback-form/spec.md`
 **Design**: não existe — nenhuma decisão de arquitetura ficou aberta. As três decisões da feature estão em `.specs/STATE.md` (AD-030, AD-031, AD-032).
-**Status**: Draft
+**Status**: Executed
 
 ---
 
@@ -88,11 +88,11 @@ T8
 
 **Done when**:
 
-- [ ] `src/lib/markdown.tsx` criado com marcador `// SPEC: feedback-form (FEED-14), silent-update (SILENT-42)`
-- [ ] `renderMarkdown(md: string): ReactNode[]` e `renderInline(text: string): ReactNode[]` exportados
-- [ ] Nenhum uso de `dangerouslySetInnerHTML`
-- [ ] `src/lib/markdown.test.tsx` cobre: título vira heading, item vira `listitem`, linha solta vira parágrafo, `**forte**` vira `strong`, `` `código` `` vira `code`, linha vazia fecha a lista aberta
-- [ ] Gate: `npx vitest run src/lib/markdown.test.tsx`
+- [x] `src/lib/markdown.tsx` criado com marcador `// SPEC: feedback-form (FEED-14), silent-update (SILENT-42)`
+- [x] `renderMarkdown(md: string): ReactNode[]` e `renderInline(text: string): ReactNode[]` exportados
+- [x] Nenhum uso de `dangerouslySetInnerHTML`
+- [x] `src/lib/markdown.test.tsx` cobre: título vira heading, item vira `listitem`, linha solta vira parágrafo, `**forte**` vira `strong`, `` `código` `` vira `code`, linha vazia fecha a lista aberta
+- [x] Gate: `npx vitest run src/lib/markdown.test.tsx`
 
 **Tests**: unit
 **Gate**: quick
@@ -116,10 +116,10 @@ T8
 
 **Done when**:
 
-- [ ] `renderNotes` e `inline` não existem mais dentro de `UpdateSettings.tsx`
-- [ ] O marcador `SPEC:` do arquivo continua listando `silent-update`, sem IDs novos (o comportamento não mudou)
-- [ ] `UpdateSettings.test.tsx` passa **sem nenhuma edição de asserção** — a prova de que `SILENT-42` continua valendo (spec, seção "Impacto em specs existentes")
-- [ ] Gate: `npm run test`
+- [x] `renderNotes` e `inline` não existem mais dentro de `UpdateSettings.tsx`
+- [x] O marcador `SPEC:` do arquivo continua listando `silent-update`, sem IDs novos (o comportamento não mudou)
+- [x] `UpdateSettings.test.tsx` passa **sem nenhuma edição de asserção** — a prova de que `SILENT-42` continua valendo (spec, seção "Impacto em specs existentes")
+- [x] Gate: `npm run test`
 
 **Tests**: unit
 **Gate**: full
@@ -143,13 +143,13 @@ T8
 
 **Done when**:
 
-- [ ] `1. item` / `2. item` viram um `<ol>` com dois `listitem`; a lista `-` continua virando `<ul>`
-- [ ] `> texto` vira `blockquote`
-- [ ] Bloco entre ``` vira `<pre><code>` com o conteúdo **literal** — sem interpretar `**` nem `#` lá dentro
-- [ ] Bloco cercado não fechado renderiza até o fim do texto, sem descartar conteúdo (edge case da spec)
-- [ ] Sintaxe fora do subconjunto (tabela, `- [ ]`, `[texto](url)`) sai como texto literal, sem quebrar o render
-- [ ] Comentário `ponytail:` no arquivo nomeando o teto: tabelas, listas de tarefas e aninhamento pedem `react-markdown`, não mais regex
-- [ ] Gate: `npx vitest run src/lib/markdown.test.tsx`
+- [x] `1. item` / `2. item` viram um `<ol>` com dois `listitem`; a lista `-` continua virando `<ul>`
+- [x] `> texto` vira `blockquote`
+- [x] Bloco entre ``` vira `<pre><code>` com o conteúdo **literal** — sem interpretar `**` nem `#` lá dentro
+- [x] Bloco cercado não fechado renderiza até o fim do texto, sem descartar conteúdo (edge case da spec)
+- [x] Sintaxe fora do subconjunto (tabela, `- [x]`, `[texto](url)`) sai como texto literal, sem quebrar o render
+- [x] Comentário `ponytail:` no arquivo nomeando o teto: tabelas, listas de tarefas e aninhamento pedem `react-markdown`, não mais regex
+- [x] Gate: `npx vitest run src/lib/markdown.test.tsx`
 
 **Tests**: unit
 **Gate**: quick
@@ -173,13 +173,13 @@ T8
 
 **Done when**:
 
-- [ ] Marcador `// SPEC: feedback-form (FEED-02, FEED-03, FEED-05)` no topo
-- [ ] Componente sem `invoke` e sem `fetch`; todo o estado é local
-- [ ] `<select>` com as quatro opções na ordem da spec e `general` selecionada na montagem
-- [ ] Todo rótulo associado ao seu controle (`<label htmlFor>`), obrigatórios marcados visualmente
-- [ ] Contador reflete o tamanho do título e o campo trava em 255
-- [ ] `FeedbackPanel.test.tsx` cobre: as 4 opções, o padrão na montagem, o contador subindo, o teto de 255
-- [ ] Gate: `npx vitest run src/routes/settings/FeedbackPanel.test.tsx`
+- [x] Marcador `// SPEC: feedback-form (FEED-02, FEED-03, FEED-05)` no topo
+- [x] Componente sem `invoke` e sem `fetch`; todo o estado é local
+- [x] `<select>` com as quatro opções na ordem da spec e `general` selecionada na montagem
+- [x] Todo rótulo associado ao seu controle (`<label htmlFor>`), obrigatórios marcados visualmente
+- [x] Contador reflete o tamanho do título e o campo trava em 255
+- [x] `FeedbackPanel.test.tsx` cobre: as 4 opções, o padrão na montagem, o contador subindo, o teto de 255
+- [x] Gate: `npx vitest run src/routes/settings/FeedbackPanel.test.tsx`
 
 **Tests**: unit
 **Gate**: quick
@@ -203,13 +203,13 @@ T8
 
 **Done when**:
 
-- [ ] Marcador `SPEC:` do arquivo atualizado com FEED-04, FEED-13, FEED-15
-- [ ] Abas em `role="tablist"` com `role="tab"` + `aria-selected`, e o painel em `role="tabpanel"`; "Escrever" ativa na montagem
-- [ ] Alternar para "Visualizar" mostra o texto renderizado; voltar para "Escrever" traz o `<textarea>` com o mesmo conteúdo
-- [ ] Descrição vazia mostra em "Visualizar" o estado vazio "Nada para visualizar ainda."
-- [ ] Abas navegáveis por teclado, com foco visível
-- [ ] Teste cobre: aba padrão, ida e volta preservando o texto, `# Título` virando heading no preview, `- item` virando `listitem`, estado vazio
-- [ ] Gate: `npx vitest run src/routes/settings/FeedbackPanel.test.tsx`
+- [x] Marcador `SPEC:` do arquivo atualizado com FEED-04, FEED-13, FEED-15
+- [x] Abas em `role="tablist"` com `role="tab"` + `aria-selected`, e o painel em `role="tabpanel"`; "Escrever" ativa na montagem
+- [x] Alternar para "Visualizar" mostra o texto renderizado; voltar para "Escrever" traz o `<textarea>` com o mesmo conteúdo
+- [x] Descrição vazia mostra em "Visualizar" o estado vazio "Nada para visualizar ainda."
+- [x] Abas navegáveis por teclado, com foco visível
+- [x] Teste cobre: aba padrão, ida e volta preservando o texto, `# Título` virando heading no preview, `- item` virando `listitem`, estado vazio
+- [x] Gate: `npx vitest run src/routes/settings/FeedbackPanel.test.tsx`
 
 **Tests**: unit
 **Gate**: quick
@@ -233,16 +233,16 @@ T8
 
 **Done when**:
 
-- [ ] Marcador `SPEC:` do arquivo atualizado com FEED-06, FEED-07, FEED-08, FEED-11
-- [ ] Uma miniatura por arquivo aceito, com nome, tamanho e botão de remover com nome acessível
-- [ ] Lote que ultrapassa 5 aceita o que cabe e nomeia cada recusado
-- [ ] Arquivo acima de 10 MB é recusado pelo nome e os válidos do mesmo lote entram
-- [ ] Arquivo cujo `type` não começa com `image/` é recusado pelo nome
-- [ ] Com 5 imagens na lista o botão de seleção fica desabilitado
-- [ ] Mensagem de recusa em `role="alert"`; escolher um lote válido depois limpa a mensagem
-- [ ] Remover uma imagem chama `URL.revokeObjectURL` da miniatura dela
-- [ ] Teste cobre os quatro caminhos de recusa, o teto do botão, o revoke no remover e o lote misto
-- [ ] Gate: `npx vitest run src/routes/settings/FeedbackPanel.test.tsx`
+- [x] Marcador `SPEC:` do arquivo atualizado com FEED-06, FEED-07, FEED-08, FEED-11
+- [x] Uma miniatura por arquivo aceito, com nome, tamanho e botão de remover com nome acessível
+- [x] Lote que ultrapassa 5 aceita o que cabe e nomeia cada recusado
+- [x] Arquivo acima de 10 MB é recusado pelo nome e os válidos do mesmo lote entram
+- [x] Arquivo cujo `type` não começa com `image/` é recusado pelo nome
+- [x] Com 5 imagens na lista o botão de seleção fica desabilitado
+- [x] Mensagem de recusa em `role="alert"`; escolher um lote válido depois limpa a mensagem
+- [x] Remover uma imagem chama `URL.revokeObjectURL` da miniatura dela
+- [x] Teste cobre os quatro caminhos de recusa, o teto do botão, o revoke no remover e o lote misto
+- [x] Gate: `npx vitest run src/routes/settings/FeedbackPanel.test.tsx`
 
 **Tests**: unit
 **Gate**: quick
@@ -266,15 +266,15 @@ T8
 
 **Done when**:
 
-- [ ] Marcador `SPEC:` do arquivo atualizado com FEED-09, FEED-10, FEED-12
-- [ ] "Enviar feedback" desabilitado enquanto título **ou** descrição estiverem vazios (só espaço em branco conta como vazio)
-- [ ] Clique no primário exibe o aviso de não implementado em `role="status"`
-- [ ] "Limpar" volta categoria, título, descrição, aba ativa, anexos e mensagens ao inicial, e fica desabilitado nesse estado
-- [ ] `URL.revokeObjectURL` chamado para cada miniatura ao limpar e ao desmontar o painel
-- [ ] Nenhum `invoke` e nenhum `fetch` em todo o arquivo — o teste asserta com um mock espião de `@tauri-apps/api/core`
-- [ ] Alvos de clique com no mínimo 44x44 px
-- [ ] Teste cobre: gating do primário, aviso no clique, reset completo, desabilitado no estado inicial, revoke ao limpar e no desmonte, zero `invoke`
-- [ ] Gate: `npx vitest run src/routes/settings/FeedbackPanel.test.tsx`
+- [x] Marcador `SPEC:` do arquivo atualizado com FEED-09, FEED-10, FEED-12
+- [x] "Enviar feedback" desabilitado enquanto título **ou** descrição estiverem vazios (só espaço em branco conta como vazio)
+- [x] Clique no primário exibe o aviso de não implementado em `role="status"`
+- [x] "Limpar" volta categoria, título, descrição, aba ativa, anexos e mensagens ao inicial, e fica desabilitado nesse estado
+- [x] `URL.revokeObjectURL` chamado para cada miniatura ao limpar e ao desmontar o painel
+- [x] Nenhum `invoke` e nenhum `fetch` em todo o arquivo — o teste asserta com um mock espião de `@tauri-apps/api/core`
+- [x] Alvos de clique com no mínimo 44x44 px
+- [x] Teste cobre: gating do primário, aviso no clique, reset completo, desabilitado no estado inicial, revoke ao limpar e no desmonte, zero `invoke`
+- [x] Gate: `npx vitest run src/routes/settings/FeedbackPanel.test.tsx`
 
 **Tests**: unit
 **Gate**: quick
@@ -298,12 +298,12 @@ T8
 
 **Done when**:
 
-- [ ] Marcador `SPEC:` do arquivo ganha `feedback-form (FEED-01)`
-- [ ] "Feedback" é o quinto e último item da barra lateral; "Geral" continua sendo a seção inicial
-- [ ] Clicar em "Feedback" mostra "Configurações › Feedback" e monta o formulário
-- [ ] `SettingsShell.test.tsx` ganha esse teste; **nenhuma asserção existente é alterada** (prova de que as seções antigas seguem valendo)
-- [ ] O painel não recebe nenhum estado do shell — o shell não passa a chamar `invoke` por causa desta seção
-- [ ] Gate: `npm run build && npm run test`
+- [x] Marcador `SPEC:` do arquivo ganha `feedback-form (FEED-01)`
+- [x] "Feedback" é o quinto e último item da barra lateral; "Geral" continua sendo a seção inicial
+- [x] Clicar em "Feedback" mostra "Configurações › Feedback" e monta o formulário
+- [x] `SettingsShell.test.tsx` ganha esse teste; **nenhuma asserção existente é alterada** (prova de que as seções antigas seguem valendo)
+- [x] O painel não recebe nenhum estado do shell — o shell não passa a chamar `invoke` por causa desta seção
+- [x] Gate: `npm run build && npm run test`
 
 **Tests**: unit
 **Gate**: build

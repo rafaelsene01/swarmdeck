@@ -1,4 +1,5 @@
 // SPEC: providers-panel (PROV-05, PROV-06, PROV-08, PROV-09)
+// SPEC: feedback-form (FEED-01)
 // SPEC: update-toast (TOAST-06, TOAST-08, TOAST-09), settings-shell (SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), projects (PROJ-19, PROJ-23, PROJ-24)
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -731,5 +732,51 @@ describe('SettingsShell — atalho e preferência do toast (update-toast)', () =
     render(<SettingsShell initialSection="updates" />)
 
     expect(await screen.findByLabelText(TOAST_LABEL)).toBeChecked()
+  })
+})
+
+// SPEC: feedback-form (FEED-01) — a seção nova na barra lateral.
+describe('SettingsShell — seção Feedback (FEED-01)', () => {
+  beforeEach(() => {
+    invokeMock.mockClear()
+    invokeMock.mockImplementation((command: string) => {
+      if (command === 'project_list') return Promise.resolve([])
+      if (command === 'provider_prefs_get') return Promise.resolve([])
+      return Promise.resolve(null)
+    })
+  })
+
+  it('"Feedback" é o quinto e último item da barra lateral, e "Geral" segue sendo a inicial', () => {
+    render(<SettingsShell />)
+
+    const items = within(screen.getByRole('navigation', { name: 'Seções de Configurações' })).getAllByRole('button')
+    expect(items.map((item) => item.textContent)).toEqual([
+      'Geral',
+      'Provedores',
+      'Projetos',
+      'Atualizações',
+      'Feedback',
+    ])
+    expect(screen.getByText('Configurações › Geral')).toBeInTheDocument()
+  })
+
+  it('acionar "Feedback" mostra o trilho e monta o formulário', () => {
+    render(<SettingsShell />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Feedback' }))
+
+    expect(screen.getByText('Configurações › Feedback')).toBeInTheDocument()
+    expect(screen.getByLabelText('Categoria')).toBeInTheDocument()
+    expect(screen.getByLabelText(/Título/)).toBeInTheDocument()
+    expect(screen.getByRole('tablist', { name: 'Modo da descrição' })).toBeInTheDocument()
+  })
+
+  it('a seção de feedback não dispara nenhum invoke novo', () => {
+    render(<SettingsShell />)
+    const before = invokeMock.mock.calls.length
+
+    fireEvent.click(screen.getByRole('button', { name: 'Feedback' }))
+
+    expect(invokeMock.mock.calls.length).toBe(before)
   })
 })

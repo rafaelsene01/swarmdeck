@@ -1,7 +1,7 @@
 // SPEC: silent-update (SILENT-09, SILENT-10, SILENT-11, SILENT-12, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-41, SILENT-42, SILENT-43, SILENT-44, SILENT-45), update-toast (TOAST-08)
 
-import type { ReactNode } from 'react'
 import { Download, RefreshCw, Sparkles } from 'lucide-react'
+import { renderMarkdown } from '../../lib/markdown'
 
 export type UpdateState =
   /** `current` pode chegar vazio no primeiro quadro, antes de `getVersion()`
@@ -45,67 +45,6 @@ export interface UpdateSettingsProps {
 
 function formatMb(bytes: number) {
   return (bytes / 1024 / 1024).toFixed(1)
-}
-
-/** `**forte**`, `*ênfase*` e `` `código` `` — o resto sai literal. */
-function inline(text: string): ReactNode[] {
-  return text
-    .split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g)
-    .filter(Boolean)
-    .map((part, i) => {
-      if (part.startsWith('**') && part.endsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>
-      if (part.startsWith('*') && part.endsWith('*') && part.length > 2) return <em key={i}>{part.slice(1, -1)}</em>
-      if (part.startsWith('`') && part.endsWith('`') && part.length > 2) return <code key={i}>{part.slice(1, -1)}</code>
-      return part
-    })
-}
-
-/**
- * Renderiza o subconjunto de Markdown que as notas de release usam de fato:
- * títulos `#`..`######`, itens `-`/`*` e parágrafos (SILENT-42). O gerador
- * é o nosso próprio `cliff.toml` (`### Grupo` + lista de commits), então o
- * subconjunto é conhecido e não justifica um parser de terceiros.
- *
- * ponytail: subconjunto fixo — trocar por um parser de verdade se as notas
- * passarem a ser escritas à mão com tabelas, blocos de código ou links.
- */
-function renderNotes(markdown: string): ReactNode[] {
-  const blocks: ReactNode[] = []
-  let items: ReactNode[] = []
-
-  const flush = () => {
-    if (items.length === 0) return
-    blocks.push(<ul key={`list-${blocks.length}`}>{items}</ul>)
-    items = []
-  }
-
-  markdown.split(/\r?\n/).forEach((raw, index) => {
-    const line = raw.trim()
-    if (!line) {
-      flush()
-      return
-    }
-
-    const heading = /^(#{1,6})\s+(.*)$/.exec(line)
-    if (heading) {
-      flush()
-      const Tag = (heading[1] ?? '').length <= 2 ? 'h4' : 'h5'
-      blocks.push(<Tag key={index}>{inline(heading[2] ?? '')}</Tag>)
-      return
-    }
-
-    const item = /^[-*]\s+(.*)$/.exec(line)
-    if (item) {
-      items.push(<li key={index}>{inline(item[1] ?? '')}</li>)
-      return
-    }
-
-    flush()
-    blocks.push(<p key={index}>{inline(line)}</p>)
-  })
-
-  flush()
-  return blocks
 }
 
 /**
@@ -332,7 +271,7 @@ export default function UpdateSettings({
             Versão <code>{pending}</code>
           </p>
 
-          {notes.trim() && <div className="update-settings__notes">{renderNotes(notes)}</div>}
+          {notes.trim() && <div className="update-settings__notes">{renderMarkdown(notes)}</div>}
 
           {state.status === 'ready' && (
             <button type="button" className="update-settings__action" onClick={onDownload}>

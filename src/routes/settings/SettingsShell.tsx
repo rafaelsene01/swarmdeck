@@ -1,4 +1,5 @@
 // SPEC: providers-panel (PROV-01, PROV-05, PROV-06, PROV-08, PROV-09), quota-provider-source (QSRC-01, QSRC-03, QSRC-07)
+// SPEC: feedback-form (FEED-01)
 // SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10, QUOTA-31), silent-update (SILENT-09, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-42), projects (PROJ-19, PROJ-23, PROJ-24), update-toast (TOAST-06, TOAST-08, TOAST-10)
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -6,15 +7,16 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { getVersion } from '@tauri-apps/api/app'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { Download, FolderOpen, SlidersHorizontal, Users, X } from 'lucide-react'
+import { Download, FolderOpen, MessageSquare, SlidersHorizontal, Users, X } from 'lucide-react'
 import AgentPanel, { type ProviderRow } from './AgentPanel'
+import FeedbackPanel from './FeedbackPanel'
 import GeneralPanel, { type QuotaPrefs } from './GeneralPanel'
 import ProjectsPanel, { countTerminalsByProject, type ProjectRow } from './ProjectsPanel'
 import ProjectFormModal, { type ProjectFormValues } from '../../components/project/ProjectFormModal'
 import UpdateSettings, { type UpdateState } from '../../components/settings/UpdateSettings'
 import type { ProfileCatalog, ProfileCatalogEntry } from '../../types/agents'
 
-type SectionId = 'general' | 'agents' | 'projects' | 'updates'
+type SectionId = 'general' | 'agents' | 'projects' | 'updates' | 'feedback'
 
 // QUOTA-26: se `quota_prefs_get` falhar, a seção ainda abre com a lista de
 // provedores de fábrica.
@@ -37,6 +39,8 @@ const SECTIONS: ReadonlyArray<{ id: SectionId; label: string; icon: typeof Users
   { id: 'agents', label: 'Provedores', icon: Users },
   { id: 'projects', label: 'Projetos', icon: FolderOpen },
   { id: 'updates', label: 'Atualizações', icon: Download },
+  // FEED-01: último item — feedback não é configuração de uso diário.
+  { id: 'feedback', label: 'Feedback', icon: MessageSquare },
 ]
 
 /** Espelha `Project` de `src-tauri/src/projects/service.rs` tal como sai na
@@ -644,6 +648,10 @@ export default function SettingsShell({ onClose, initialSection }: SettingsShell
               onRestart={handleRestart}
             />
           )}
+
+          {/* SPEC: feedback-form (FEED-01) — o painel guarda o próprio estado
+              e não recebe nada do shell: nenhum `invoke` novo nasce daqui. */}
+          {section === 'feedback' && <FeedbackPanel />}
         </div>
       </div>
 
