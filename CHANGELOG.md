@@ -1,7 +1,28 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.45] - 2026-08-22
+
+### Funcionalidades
+
+- *(quota)* Escolher o terminal de origem da cota por provedor
+
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
+
+### Estilo
+
+- Aplicar cargo fmt em agents/catalog.rs
+
 ## [0.1.44] - 2026-08-22
+
+### Funcionalidades
+
+- *(terminal)* Pintar borda do header com a cor do projeto
+
 
 ### Outros
 
