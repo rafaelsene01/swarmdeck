@@ -1,7 +1,23 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.43] - 2026-08-22
+
+### Funcionalidades
+
+- *(quota)* Renovar token OAuth expirado antes de buscar a cota
+
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.42] - 2026-08-21
+
+### Funcionalidades
+
+- *(window)* Salvar e restaurar geometria da janela principal
+
 
 ### Outros
 
