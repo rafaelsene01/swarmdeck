@@ -1,11 +1,19 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.44] - 2026-08-22
+
+### Outros
+
+- Merge branch 'master' of github.com:rafaelsene01/swarmdeck
+
 ## [0.1.43] - 2026-08-22
 
 ### Funcionalidades
 
 - *(quota)* Renovar token OAuth expirado antes de buscar a cota
+
+- *(providers)* Listar provedores por terminal com switch e varredura
 
 
 ### Outros
