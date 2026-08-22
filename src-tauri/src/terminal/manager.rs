@@ -1,5 +1,5 @@
 // SPEC: multi-terminal (TERM-01, TERM-03), session-restore (SESS-12, SESS-13, SESS-14), projects (PROJ-14)
-// SPEC: wsl-terminal-profile (WSLP-03, WSLP-04, WSLP-10, WSLP-11)
+// SPEC: wsl-terminal-profile (WSLP-03, WSLP-04, WSLP-09, WSLP-10, WSLP-11)
 // SPEC: terminal-boot-loading (BOOT-01)
 
 //! `TerminalManager`: registro das sessões PTY vivas.
@@ -440,7 +440,17 @@ mod tests {
         let cmd = build_command(&resolution, &profile, Path::new("/home/x"), terminal_id);
 
         assert!(argv(&cmd).contains(&format!("{TERMINAL_ID_ENV}={terminal_id}")));
-        assert_eq!(cmd.get_env(TERMINAL_ID_ENV), None);
+        // `iter_extra_env_as_str` lista só o que foi setado por
+        // `cmd.env()`, e não o ambiente herdado que `CommandBuilder::new`
+        // copia do processo. `get_env` mistura os dois: quando o próprio
+        // `cargo test` roda dentro de um terminal do app,
+        // `SWARMDECK_TERMINAL_ID` já está no ambiente e apareceria aqui sem
+        // ninguém ter chamado `env()`.
+        assert!(
+            !cmd.iter_extra_env_as_str()
+                .any(|(key, _)| key == TERMINAL_ID_ENV),
+            "no perfil WSL o id não pode virar variável de processo do wsl.exe no host"
+        );
     }
 
     // Perfil host: o id continua sendo variável de processo de verdade,
