@@ -1,4 +1,5 @@
 // SPEC: quota-indicator (QUOTA-01, QUOTA-02, QUOTA-03, QUOTA-04, QUOTA-05, QUOTA-06, QUOTA-07, QUOTA-20, QUOTA-21, QUOTA-22, QUOTA-23, QUOTA-25)
+// SPEC: quota-token-refresh (QTR-10, QTR-11, QTR-12)
 
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -303,6 +304,80 @@ describe('QuotaIndicator', () => {
 
       await vi.advanceTimersByTimeAsync(5 * 60_000)
       expect(invokeMock).toHaveBeenCalledTimes(3)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  // QTR-10: sem credencial utilizável, insiste a cada 30 s em vez de esperar
+  // o tick de 5 min — é o atraso entre o `claude login` e o anel acender.
+  it('no_credential e unauthorized insistem a cada 30 segundos', async () => {
+    for (const state of ['no_credential', 'unauthorized'] as const) {
+      invokeMock.mockReset()
+      vi.useFakeTimers()
+      try {
+        invokeMock.mockResolvedValue(
+          okSnapshot({ state, windows: [], planLabel: null, fetchedAt: null }),
+        )
+        const { unmount } = render(<QuotaIndicator window="both" />)
+        await vi.advanceTimersByTimeAsync(0)
+        expect(invokeMock).toHaveBeenCalledTimes(1)
+
+        await vi.advanceTimersByTimeAsync(30_000)
+        expect(invokeMock).toHaveBeenCalledTimes(2)
+        expect(invokeMock).toHaveBeenLastCalledWith('quota_claude', { force: true })
+
+        await vi.advanceTimersByTimeAsync(30_000)
+        expect(invokeMock).toHaveBeenCalledTimes(3)
+
+        unmount()
+      } finally {
+        vi.useRealTimers()
+      }
+    }
+  })
+
+  // QTR-11: estado com dado não ganha o timer rápido — 30 s não disparam nada.
+  it('estado ok nao insiste a cada 30 segundos', async () => {
+    vi.useFakeTimers()
+    try {
+      invokeMock.mockResolvedValue(okSnapshot())
+      render(<QuotaIndicator window="both" />)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(invokeMock).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(30_000)
+      expect(invokeMock).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  // QTR-12: o tick de 5 min continua vivo junto do rápido. A prova é o
+  // passo que cruza a marca dos 5 min: ele carrega **duas** buscas, a do
+  // timer rápido e a do lento. Se o rápido tivesse substituído o lento,
+  // carregaria uma só.
+  //
+  // O avanço é em passos de 30 s, e não num salto de 5 min: um
+  // `advanceTimersByTimeAsync` único não reentra num `setInterval` criado
+  // dentro de um microtask, e o teste mediria o fake timer em vez do
+  // componente.
+  it('o tick de 5 minutos sobrevive ao timer rapido', async () => {
+    vi.useFakeTimers()
+    try {
+      invokeMock.mockResolvedValue(
+        okSnapshot({ state: 'no_credential', windows: [], planLabel: null, fetchedAt: null }),
+      )
+      render(<QuotaIndicator window="both" />)
+      await vi.advanceTimersByTimeAsync(0)
+
+      for (let step = 0; step < 9; step += 1) {
+        await vi.advanceTimersByTimeAsync(30_000)
+      }
+      const beforeSlowTick = invokeMock.mock.calls.length
+
+      await vi.advanceTimersByTimeAsync(30_000)
+      expect(invokeMock.mock.calls.length - beforeSlowTick).toBe(2)
     } finally {
       vi.useRealTimers()
     }

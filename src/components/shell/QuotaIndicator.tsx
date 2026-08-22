@@ -1,4 +1,5 @@
 // SPEC: quota-indicator (QUOTA-01, QUOTA-02, QUOTA-03, QUOTA-04, QUOTA-05, QUOTA-06, QUOTA-07, QUOTA-20, QUOTA-21, QUOTA-22, QUOTA-23, QUOTA-25, QUOTA-26, QUOTA-27, QUOTA-28, QUOTA-29, QUOTA-30)
+// SPEC: quota-token-refresh (QTR-10, QTR-11, QTR-12)
 
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -55,6 +56,18 @@ const ICON_GLYPH = 12
 
 /** QUOTA-28: a busca se repete a cada 5 min — mesmo piso do cache do backend. */
 const POLL_MS = 5 * 60 * 1000
+
+/** QTR-10: nos dois estados sem credencial utilizável a busca se repete a
+ * cada 30 s, e não a cada 5 min. É o intervalo entre o usuário fazer
+ * `claude login` com o app aberto e o anel acender — o piso de cache do
+ * backend não estorva aqui porque nenhum desses estados tem leitura para
+ * servir do cache. */
+const RETRY_MS = 30 * 1000
+
+/** Estados em que vale insistir rápido (QTR-10). `offline` fica de fora de
+ * propósito: rede caída não se resolve com mais requisições, e o tick de
+ * 5 min já cobre a volta. */
+const RETRY_STATES: ReadonlyArray<QuotaSnapshot['state']> = ['no_credential', 'unauthorized']
 
 /** Ordem de desenho para `window="both"`: arco externo = 5h, interno = semanal. */
 const KINDS_FOR: Record<QuotaIndicatorProps['window'], QuotaWindowKind[]> = {
@@ -151,6 +164,27 @@ export default function QuotaIndicator({
       clearInterval(timer)
     }
   }, [])
+
+  const needsFastRetry = state.status === 'ready' && RETRY_STATES.includes(state.snapshot.state)
+
+  // QTR-10/QTR-11/QTR-12: timer **adicional**, ligado só nos estados sem
+  // credencial utilizável e desligado quando o estado sai deles. O tick de
+  // 5 min acima segue rodando em paralelo — este não o substitui.
+  useEffect(() => {
+    if (!needsFastRetry) return
+
+    let cancelled = false
+    const timer = setInterval(() => {
+      void invoke<QuotaSnapshot>('quota_claude', { force: true }).then((snapshot) => {
+        if (!cancelled) setState({ status: 'ready', snapshot })
+      })
+    }, RETRY_MS)
+
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [needsFastRetry])
 
   // QUOTA-04/P3.1: o hover também dispara uma busca — o piso de cache de 5
   // min é decisão do backend (T6), não deste componente.

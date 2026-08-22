@@ -1,4 +1,6 @@
-// SPEC: quota-indicator (QUOTA-15, QUOTA-16, QUOTA-18, QUOTA-19, QUOTA-20, QUOTA-21, QUOTA-22, QUOTA-23, QUOTA-24, QUOTA-25)
+// SPEC: quota-indicator (QUOTA-15, QUOTA-16, QUOTA-19, QUOTA-20, QUOTA-21, QUOTA-22, QUOTA-23, QUOTA-24, QUOTA-25;
+// QUOTA-18 — REVOKED by AD-043: o arquivo de credencial deixou de ser somente leitura),
+// quota-token-refresh (QTR-01, QTR-02, QTR-03, QTR-04, QTR-05, QTR-06, QTR-07, QTR-08, QTR-09, QTR-13, QTR-14, QTR-15)
 
 //! Núcleo de cota do Claude: decodificação da resposta de uso (pura, sem
 //! I/O — T4) e a leitura de credencial + busca HTTP (T5). O cache com piso
@@ -7,6 +9,7 @@
 use std::future::Future;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 use serde_json::Value;
 use thiserror::Error;
@@ -21,6 +24,22 @@ pub const USAGE_URL: &str = "https://api.anthropic.com/api/oauth/usage";
 /// Header `anthropic-beta` exigido pelo endpoint OAuth de uso. Mesma fonte
 /// e data de verificação de `USAGE_URL`.
 pub const ANTHROPIC_BETA_HEADER: &str = "oauth-2025-04-20";
+
+/// Endpoint de troca de token OAuth (QTR-01). Mesmo endpoint que o próprio
+/// Claude Code usa; contrato privado, confirmado no rastreador de issues do
+/// CLI (anthropics/claude-code #47754, #53063) em 21/08/2026.
+pub const OAUTH_TOKEN_URL: &str = "https://platform.claude.com/v1/oauth/token";
+
+/// `client_id` público do Claude Code. Cliente público, então o `client_id`
+/// acompanha o `grant_type=refresh_token`. Se este valor estiver errado a
+/// requisição falha e QTR-05 transforma isso em no-op — nunca em perda da
+/// credencial.
+pub const OAUTH_CLIENT_ID: &str = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
+
+/// Margem de expiração (QTR-01): um token que vence nos próximos 60 s é
+/// tratado como vencido, senão ele seria enviado e recusado em voo. Sessenta
+/// segundos são desprezíveis diante das ~8 h de vida do token.
+const EXPIRY_SKEW_MS: i64 = 60 * 1000;
 
 /// Uma janela de consumo decodificada (5 horas ou semanal).
 #[derive(Debug, Clone, PartialEq)]
@@ -129,6 +148,24 @@ impl std::fmt::Debug for AccessToken {
     }
 }
 
+/// Refresh token OAuth (QTR-09). Tipo próprio, e não `String`, pelo mesmo
+/// motivo de `AccessToken`: `Debug` redigido e nenhum `Serialize`, para que
+/// ele não escape por log nem por IPC.
+#[derive(Clone, PartialEq, Eq)]
+pub struct RefreshToken(String);
+
+impl RefreshToken {
+    fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Debug for RefreshToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("RefreshToken(<redacted>)")
+    }
+}
+
 /// Erro de busca de cota. Nenhuma variante carrega o token nem a mensagem
 /// bruta do `reqwest` (`e.to_string()`) — só variantes sanitizadas.
 #[derive(Debug, Error, Clone, Copy, PartialEq, Eq)]
@@ -160,25 +197,19 @@ const MAX_CREDENTIAL_BYTES: u64 = 64 * 1024;
 pub struct Credential {
     token: AccessToken,
     tier: Option<String>,
+    /// SPEC: quota-token-refresh (QTR-06) — `None` quando o arquivo não traz
+    /// `claudeAiOauth.refreshToken` (login por API key, Bedrock, Vertex).
+    /// Sem ele não há o que trocar, e a renovação é pulada.
+    refresh: Option<RefreshToken>,
+    /// SPEC: quota-token-refresh (QTR-13) — epoch ms de expiração. `None`
+    /// quando o arquivo não diz: ausência **não** é prova de vencimento, e o
+    /// token é usado como está.
+    expires_at_ms: Option<i64>,
 }
 
-/// Lê a credencial de `~/.claude/.credentials.json`. `None` quando o
-/// arquivo não existe, excede 64 KB (QUOTA-24 — a leitura é abortada pelo
-/// tamanho do metadata, o conteúdo nunca chega a ser lido), não é JSON
-/// válido, ou não tem `claudeAiOauth.accessToken` não vazio (QUOTA-20).
-/// Aberto somente para leitura (QUOTA-18): `File::open` nunca habilita
-/// escrita.
-fn read_credential(path: &Path) -> Option<Credential> {
-    let metadata = std::fs::metadata(path).ok()?;
-    if metadata.len() > MAX_CREDENTIAL_BYTES {
-        return None;
-    }
-
-    let mut file = std::fs::File::open(path).ok()?;
-    let mut buf = Vec::new();
-    file.read_to_end(&mut buf).ok()?;
-
-    let value: Value = serde_json::from_slice(&buf).ok()?;
+/// Extrai a credencial do JSON já parseado. Pura. `None` quando não há
+/// `claudeAiOauth.accessToken` não vazio (QUOTA-20).
+fn parse_credential(value: &Value) -> Option<Credential> {
     let oauth = value.get("claudeAiOauth")?;
     let token = oauth.get("accessToken")?.as_str()?;
     if token.is_empty() {
@@ -190,11 +221,41 @@ fn read_credential(path: &Path) -> Option<Credential> {
         .and_then(Value::as_str)
         .filter(|s| !s.is_empty())
         .map(str::to_string);
+    let refresh = oauth
+        .get("refreshToken")
+        .and_then(Value::as_str)
+        .filter(|s| !s.is_empty())
+        .map(|s| RefreshToken(s.to_string()));
+    let expires_at_ms = oauth.get("expiresAt").and_then(Value::as_i64);
 
     Some(Credential {
         token: AccessToken(token.to_string()),
         tier,
+        refresh,
+        expires_at_ms,
     })
+}
+
+/// Lê `~/.claude/.credentials.json` e devolve **o JSON inteiro** junto da
+/// credencial. O JSON cru é o que QTR-02 precisa para regravar só os três
+/// campos OAuth e preservar todo o resto do arquivo.
+///
+/// `None` quando o arquivo não existe, excede 64 KB (QUOTA-24 — a leitura é
+/// abortada pelo tamanho do metadata, o conteúdo nunca chega a ser lido),
+/// não é JSON válido, ou não tem `accessToken` utilizável.
+fn read_credential_file(path: &Path) -> Option<(Value, Credential)> {
+    let metadata = std::fs::metadata(path).ok()?;
+    if metadata.len() > MAX_CREDENTIAL_BYTES {
+        return None;
+    }
+
+    let mut file = std::fs::File::open(path).ok()?;
+    let mut buf = Vec::new();
+    file.read_to_end(&mut buf).ok()?;
+
+    let value: Value = serde_json::from_slice(&buf).ok()?;
+    let credential = parse_credential(&value)?;
+    Some((value, credential))
 }
 
 /// Caminho da credencial **num** perfil. `Host` é `dirs::home_dir()`, como
@@ -337,6 +398,22 @@ fn real_now_ms() -> i64 {
 /// quando nenhum perfil tem `.claude/.credentials.json` utilizável — é o que
 /// vira `state: "no_credential"` na UI.
 fn real_read_credential(default_profile: &TerminalProfile) -> Option<Credential> {
+    locate_credential(default_profile).map(|(_, _, credential)| credential)
+}
+
+/// Só a credencial, sem o JSON cru. `#[cfg(test)]` porque o código de
+/// produção sempre precisa do caminho e do arquivo inteiro (QTR-02) e entra
+/// por `locate_credential`; os testes de leitura, que só olham a credencial,
+/// continuam legíveis com este atalho.
+#[cfg(test)]
+fn read_credential(path: &Path) -> Option<Credential> {
+    read_credential_file(path).map(|(_, credential)| credential)
+}
+
+/// Igual a `real_read_credential`, mas devolve **onde** a credencial estava e
+/// o JSON inteiro do arquivo. É o que a renovação precisa: regravar o mesmo
+/// arquivo que foi lido, e não outro candidato (QTR-02).
+fn locate_credential(default_profile: &TerminalProfile) -> Option<(PathBuf, Value, Credential)> {
     let available: Vec<String> = crate::shells::list::list_profiles()
         .into_iter()
         .map(|entry| entry.id)
@@ -345,7 +422,225 @@ fn real_read_credential(default_profile: &TerminalProfile) -> Option<Credential>
     credential_candidates(default_profile, &available)
         .iter()
         .filter_map(credential_path_in)
-        .find_map(|path| read_credential(&path))
+        .find_map(|path| {
+            read_credential_file(&path).map(|(raw, credential)| (path, raw, credential))
+        })
+}
+
+/// Resposta do endpoint de troca, já decodificada.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Refreshed {
+    /// String crua de propósito: ela vai direto para o JSON do arquivo, não
+    /// para uma requisição. Quem usa o token como token recebe um
+    /// `AccessToken` na releitura do arquivo.
+    access_token: String,
+    /// `None` quando o endpoint não rotacionou — aí o `refreshToken` do
+    /// arquivo é preservado (QTR-14).
+    refresh_token: Option<String>,
+    expires_at_ms: Option<i64>,
+}
+
+/// Decide se vale trocar o token (QTR-01). Falso — sem tocar rede — quando
+/// não há `refreshToken` (QTR-06) ou quando o arquivo não diz quando o token
+/// vence (QTR-13): ausência de `expiresAt` não é prova de vencimento.
+fn needs_refresh(credential: &Credential, now_ms: i64) -> bool {
+    credential.refresh.is_some()
+        && credential
+            .expires_at_ms
+            .is_some_and(|expires| expires <= now_ms + EXPIRY_SKEW_MS)
+}
+
+/// Decodifica o corpo da troca. Pura. `None` quando não há `access_token`
+/// não vazio — é o que QTR-05 trata como falha.
+///
+/// A expiração aceita `expires_in` (segundos, forma padrão do OAuth) e,
+/// como alternativa, um epoch ms já pronto — o endpoint é contrato privado e
+/// custa três linhas não depender de qual das duas formas ele manda.
+fn parse_refresh_response(body: &Value, now_ms: i64) -> Option<Refreshed> {
+    let access_token = body
+        .get("access_token")
+        .and_then(Value::as_str)
+        .filter(|s| !s.is_empty())?
+        .to_string();
+
+    let refresh_token = body
+        .get("refresh_token")
+        .and_then(Value::as_str)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string);
+
+    let expires_at_ms = body
+        .get("expires_in")
+        .and_then(Value::as_i64)
+        .map(|secs| now_ms + secs * 1000)
+        .or_else(|| body.get("expires_at").and_then(Value::as_i64))
+        .or_else(|| body.get("expiresAt").and_then(Value::as_i64));
+
+    Some(Refreshed {
+        access_token,
+        refresh_token,
+        expires_at_ms,
+    })
+}
+
+/// Aplica a troca sobre o JSON original (QTR-02). Pura: devolve uma cópia
+/// com só os três campos OAuth trocados, e todo o resto do arquivo intacto —
+/// inclusive chaves que este app não conhece. `None` quando `claudeAiOauth`
+/// não é um objeto, caso em que não há onde escrever.
+fn apply_refreshed(existing: &Value, refreshed: &Refreshed) -> Option<Value> {
+    let mut merged = existing.clone();
+    let oauth = merged.get_mut("claudeAiOauth")?.as_object_mut()?;
+
+    oauth.insert(
+        "accessToken".to_string(),
+        Value::String(refreshed.access_token.clone()),
+    );
+    if let Some(refresh) = &refreshed.refresh_token {
+        oauth.insert("refreshToken".to_string(), Value::String(refresh.clone()));
+    }
+    if let Some(expires) = refreshed.expires_at_ms {
+        oauth.insert("expiresAt".to_string(), Value::Number(expires.into()));
+    }
+
+    Some(merged)
+}
+
+/// Grava o arquivo de credencial de forma atômica (QTR-03): temporário no
+/// mesmo diretório, `sync_all`, depois `rename` por cima do original.
+/// `std::fs::rename` substitui o destino nos dois sistemas — no Windows via
+/// `MoveFileEx` com `MOVEFILE_REPLACE_EXISTING`.
+///
+/// AD-043 revoga QUOTA-18: este é o único ponto do app que **escreve** no
+/// arquivo de credencial do Claude Code.
+fn write_credential_atomic(path: &Path, value: &Value) -> std::io::Result<()> {
+    let dir = path.parent().ok_or_else(|| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "caminho de credencial sem diretório pai",
+        )
+    })?;
+
+    let bytes = serde_json::to_vec_pretty(value)
+        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
+
+    let temp = dir.join(".credentials.json.swarmdeck-tmp");
+    {
+        use std::io::Write;
+        let mut file = std::fs::File::create(&temp)?;
+        file.write_all(&bytes)?;
+        file.sync_all()?;
+    }
+
+    // A credencial é um segredo: o temporário nasce com o modo do original
+    // (0600 na prática) em vez do padrão do umask.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(path)
+            .map(|meta| meta.permissions().mode() & 0o777)
+            .unwrap_or(0o600);
+        let _ = std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(mode));
+    }
+
+    match std::fs::rename(&temp, path) {
+        Ok(()) => Ok(()),
+        Err(err) => {
+            let _ = std::fs::remove_file(&temp);
+            Err(err)
+        }
+    }
+}
+
+/// Núcleo testável da renovação: localizador, HTTP e escritor injetados —
+/// mesmo padrão de `fetch_with`. Devolve `true` só quando o arquivo foi
+/// efetivamente regravado.
+///
+/// Toda saída antecipada é um requisito, não uma otimização: sem credencial
+/// (QTR-07), token ainda válido (QTR-04), sem `refreshToken` (QTR-06), troca
+/// que falhou (QTR-05) ou escrita que falhou (QTR-15) — em todos, o arquivo
+/// fica como estava e a busca segue com o token que já havia.
+async fn ensure_fresh_with<L, H, HFut, W>(locate: L, http: H, write: W, now_ms: i64) -> bool
+where
+    L: Fn() -> Option<(PathBuf, Value, Credential)>,
+    H: Fn(RefreshToken) -> HFut,
+    HFut: Future<Output = Result<Value, ()>>,
+    W: Fn(&Path, &Value) -> Result<(), String>,
+{
+    let Some((path, raw, credential)) = locate() else {
+        return false;
+    };
+    if !needs_refresh(&credential, now_ms) {
+        return false;
+    }
+    let Some(refresh) = credential.refresh else {
+        return false;
+    };
+    let Ok(body) = http(refresh).await else {
+        return false;
+    };
+    let Some(refreshed) = parse_refresh_response(&body, now_ms) else {
+        return false;
+    };
+    let Some(merged) = apply_refreshed(&raw, &refreshed) else {
+        return false;
+    };
+
+    match write(&path, &merged) {
+        Ok(()) => true,
+        Err(err) => {
+            // QTR-09: `err` é a mensagem do `io::Error`, que fala de caminho
+            // e permissão — nunca de token.
+            eprintln!("swarmdeck: falha ao gravar a credencial renovada: {err}");
+            false
+        }
+    }
+}
+
+async fn real_refresh_http(refresh: RefreshToken) -> Result<Value, ()> {
+    let client = reqwest::Client::new();
+    let response = client
+        .post(OAUTH_TOKEN_URL)
+        .header(
+            "user-agent",
+            format!("swarmdeck/{}", env!("CARGO_PKG_VERSION")),
+        )
+        .json(&serde_json::json!({
+            "grant_type": "refresh_token",
+            "refresh_token": refresh.as_str(),
+            "client_id": OAUTH_CLIENT_ID,
+        }))
+        .send()
+        .await
+        .map_err(|_| ())?;
+
+    if !response.status().is_success() {
+        return Err(());
+    }
+    response.json::<Value>().await.map_err(|_| ())
+}
+
+/// Serializa as renovações do processo (QTR-08). Sem esta trava, o tick do
+/// anel e um hover simultâneos trocariam o **mesmo** `refreshToken` duas
+/// vezes; a segunda troca usaria um token já rotacionado pela primeira e
+/// falharia — pior, gastaria a rotação.
+fn refresh_lock() -> &'static tokio::sync::Mutex<()> {
+    static LOCK: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| tokio::sync::Mutex::new(()))
+}
+
+/// Versão de produção da renovação. Best-effort por construção: não devolve
+/// erro porque nenhum desfecho dela muda o que a busca de cota faz em
+/// seguida — ela apenas pode ter deixado um token melhor no disco.
+async fn ensure_fresh(default_profile: &TerminalProfile) {
+    let _guard = refresh_lock().lock().await;
+    let profile = default_profile.clone();
+    ensure_fresh_with(
+        move || locate_credential(&profile),
+        real_refresh_http,
+        |path, value| write_credential_atomic(path, value).map_err(|err| err.to_string()),
+        real_now_ms(),
+    )
+    .await;
 }
 
 /// Piso de cache: uma leitura com menos de 5 minutos é servida sem nova
@@ -426,6 +721,12 @@ pub async fn fetch(
     force: bool,
     default_profile: &TerminalProfile,
 ) -> Result<(ClaudeQuota, i64), QuotaError> {
+    // SPEC: quota-token-refresh (QTR-01) — a renovação vem **antes** da
+    // busca: é ela que faz a cota já estar pronta quando o overlay de boot
+    // solta (BOOT-09), em vez de o boot mandar um token vencido, tomar 401 e
+    // o anel nascer em "sessão expirada".
+    ensure_fresh(default_profile).await;
+
     fetch_cached_with(
         state,
         force,
@@ -434,6 +735,367 @@ pub async fn fetch(
         real_now_ms,
     )
     .await
+}
+
+// SPEC: quota-token-refresh (QTR-01, QTR-02, QTR-03, QTR-04, QTR-05, QTR-06,
+// QTR-07, QTR-13, QTR-14, QTR-15)
+#[cfg(test)]
+mod refresh_tests {
+    use super::*;
+
+    const NOW: i64 = 1_700_000_000_000;
+
+    fn credential(expires_at_ms: Option<i64>, with_refresh: bool) -> Credential {
+        Credential {
+            token: AccessToken("access-antigo".to_string()),
+            tier: Some("pro".to_string()),
+            refresh: with_refresh.then(|| RefreshToken("refresh-antigo".to_string())),
+            expires_at_ms,
+        }
+    }
+
+    fn file_json() -> Value {
+        serde_json::json!({
+            "claudeAiOauth": {
+                "accessToken": "access-antigo",
+                "refreshToken": "refresh-antigo",
+                "expiresAt": NOW - 1,
+                "scopes": ["user:inference"],
+                "subscriptionType": "pro"
+            },
+            "outraChaveQueNaoConhecemos": { "manter": true }
+        })
+    }
+
+    // QTR-01
+    #[test]
+    fn token_vencido_com_refresh_precisa_renovar() {
+        assert!(needs_refresh(&credential(Some(NOW - 1), true), NOW));
+    }
+
+    // QTR-01: a margem de 60 s conta como vencido.
+    #[test]
+    fn token_que_vence_dentro_da_margem_precisa_renovar() {
+        assert!(needs_refresh(
+            &credential(Some(NOW + EXPIRY_SKEW_MS), true),
+            NOW
+        ));
+        assert!(!needs_refresh(
+            &credential(Some(NOW + EXPIRY_SKEW_MS + 1), true),
+            NOW
+        ));
+    }
+
+    // QTR-04
+    #[test]
+    fn token_valido_nao_precisa_renovar() {
+        assert!(!needs_refresh(
+            &credential(Some(NOW + 8 * 3600 * 1000), true),
+            NOW
+        ));
+    }
+
+    // QTR-06
+    #[test]
+    fn sem_refresh_token_nao_renova_mesmo_vencido() {
+        assert!(!needs_refresh(&credential(Some(NOW - 1), false), NOW));
+    }
+
+    // QTR-13: ausência de `expiresAt` não é prova de vencimento.
+    #[test]
+    fn sem_expires_at_nao_renova() {
+        assert!(!needs_refresh(&credential(None, true), NOW));
+    }
+
+    // QTR-01: `expires_in` em segundos vira epoch ms.
+    #[test]
+    fn parse_usa_expires_in_em_segundos() {
+        let body = serde_json::json!({
+            "access_token": "access-novo",
+            "refresh_token": "refresh-novo",
+            "expires_in": 28800
+        });
+
+        assert_eq!(
+            parse_refresh_response(&body, NOW),
+            Some(Refreshed {
+                access_token: "access-novo".to_string(),
+                refresh_token: Some("refresh-novo".to_string()),
+                expires_at_ms: Some(NOW + 28_800_000),
+            })
+        );
+    }
+
+    #[test]
+    fn parse_aceita_epoch_pronto_quando_nao_ha_expires_in() {
+        let body = serde_json::json!({ "access_token": "a", "expiresAt": NOW + 500 });
+        assert_eq!(
+            parse_refresh_response(&body, NOW).and_then(|r| r.expires_at_ms),
+            Some(NOW + 500)
+        );
+    }
+
+    // QTR-05
+    #[test]
+    fn parse_recusa_corpo_sem_access_token_utilizavel() {
+        assert_eq!(parse_refresh_response(&serde_json::json!({}), NOW), None);
+        assert_eq!(
+            parse_refresh_response(&serde_json::json!({ "access_token": "" }), NOW),
+            None
+        );
+    }
+
+    // QTR-02: o resto do arquivo sobrevive intacto.
+    #[test]
+    fn apply_troca_os_tres_campos_e_preserva_o_resto() {
+        let merged = apply_refreshed(
+            &file_json(),
+            &Refreshed {
+                access_token: "access-novo".to_string(),
+                refresh_token: Some("refresh-novo".to_string()),
+                expires_at_ms: Some(NOW + 1000),
+            },
+        )
+        .expect("claudeAiOauth é objeto");
+
+        let oauth = &merged["claudeAiOauth"];
+        assert_eq!(oauth["accessToken"], "access-novo");
+        assert_eq!(oauth["refreshToken"], "refresh-novo");
+        assert_eq!(oauth["expiresAt"], NOW + 1000);
+        assert_eq!(oauth["scopes"], serde_json::json!(["user:inference"]));
+        assert_eq!(oauth["subscriptionType"], "pro");
+        assert_eq!(merged["outraChaveQueNaoConhecemos"]["manter"], true);
+    }
+
+    // QTR-14: endpoint que não rotacionou preserva o refreshToken do arquivo.
+    #[test]
+    fn apply_sem_refresh_novo_preserva_o_do_arquivo() {
+        let merged = apply_refreshed(
+            &file_json(),
+            &Refreshed {
+                access_token: "access-novo".to_string(),
+                refresh_token: None,
+                expires_at_ms: None,
+            },
+        )
+        .expect("claudeAiOauth é objeto");
+
+        assert_eq!(merged["claudeAiOauth"]["accessToken"], "access-novo");
+        assert_eq!(merged["claudeAiOauth"]["refreshToken"], "refresh-antigo");
+        assert_eq!(merged["claudeAiOauth"]["expiresAt"], NOW - 1);
+    }
+
+    #[test]
+    fn apply_recusa_arquivo_sem_objeto_oauth() {
+        let refreshed = Refreshed {
+            access_token: "a".to_string(),
+            refresh_token: None,
+            expires_at_ms: None,
+        };
+        assert_eq!(
+            apply_refreshed(&serde_json::json!({ "claudeAiOauth": 7 }), &refreshed),
+            None
+        );
+        assert_eq!(apply_refreshed(&serde_json::json!({}), &refreshed), None);
+    }
+
+    // QTR-03: escrita atômica sobrescreve e não deixa temporário para trás.
+    #[test]
+    fn escrita_atomica_substitui_o_arquivo_e_limpa_o_temporario() {
+        let dir = tempfile::tempdir().expect("diretório temporário");
+        let path = dir.path().join(".credentials.json");
+        std::fs::write(&path, br#"{"claudeAiOauth":{"accessToken":"velho"}}"#).unwrap();
+
+        write_credential_atomic(&path, &serde_json::json!({ "a": 1 })).expect("gravar");
+
+        let raw = std::fs::read(&path).unwrap();
+        assert_eq!(
+            serde_json::from_slice::<Value>(&raw).unwrap(),
+            serde_json::json!({ "a": 1 })
+        );
+        assert!(!dir.path().join(".credentials.json.swarmdeck-tmp").exists());
+    }
+
+    /// Escritor espião: guarda o que recebeu em vez de tocar disco.
+    fn spy() -> std::sync::Arc<std::sync::Mutex<Vec<(PathBuf, Value)>>> {
+        std::sync::Arc::new(std::sync::Mutex::new(Vec::new()))
+    }
+
+    fn locate_ok() -> Option<(PathBuf, Value, Credential)> {
+        Some((
+            PathBuf::from("/tmp/.claude/.credentials.json"),
+            file_json(),
+            credential(Some(NOW - 1), true),
+        ))
+    }
+
+    // QTR-01 + QTR-02 pela ponta: vencido, troca ok, arquivo regravado.
+    #[tokio::test]
+    async fn renova_e_grava_quando_o_token_esta_vencido() {
+        let written = spy();
+        let sink = written.clone();
+
+        let wrote = ensure_fresh_with(
+            locate_ok,
+            |_| async {
+                Ok(serde_json::json!({
+                    "access_token": "access-novo",
+                    "refresh_token": "refresh-novo",
+                    "expires_in": 28800
+                }))
+            },
+            move |path: &Path, value: &Value| {
+                sink.lock()
+                    .unwrap()
+                    .push((path.to_path_buf(), value.clone()));
+                Ok(())
+            },
+            NOW,
+        )
+        .await;
+
+        assert!(wrote);
+        let calls = written.lock().unwrap();
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].0, PathBuf::from("/tmp/.claude/.credentials.json"));
+        assert_eq!(calls[0].1["claudeAiOauth"]["accessToken"], "access-novo");
+    }
+
+    // QTR-07
+    #[tokio::test]
+    async fn sem_credencial_nao_toca_rede_nem_disco() {
+        let written = spy();
+        let sink = written.clone();
+
+        let wrote = ensure_fresh_with(
+            || None,
+            |_| async { panic!("não deveria trocar token sem credencial") },
+            move |path: &Path, value: &Value| {
+                sink.lock()
+                    .unwrap()
+                    .push((path.to_path_buf(), value.clone()));
+                Ok(())
+            },
+            NOW,
+        )
+        .await;
+
+        assert!(!wrote);
+        assert!(written.lock().unwrap().is_empty());
+    }
+
+    // QTR-04
+    #[tokio::test]
+    async fn token_valido_nao_toca_rede_nem_disco() {
+        let written = spy();
+        let sink = written.clone();
+
+        let wrote = ensure_fresh_with(
+            || {
+                Some((
+                    PathBuf::from("/tmp/.claude/.credentials.json"),
+                    file_json(),
+                    credential(Some(NOW + 3_600_000), true),
+                ))
+            },
+            |_| async { panic!("não deveria trocar token ainda válido") },
+            move |path: &Path, value: &Value| {
+                sink.lock()
+                    .unwrap()
+                    .push((path.to_path_buf(), value.clone()));
+                Ok(())
+            },
+            NOW,
+        )
+        .await;
+
+        assert!(!wrote);
+        assert!(written.lock().unwrap().is_empty());
+    }
+
+    // QTR-05: troca que falha no transporte deixa o arquivo intacto.
+    #[tokio::test]
+    async fn troca_que_falha_nao_grava() {
+        let written = spy();
+        let sink = written.clone();
+
+        let wrote = ensure_fresh_with(
+            locate_ok,
+            |_| async { Err(()) },
+            move |path: &Path, value: &Value| {
+                sink.lock()
+                    .unwrap()
+                    .push((path.to_path_buf(), value.clone()));
+                Ok(())
+            },
+            NOW,
+        )
+        .await;
+
+        assert!(!wrote);
+        assert!(written.lock().unwrap().is_empty());
+    }
+
+    // QTR-05: resposta 200 mas sem `access_token` também não grava.
+    #[tokio::test]
+    async fn resposta_sem_access_token_nao_grava() {
+        let written = spy();
+        let sink = written.clone();
+
+        let wrote = ensure_fresh_with(
+            locate_ok,
+            |_| async { Ok(serde_json::json!({ "error": "invalid_grant" })) },
+            move |path: &Path, value: &Value| {
+                sink.lock()
+                    .unwrap()
+                    .push((path.to_path_buf(), value.clone()));
+                Ok(())
+            },
+            NOW,
+        )
+        .await;
+
+        assert!(!wrote);
+        assert!(written.lock().unwrap().is_empty());
+    }
+
+    // QTR-15: escrita que falha não é fatal — devolve `false`, não panica.
+    #[tokio::test]
+    async fn escrita_que_falha_devolve_false() {
+        let wrote = ensure_fresh_with(
+            locate_ok,
+            |_| async { Ok(serde_json::json!({ "access_token": "access-novo" })) },
+            |_: &Path, _: &Value| Err("permissão negada".to_string()),
+            NOW,
+        )
+        .await;
+
+        assert!(!wrote);
+    }
+
+    // QTR-09: nem o access token nem o refresh token vazam pelo `Debug`.
+    #[test]
+    fn debug_da_credencial_nao_mostra_token() {
+        let rendered = format!("{:?}", credential(Some(NOW), true));
+        assert!(rendered.contains("AccessToken(<redacted>)"));
+        assert!(rendered.contains("RefreshToken(<redacted>)"));
+        assert!(!rendered.contains("access-antigo"));
+        assert!(!rendered.contains("refresh-antigo"));
+    }
+
+    // QTR-06 pela leitura: um arquivo sem `refreshToken` não vira credencial
+    // renovável, e um com vira.
+    #[test]
+    fn parse_credential_le_refresh_e_expiracao() {
+        let sem = serde_json::json!({ "claudeAiOauth": { "accessToken": "a" } });
+        let parsed = parse_credential(&sem).expect("accessToken presente");
+        assert!(parsed.refresh.is_none());
+        assert_eq!(parsed.expires_at_ms, None);
+
+        let com = parse_credential(&file_json()).expect("accessToken presente");
+        assert!(com.refresh.is_some());
+        assert_eq!(com.expires_at_ms, Some(NOW - 1));
+    }
 }
 
 #[cfg(test)]

@@ -1,4 +1,6 @@
-// SPEC: quota-indicator (QUOTA-15, QUOTA-18, QUOTA-20), wsl-terminal-profile (WSLP-22, WSLP-23)
+// SPEC: quota-indicator (QUOTA-15, QUOTA-20; QUOTA-18 — REVOKED by AD-043: o
+// arquivo de credencial no HOME resolvido aqui deixou de ser somente leitura),
+// wsl-terminal-profile (WSLP-22, WSLP-23)
 
 //! Diretório home de uma distro WSL, em forma UNC.
 //!

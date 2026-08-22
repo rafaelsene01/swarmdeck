@@ -63,7 +63,11 @@ tauri-plugin-dialog = "2.7.2"
 # espaça os ciclos de 1h. Antes só dev-dependency (usado pelos testes de
 # src/update/check.rs via #[tokio::test]); agora dependency de produção com
 # as mesmas features mais "time".
-tokio = { version = "1", features = ["macros", "rt", "time"] }
+# SPEC: quota-token-refresh (QTR-08)
+# `sync` entra pelo `tokio::sync::Mutex` que serializa as renovações de
+# token em `quota.rs` — uma `std::sync::Mutex` não pode ser mantida
+# atravessando um `.await`.
+tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
 
 # SPEC: quota-indicator (QUOTA-13)
 # Cliente HTTP da busca de cota (src/quota.rs), AD-003: reqwest 0.13.4 já
