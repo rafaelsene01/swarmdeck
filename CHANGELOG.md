@@ -1,6 +1,14 @@
 # Changelog
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
+## [0.1.46] - 2026-08-22
+
+### Funcionalidades
+
+- Adicionar regras de UI/UX e especificações de feedback
+
+- *(feedback-form)* Implement feedback form functionality and validation
+
 ## [0.1.45] - 2026-08-22
 
 ### Funcionalidades
