@@ -21,6 +21,13 @@ pub mod shells;
 pub mod tasks;
 pub mod terminal;
 pub mod update;
+// SPEC: window-geometry (WGEO-01, WGEO-02, WGEO-03, WGEO-04)
+// Mora em `src-tauri/src/windows/` junto de `kanban.rs`/`settings.rs` (ciclo
+// de vida de janela), mas — ao contrário deles — não expõe
+// `#[tauri::command]` nenhum, então é declarado aqui via `#[path]` em vez de
+// entrar por `commands/mod.rs`.
+#[path = "windows/geometry.rs"]
+pub mod window_geometry;
 
 use db::Db;
 use terminal::TerminalManager;
@@ -54,7 +61,26 @@ pub fn run() {
             let path =
                 paths::db_path(&handle).expect("não foi possível resolver o caminho do banco");
             let db = Db::open(path).expect("não foi possível abrir o banco do SwarmDeck");
+
+            // SPEC: window-geometry (WGEO-01, WGEO-02, WGEO-03, WGEO-04)
+            // A geometria é lida e aplicada **aqui**, dentro do `setup` e
+            // antes de o loop de eventos rodar, para que a janela não seja
+            // pintada primeiro na posição padrão de `tauri.conf.json`
+            // (WGEO-04). A leitura usa o `db` ainda não movido para o estado
+            // gerido; a gravação, feita depois pelos hooks, passa por
+            // `app.state::<Mutex<Db>>()`.
+            let saved_geometry = db::window_state(db.conn()).unwrap_or_else(|err| {
+                eprintln!("swarmdeck: falha ao ler a geometria da janela: {err}");
+                None
+            });
+
             app.manage(Mutex::new(db));
+
+            if let Some(main) = handle.get_webview_window("main") {
+                window_geometry::restore(&main, saved_geometry);
+                window_geometry::watch(&main);
+                window_geometry::spawn_flusher(handle.clone());
+            }
 
             // SPEC: multi-terminal (TERM-01, TERM-03)
             // Registro único das sessões PTY vivas — comandos e o pump de
