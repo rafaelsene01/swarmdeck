@@ -16,7 +16,6 @@ src-tauri/gen/schemas/
 *.db-wal
 
 .claude-flow
-.specs
 graphify-out/
 .code-review-graph/
 print
