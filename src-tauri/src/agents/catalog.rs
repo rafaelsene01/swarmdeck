@@ -580,12 +580,20 @@ mod tests {
 
         wsl_found_with("Ubuntu-24.04", &cache, probe);
         wsl_found_with("Ubuntu-24.04", &cache, probe);
-        assert_eq!(calls.load(Ordering::SeqCst), 1, "a segunda leitura veio do cache");
+        assert_eq!(
+            calls.load(Ordering::SeqCst),
+            1,
+            "a segunda leitura veio do cache"
+        );
 
         clear_probe_cache(&cache);
         let depois = wsl_found_with("Ubuntu-24.04", &cache, probe);
 
-        assert_eq!(calls.load(Ordering::SeqCst), 2, "depois do clear a sonda roda de novo");
+        assert_eq!(
+            calls.load(Ordering::SeqCst),
+            2,
+            "depois do clear a sonda roda de novo"
+        );
         assert_eq!(depois, vec![("codex-cli", "/usr/bin/codex".to_string())]);
     }
 
