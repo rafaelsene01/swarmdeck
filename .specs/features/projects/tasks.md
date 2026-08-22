@@ -184,17 +184,24 @@ T24
 
 **Done when**:
 
-- [ ] `git init` com saída não-zero remove a subpasta e propaga `GitInitFailed` (P2 AC11)
-- [ ] `git` ausente do PATH remove a subpasta e propaga `Io`
+- [x] `git init` com saída não-zero remove a subpasta e propaga `GitInitFailed` (P2 AC11)
+- [x] `git` ausente do PATH remove a subpasta e propaga `Io`
 - [x] Depois da falha, repetir a criação com o mesmo nome funciona (não trava em `AlreadyExists`)
 - [x] Criação bem-sucedida não remove nada
 - [x] Gate check passes: `cargo test --manifest-path src-tauri/Cargo.toml`
 
-> Os dois primeiros itens ficam sem teste próprio: forçar `git init` a falhar exige
-> trocar o `PATH` do processo, que é global e deixaria os 212 testes paralelos do
-> binário de lib instáveis. A guarda que eles pedem é a mesma linha exercitada por
-> `falha_depois_de_criar_a_pasta_remove_a_pasta_e_propaga_o_erro` (`service.rs`), que
-> roda com `git_init: true` e prova a remoção recursiva com `.git` dentro.
+> Os dois primeiros itens são cobertos por composição, não por um teste ponta a ponta:
+> `create_with_options` trata todo `Err` do bloco pós-`create_dir` no mesmo `match`
+> (`service.rs`), então a origem do erro não muda a remoção. A remoção mais a propagação
+> são provadas por `falha_depois_de_criar_a_pasta_remove_a_pasta_e_propaga_o_erro`, que
+> roda com `git_init: true` e exige remoção recursiva com `.git` dentro. O mapeamento de
+> cada falha de `git` é provado direto em `run_git_init`:
+> `git_init_falho_devolve_erro_git_init_failed_como_antes` (saída não-zero, sabotando
+> `.git` como arquivo) e `git_init_que_nao_consegue_rodar_vira_io` (spawn falha no nível
+> do SO, mesmo caminho de `git` fora do `PATH`). Forçar a falha *dentro* de
+> `create_with_options` exigiria trocar o `PATH` do processo — global, e deixaria os
+> testes paralelos do binário de lib instáveis — ou injetar um ponto de falha só para
+> teste, o que não acrescentaria linha coberta nenhuma.
 
 **Tests**: unit
 **Gate**: Rust
@@ -355,7 +362,7 @@ T24
 - [x] O `Result` é descartado com `let _ =`: falha de gravação não impede a saída nem imprime erro ao usuário (P1 AC19)
 - [x] `TerminalManager::shutdown()` **não** é chamado — a saída continua deixando os PTYs para o teardown do SO (Out of Scope)
 - [x] Se `RunEvent::Exit` não expuser o estado gerenciado, o recuo documentado em `design.md` (`WindowEvent::Destroyed` na janela principal) é usado e o desvio é registrado no relatório da task
-- [ ] Verificação manual registrada: abrir um terminal num projeto, fechar o app, reabrir e confirmar que o projeto aparece no topo com idade `agora`
+- [x] Verificação manual registrada: abrir um terminal num projeto, fechar o app, reabrir e confirmar que o projeto aparece no topo com idade `agora`
 - [x] Gate check passes: `npm run build && npm test && cargo test --manifest-path src-tauri/Cargo.toml`
 
 > `RunEvent::Exit` expõe o estado gerenciado normalmente (`handle.state::<...>()`),
@@ -363,11 +370,13 @@ T24
 > `.build(ctx)?` virou `.build(ctx).expect(...)` porque `run()` devolve `()` e o
 > `?` não teria para onde propagar, exatamente o risco previsto em `design.md`.
 >
-> Verificação manual **pendente**: a lista de projetos com idade só existe a
-> partir da Phase 3 (`ProjectStep`, `formatAge`). Sem UI onde ler "idade
-> `agora`", o passo não é executável agora — fica para depois de T13/T15.
-> O gancho em si compila e roda no gate de Build; o núcleo que ele chama
-> (`touch_from_cwds`) é coberto por T1.
+> Verificação manual **executada em 22/08/2026**, depois que a Phase 3
+> (`ProjectStep`, `formatAge`) entregou a lista com idade. Roteiro: abrir um
+> terminal num projeto, fechar o app, reabrir. Resultado confirmado pelo
+> usuário: o projeto aparece no topo da lista com idade `agora`. O gancho em
+> si compila e roda no gate de Build; o núcleo que ele chama
+> (`touch_from_cwds`) é coberto por T1, e a formatação da idade por
+> `src/lib/relativeTime.test.ts`.
 
 **Tests**: none
 **Gate**: Build

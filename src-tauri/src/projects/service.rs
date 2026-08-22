@@ -898,6 +898,20 @@ mod tests {
         assert!(PathBuf::from(&project.path).is_dir());
     }
 
+    #[test]
+    fn git_init_que_nao_consegue_rodar_vira_io() {
+        // Diretório de trabalho inexistente faz o spawn falhar no nível do
+        // SO — o mesmo caminho de erro de `git` fora do `PATH`, e o único
+        // que dá para forçar sem variável de ambiente global.
+        let dir = tempfile::tempdir().expect("criar diretório");
+        let ausente = dir.path().join("nao-existe");
+
+        match run_git_init(&ausente) {
+            Err(ProjectError::Io(_)) => {}
+            other => panic!("esperava Io, veio {other:?}"),
+        }
+    }
+
     fn argv(cmd: &portable_pty::CommandBuilder) -> Vec<String> {
         cmd.get_argv()
             .iter()

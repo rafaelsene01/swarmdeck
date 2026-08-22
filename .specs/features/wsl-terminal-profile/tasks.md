@@ -157,6 +157,15 @@ T11 → T12 → T13 → T14 → T15
 **Tests**: unit
 **Gate**: quick
 
+> Correção de 22/08/2026: a asserção de WSLP-09 em
+> `terminal::manager::tests::build_command_wsl_inclui_id_do_terminal_como_entrada_de_env`
+> usava `CommandBuilder::get_env`, que mistura o que `cmd.env()` setou com o
+> ambiente herdado que `CommandBuilder::new` copia do processo. Rodar
+> `cargo test` de dentro de um terminal do próprio app — onde
+> `SWARMDECK_TERMINAL_ID` já existe — fazia o teste falhar sem nenhum bug no
+> `build_command`. Trocado por `iter_extra_env_as_str()`, que lista só as
+> variáveis setadas explicitamente. Comportamento de produção inalterado.
+
 **Commit**: `feat(shells): build argv-only commands for the active profile`
 
 ---
