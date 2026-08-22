@@ -1,9 +1,9 @@
-// SPEC: projects (PROJ-13, PROJ-21)
+// SPEC: projects (PROJ-13, PROJ-21), providers-panel (PROV-14, PROV-15, PROV-16)
 
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import AgentStep from './AgentStep'
-import type { AgentDescriptor } from '../../routes/settings/AgentPanel'
+import type { AgentDescriptor } from '../../types/agents'
 
 const CATALOG: AgentDescriptor[] = [
   {
@@ -27,6 +27,7 @@ function renderStep(props: Partial<Parameters<typeof AgentStep>[0]> = {}) {
       selection={SELECTION}
       agents={CATALOG}
       installedIds={new Set(CATALOG.map((a) => a.id))}
+      enabledIds={new Set(CATALOG.map((a) => a.id))}
       selectedAgentId="claude-code"
       onSelectAgent={vi.fn()}
       onBack={vi.fn()}
@@ -47,6 +48,40 @@ const agentButtons = () =>
 const plainButton = () => screen.getByRole('button', { name: /^Terminal$/ })
 
 describe('AgentStep', () => {
+  // SPEC: providers-panel (PROV-14) — encontrado no terminal e habilitado.
+  it('libera todo provedor habilitado e instalado, não só o Claude', () => {
+    renderStep()
+
+    for (const agent of CATALOG) {
+      expect(screen.getByRole('button', { name: agent.name })).toBeEnabled()
+    }
+  })
+
+  // SPEC: providers-panel (PROV-15) — desligado em Configurações fica cinza
+  // mesmo com o CLI instalado, e a legenda diz o motivo.
+  it('desabilita o provedor instalado que está desligado em Configurações', () => {
+    renderStep({ enabledIds: new Set(['claude-code']) })
+
+    expect(screen.getByRole('button', { name: 'Claude Code' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Codex CLI' })).toBeDisabled()
+
+    expect(screen.getByRole('button', { name: 'Codex CLI' })).toHaveAttribute(
+      'title',
+      'Codex CLI · desabilitado em Configurações › Provedores',
+    )
+  })
+
+  // SPEC: providers-panel (PROV-16) — o shell puro não depende de provedor.
+  it('mantém o ladrilho Terminal habilitado sem nenhum provedor habilitado', () => {
+    renderStep({ enabledIds: new Set<string>() })
+
+    expect(plainButton()).toBeEnabled()
+    for (const agent of CATALOG) {
+      expect(screen.getByRole('button', { name: agent.name })).toBeDisabled()
+    }
+  })
+
+
   it('os agentes aparecem na ordem recebida, com o padrão pré-selecionado (P1 AC7)', () => {
     renderStep()
 
@@ -87,13 +122,12 @@ describe('AgentStep', () => {
     expect(onSelectAgent).toHaveBeenCalledWith('claude-code')
   })
 
-  it('só Claude é escolhível: os demais ficam desabilitados mesmo instalados', () => {
+  // SPEC: providers-panel (PROV-15) — AD-036: era "só Claude é escolhível",
+  // com a lista fixa `SELECTABLE`. Agora quem decide é o switch: clicar num
+  // ladrilho desligado não seleciona nada.
+  it('clicar num provedor desabilitado em Configurações não seleciona nada', () => {
     const onSelectAgent = vi.fn()
-    renderStep({ onSelectAgent })
-
-    expect(screen.getByRole('button', { name: 'Claude Code' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'Codex CLI' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'opencode' })).toBeDisabled()
+    renderStep({ onSelectAgent, enabledIds: new Set(['claude-code']) })
 
     fireEvent.click(screen.getByRole('button', { name: 'Codex CLI' }))
 

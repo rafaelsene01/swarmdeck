@@ -1,3 +1,4 @@
+// SPEC: providers-panel (PROV-01, PROV-05, PROV-06, PROV-08, PROV-09)
 // SPEC: settings-shell (SET-02, SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), quota-indicator (QUOTA-08, QUOTA-09, QUOTA-10, QUOTA-31), silent-update (SILENT-09, SILENT-13, SILENT-25, SILENT-32, SILENT-33, SILENT-34, SILENT-37, SILENT-38, SILENT-40, SILENT-42), projects (PROJ-19, PROJ-23, PROJ-24), update-toast (TOAST-06, TOAST-08, TOAST-10)
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -6,7 +7,7 @@ import { listen } from '@tauri-apps/api/event'
 import { getVersion } from '@tauri-apps/api/app'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { Download, FolderOpen, SlidersHorizontal, Users, X } from 'lucide-react'
-import AgentPanel, { type AgentDescriptor } from './AgentPanel'
+import AgentPanel, { type ProviderRow } from './AgentPanel'
 import GeneralPanel, { type QuotaPrefs } from './GeneralPanel'
 import ProjectsPanel, { countTerminalsByProject, type ProjectRow } from './ProjectsPanel'
 import ProjectFormModal, { type ProjectFormValues } from '../../components/project/ProjectFormModal'
@@ -37,17 +38,10 @@ const SECTIONS: ReadonlyArray<{ id: SectionId; label: string; icon: typeof Users
   { id: 'updates', label: 'Atualizações', icon: Download },
 ]
 
-/** Espelha `AgentCatalogEntry` de `src-tauri/src/commands/agents.rs` (T5 de
- * `agent-selection`), já registrado no `invoke_handler!` — mesma forma que
- * `App.tsx` já consome para o `PaneWizard`. */
-interface AgentCatalogEntry extends AgentDescriptor {
-  installed: boolean
-}
-
 /** Espelha `Project` de `src-tauri/src/projects/service.rs` tal como sai na
  * borda: essa struct não tem `#[serde(rename_all = "camelCase")]`, então o
- * campo chega `last_used`, não `lastUsed` (diferente de `AgentCatalogEntry`
- * acima). */
+ * campo chega `last_used`, não `lastUsed` (diferente de `ProviderRow`, que vem
+ * de um tipo com `rename_all`). */
 interface ProjectRecord {
   id: string
   name: string
@@ -96,11 +90,13 @@ export default function SettingsShell({ onClose, initialSection }: SettingsShell
   // Atualizações abaixo (SET-09).
   const [quotaPrefs, setQuotaPrefs] = useState<QuotaPrefs>(DEFAULT_QUOTA_PREFS)
 
-  // Agentes (AGT-01/03/04): dado real, via `agent_catalog`/`agent_default`,
-  // já registrados no `invoke_handler!` — mesmo padrão de busca do `App.tsx`.
-  const [agents, setAgents] = useState<AgentDescriptor[]>([])
-  const [installedIds, setInstalledIds] = useState<Set<string>>(new Set())
-  const [defaultAgentId, setDefaultAgentId] = useState<string | null>(null)
+  /** SPEC: providers-panel (PROV-01, PROV-09) — o estado gravado da última
+   * varredura, uma linha por provedor do catálogo. `provider_prefs_get` varre
+   * ele mesmo quando nunca houve varredura (PROV-10), então esta tela não
+   * decide isso. */
+  const [providers, setProviders] = useState<ProviderRow[]>([])
+  /** SPEC: providers-panel (PROV-08) */
+  const [scanning, setScanning] = useState(false)
 
   // Projetos (PROJ-05): dado real, via `project_list`, já registrado.
   const [projects, setProjects] = useState<ProjectRow[]>([])
@@ -195,26 +191,18 @@ export default function SettingsShell({ onClose, initialSection }: SettingsShell
   useEffect(() => {
     let cancelled = false
 
-    // `agent_catalog` (não `agent_catalog_all`): Configurações é sobre o perfil
-    // padrão por definição — AD-032. O `.catch` não é decorativo: sem ele uma
+    // SPEC: providers-panel (PROV-09) — lê o gravado; não varre. AD-036: era
+    // `agent_catalog` + `agent_default`, que resolviam o "agente padrão" no
+    // perfil padrão — e por isso marcavam "não encontrado no PATH" um CLI
+    // instalado dentro de uma distro. O `.catch` não é decorativo: sem ele uma
     // leitura que falha vira rejeição não tratada e a seção fica sem lista
     // **sem nenhum registro** de por quê. Painel vazio é degradação aceitável;
     // silêncio, não.
-    void invoke<AgentCatalogEntry[]>('agent_catalog')
-      .then((entries) => {
-        if (cancelled) return
-        setAgents(entries.map(({ installed: _installed, ...agent }) => agent))
-        setInstalledIds(
-          new Set(entries.filter((entry) => entry.installed).map((entry) => entry.id)),
-        )
+    void invoke<ProviderRow[]>('provider_prefs_get')
+      .then((rows) => {
+        if (!cancelled) setProviders(rows ?? [])
       })
-      .catch((error) => console.error('falha ao ler o catálogo de agentes', error))
-
-    void invoke<string | null>('agent_default')
-      .then((id) => {
-        if (!cancelled) setDefaultAgentId(id)
-      })
-      .catch((error) => console.error('falha ao ler o agente padrão', error))
+      .catch((error) => console.error('falha ao ler os provedores', error))
 
     void loadProjects()
     void loadTerminalCounts()
@@ -303,6 +291,29 @@ export default function SettingsShell({ onClose, initialSection }: SettingsShell
   const handleChangeQuotaPrefs = (next: QuotaPrefs) => {
     setQuotaPrefs(next)
     void invoke('quota_prefs_set', { prefs: next })
+  }
+
+  /** SPEC: providers-panel (PROV-06, PROV-08) — o botão "Atualizar": varre
+   * host e cada distro por todos os provedores e repõe a lista com o que foi
+   * gravado. Falha mantém a lista atual em tela — uma varredura que não
+   * completou não é motivo para esvaziar o painel. */
+  const handleScanProviders = () => {
+    if (scanning) return
+    setScanning(true)
+    invoke<ProviderRow[]>('provider_scan')
+      .then((rows) => setProviders(rows ?? []))
+      .catch((error) => console.error('falha ao varrer os provedores', error))
+      .finally(() => setScanning(false))
+  }
+
+  /** SPEC: providers-panel (PROV-05) — cada mudança persiste de imediato,
+   * mesmo padrão do bloco de cota acima: `AgentPanel` é apresentacional e não
+   * chama `invoke` sozinho. */
+  const handleToggleProvider = (id: string, enabled: boolean) => {
+    setProviders((current) =>
+      current.map((provider) => (provider.id === id ? { ...provider, enabled } : provider)),
+    )
+    void invoke('provider_enabled_set', { id, enabled })
   }
 
   // AD-035: o seletor de "Perfil de terminal" saiu. O perfil é derivado do
@@ -567,16 +578,16 @@ export default function SettingsShell({ onClose, initialSection }: SettingsShell
             <GeneralPanel
               prefs={quotaPrefs}
               onChange={handleChangeQuotaPrefs}
-              agentIds={agents.map((agent) => agent.id)}
+              agentIds={providers.map((provider) => provider.id)}
             />
           )}
 
           {section === 'agents' && (
             <AgentPanel
-              agents={agents}
-              installedIds={installedIds}
-              defaultAgentId={defaultAgentId}
-              onSelectDefault={setDefaultAgentId}
+              providers={providers}
+              refreshing={scanning}
+              onRefresh={handleScanProviders}
+              onToggle={handleToggleProvider}
             />
           )}
 

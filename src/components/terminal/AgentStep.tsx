@@ -1,10 +1,10 @@
 // SPEC: projects (PROJ-13, PROJ-21), agent-permission-mode (PERM-05, PERM-06)
-// SPEC: terminal-boot-loading (BOOT-12)
+// SPEC: terminal-boot-loading (BOOT-12), providers-panel (PROV-14, PROV-15, PROV-16)
 
 import { useState } from 'react'
 import ProviderIcon from '../shell/ProviderIcon'
 import WizardHeader from './WizardHeader'
-import type { AgentDescriptor } from '../../routes/settings/AgentPanel'
+import type { AgentDescriptor } from '../../types/agents'
 
 export interface AgentStepSelection {
   name: string
@@ -72,8 +72,15 @@ export function permissionModeLabel(mode: string): string {
 export interface AgentStepProps {
   selection: AgentStepSelection
   agents: AgentDescriptor[]
-  /** Ids com comando resolvido no PATH, como `AgentPanel` lê (AGT-04). */
+  /** Ids com comando resolvido no perfil deste caminho (AGT-04). */
   installedIds: Set<string>
+  /**
+   * SPEC: providers-panel (PROV-14, PROV-15) — ids habilitados em
+   * Configurações › Provedores. Um provedor instalado mas desligado ali
+   * aparece na grade desabilitado: é o switch que governa o que o wizard
+   * oferece.
+   */
+  enabledIds: Set<string>
   /** `null` = terminal limpo: shell puro na pasta, sem agente (PROJ-21). */
   selectedAgentId: string | null
   onSelectAgent: (id: string | null) => void
@@ -89,7 +96,7 @@ export interface AgentStepProps {
   counter?: string
   /**
    * SPEC: terminal-boot-loading (BOOT-12) — rótulo do perfil em que este
-   * caminho vai rodar ("Windows (padrão)", "Ubuntu-24.04"). Vem de
+   * caminho vai rodar ("Windows", "Ubuntu-24.04"). Vem de
    * `shell_profile_for_path`, e é o que explica por que a grade mostra este
    * conjunto de agentes e não outro: uma pasta dentro de uma distro procura
    * o CLI lá dentro, não no PATH do Windows. `undefined` omite a linha.
@@ -101,11 +108,6 @@ export interface AgentStepProps {
  *  hover precisa distinguir "nada sob o cursor" de "cursor no terminal
  *  puro". */
 const PLAIN = '__plain__'
-
-/** Agentes que o wizard deixa escolher hoje. Os outros aparecem na grade
- *  (o catálogo é o mesmo), mas desabilitados: só Claude está integrado de
- *  ponta a ponta. */
-const SELECTABLE = new Set(['claude-code'])
 
 /**
  * Etapa 2 do wizard: cartão do lugar escolhido, grade de agentes e o botão
@@ -120,12 +122,13 @@ const SELECTABLE = new Set(['claude-code'])
  * "Nova sessão" nunca desabilita: sem nenhum agente resolvido no PATH o
  * terminal ainda sobe no shell puro (edge case da spec). "Terminal" é a
  * escolha explícita desse shell puro (PROJ-21) e nunca desabilita — não
- * depende de comando nenhum no PATH.
+ * depende de comando nenhum no PATH nem de provedor habilitado (PROV-16).
  */
 export default function AgentStep({
   selection,
   agents,
   installedIds,
+  enabledIds,
   selectedAgentId,
   onSelectAgent,
   permissionMode,
@@ -151,14 +154,7 @@ export default function AgentStep({
     focusedId === PLAIN
       ? { name: 'Terminal', meta: 'shell puro · sem agente' }
       : focusedAgent !== null
-        ? {
-            name: focusedAgent.name,
-            meta: !SELECTABLE.has(focusedAgent.id)
-              ? `${focusedAgent.vendor} · em breve`
-              : installedIds.has(focusedAgent.id)
-                ? focusedAgent.vendor
-                : `${focusedAgent.vendor} · não encontrado no PATH`,
-          }
+        ? { name: focusedAgent.name, meta: focusedAgent.vendor }
         : null
 
   return (
@@ -473,7 +469,11 @@ export default function AgentStep({
             </button>
 
             {agents.map((agent) => {
-              const enabled = SELECTABLE.has(agent.id) && installedIds.has(agent.id)
+              // SPEC: providers-panel (PROV-14) — encontrado neste terminal
+              // **e** habilitado. AD-036: era uma lista fixa com
+              // `claude-code`, então um CLI instalado do Codex ou do opencode
+              // ficava permanentemente cinza.
+              const enabled = enabledIds.has(agent.id) && installedIds.has(agent.id)
 
               return (
                 <button
@@ -481,7 +481,17 @@ export default function AgentStep({
                   type="button"
                   className="agent-step__agent"
                   aria-label={agent.name}
-                  title={agent.name}
+                  // SPEC: providers-panel (PROV-15) — o motivo de o ladrilho
+                  // estar travado vive no `title`, e não na legenda de hover:
+                  // um botão `disabled` não dispara evento de mouse, então
+                  // aquela linha nunca chegaria a aparecer para ele.
+                  title={
+                    !installedIds.has(agent.id)
+                      ? `${agent.name} · não encontrado neste terminal`
+                      : !enabledIds.has(agent.id)
+                        ? `${agent.name} · desabilitado em Configurações › Provedores`
+                        : agent.name
+                  }
                   aria-pressed={agent.id === selectedAgentId}
                   disabled={!enabled}
                   onClick={() => onSelectAgent(agent.id)}

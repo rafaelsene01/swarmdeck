@@ -128,7 +128,7 @@ mod tests {
         };
         let profiles = vec![ProfileEntry {
             id: "host".to_string(),
-            label: "Windows (padrão)".to_string(),
+            label: "Windows".to_string(),
             wsl1: false,
         }];
         assert_eq!(
@@ -145,7 +145,7 @@ mod tests {
         let profiles = vec![
             ProfileEntry {
                 id: "host".to_string(),
-                label: "Windows (padrão)".to_string(),
+                label: "Windows".to_string(),
                 wsl1: false,
             },
             ProfileEntry {

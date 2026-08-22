@@ -123,7 +123,7 @@ vi.mock('./components/terminal/TerminalPane', async () => {
  * boot; os blocos que precisam de agente de verdade montam a sua. */
 const EMPTY_CATALOG = {
   defaultProfileId: 'host',
-  profiles: [{ profileId: 'host', label: 'Windows (padrão)', wsl1: false, agents: [] }],
+  profiles: [{ profileId: 'host', label: 'Windows', wsl1: false, agents: [] }],
 }
 
 /** SPEC: terminal-boot-loading (BOOT-10) — envelope de perfil único em volta
@@ -131,7 +131,7 @@ const EMPTY_CATALOG = {
 function hostCatalog(agents: unknown[]) {
   return {
     defaultProfileId: 'host',
-    profiles: [{ profileId: 'host', label: 'Windows (padrão)', wsl1: false, agents }],
+    profiles: [{ profileId: 'host', label: 'Windows', wsl1: false, agents }],
   }
 }
 
@@ -144,7 +144,7 @@ function projectInvoke(command: string, args?: Record<string, unknown>) {
   // `agent_catalog` (o perfil padrão) e não `agent_catalog_all`. Mora aqui, no
   // fallback compartilhado, porque nenhum bloco deste arquivo testa o catálogo
   // de Configurações — todos só precisam que ele não devolva `undefined`.
-  if (command === 'agent_catalog') return Promise.resolve([])
+  if (command === 'provider_prefs_get') return Promise.resolve([])
   if (command === 'project_sandbox_dir') return Promise.resolve('/home/user/.swarmdeck/sandbox')
   if (command === 'project_create') {
     return Promise.resolve({
@@ -174,6 +174,11 @@ beforeEach(() => {
   vi.spyOn(window, 'confirm').mockReturnValue(true)
   invokeMock.mockImplementation((command: string, args?: Record<string, unknown>) => {
     if (command === 'agent_catalog_all') return Promise.resolve(EMPTY_CATALOG)
+    // SPEC: providers-panel (PROV-11) — o boot varre antes de pedir o
+    // catálogo; sem esta resposta a cadeia para antes de `agent_catalog_all`.
+    if (command === 'provider_scan') {
+      return Promise.resolve([{ id: 'claude-code', enabled: true, foundIn: ['Windows'] }])
+    }
     if (command === 'agent_default') return Promise.resolve(null)
     if (command === 'terminal_picker_last_dir') return Promise.resolve(null)
     // SET-01: `project_list` também é consumido pelo `SettingsShell` inline.
@@ -224,6 +229,35 @@ async function createTerminalViaWizard(dir = '/home/user/projeto') {
 
 /** O wizard está na tela (etapa PROJECT) — o marcador é a busca de projetos. */
 const wizardOnScreen = () => screen.queryAllByLabelText('Buscar projetos')
+
+describe('App - varredura de provedores no boot (PROV-11)', () => {
+  it('varre os provedores a cada abertura, antes de pedir o catálogo', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog_all'))
+
+    const commands = invokeMock.mock.calls.map((call) => call[0])
+    // A ordem não é cosmética: `provider_scan` descarta o cache de sondagem
+    // por distro (PROV-07), então varrer depois faria o boot pagar dois
+    // `wsl.exe` por distro.
+    expect(commands.indexOf('provider_scan')).toBeGreaterThanOrEqual(0)
+    expect(commands.indexOf('provider_scan')).toBeLessThan(commands.indexOf('agent_catalog_all'))
+  })
+
+  it('varredura que falha não impede o catálogo de carregar', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const base = invokeMock.getMockImplementation()
+    invokeMock.mockImplementation((command: string, args?: Record<string, unknown>) => {
+      if (command === 'provider_scan') return Promise.reject(new Error('sem banco'))
+      return base?.(command, args) ?? Promise.resolve(undefined)
+    })
+
+    render(<App />)
+
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog_all'))
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+})
 
 describe('App - shell-chrome wiring', () => {
   it('mounts Header in place of the old .app-toolbar (HDR-01)', async () => {
@@ -739,6 +773,11 @@ describe('App - terminal-layout-options: restaurar o workspace no boot (LAYOUT-2
   function mockWorkspace(result: unknown) {
     invokeMock.mockImplementation((command: string, args?: Record<string, unknown>) => {
       if (command === 'agent_catalog_all') return Promise.resolve(EMPTY_CATALOG)
+    // SPEC: providers-panel (PROV-11) — o boot varre antes de pedir o
+    // catálogo; sem esta resposta a cadeia para antes de `agent_catalog_all`.
+    if (command === 'provider_scan') {
+      return Promise.resolve([{ id: 'claude-code', enabled: true, foundIn: ['Windows'] }])
+    }
       if (command === 'agent_default') return Promise.resolve(null)
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: false, window: 'both' })
       if (command === 'terminal_workspace_get') {
@@ -968,6 +1007,11 @@ describe('App - terminal-layout-options: gravar o workspace com debounce (LAYOUT
   function mockBoot(workspaceGet: unknown) {
     invokeMock.mockImplementation((command: string, args?: Record<string, unknown>) => {
       if (command === 'agent_catalog_all') return Promise.resolve(EMPTY_CATALOG)
+    // SPEC: providers-panel (PROV-11) — o boot varre antes de pedir o
+    // catálogo; sem esta resposta a cadeia para antes de `agent_catalog_all`.
+    if (command === 'provider_scan') {
+      return Promise.resolve([{ id: 'claude-code', enabled: true, foundIn: ['Windows'] }])
+    }
       if (command === 'agent_default') return Promise.resolve(null)
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: false, window: 'both' })
       if (command === 'terminal_workspace_get') return workspaceGet
@@ -1106,6 +1150,11 @@ describe('App - quota-indicator prefs wiring (QUOTA-11)', () => {
   it('busca quota_prefs_get uma vez na montagem e o resultado desce para o Header', async () => {
     invokeMock.mockImplementation((command: string, args?: Record<string, unknown>) => {
       if (command === 'agent_catalog_all') return Promise.resolve(EMPTY_CATALOG)
+    // SPEC: providers-panel (PROV-11) — o boot varre antes de pedir o
+    // catálogo; sem esta resposta a cadeia para antes de `agent_catalog_all`.
+    if (command === 'provider_scan') {
+      return Promise.resolve([{ id: 'claude-code', enabled: true, foundIn: ['Windows'] }])
+    }
       if (command === 'agent_default') return Promise.resolve(null)
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
       if (command === 'quota_claude') {
@@ -1130,6 +1179,11 @@ describe('App - quota-indicator prefs wiring (QUOTA-11)', () => {
   it('quota://prefs-changed com enabled:false remove o indicador sem remontar os painéis', async () => {
     invokeMock.mockImplementation((command: string, args?: Record<string, unknown>) => {
       if (command === 'agent_catalog_all') return Promise.resolve(EMPTY_CATALOG)
+    // SPEC: providers-panel (PROV-11) — o boot varre antes de pedir o
+    // catálogo; sem esta resposta a cadeia para antes de `agent_catalog_all`.
+    if (command === 'provider_scan') {
+      return Promise.resolve([{ id: 'claude-code', enabled: true, foundIn: ['Windows'] }])
+    }
       if (command === 'agent_default') return Promise.resolve(null)
       if (command === 'terminal_picker_last_dir') return Promise.resolve(null)
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })

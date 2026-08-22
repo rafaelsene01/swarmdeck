@@ -100,7 +100,7 @@ fn profile_entry_for(entry: &DistroEntry) -> ProfileEntry {
 fn host_entry() -> ProfileEntry {
     ProfileEntry {
         id: TerminalProfile::Host.id(),
-        label: "Windows (padrão)".to_string(),
+        label: "Windows".to_string(),
         wsl1: false,
     }
 }

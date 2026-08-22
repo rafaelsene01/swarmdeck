@@ -4,6 +4,7 @@
 // resolução de PATH, agora devolvendo o caminho resolvido: `editors.rs`
 // precisa dele para lançar `code.cmd`/`cursor.cmd` no Windows.
 // SPEC: wsl-terminal-profile (WSLP-04, WSLP-06, WSLP-22, WSLP-23)
+// SPEC: providers-panel (PROV-07)
 
 //! Catálogo estático dos agentes de IA suportados e detecção de CLI no PATH.
 //!
@@ -324,6 +325,24 @@ fn detect_installed_in_wsl(distro: &str) -> Vec<AgentStatus> {
     apply_installed(&wsl_found(distro))
 }
 
+/// SPEC: providers-panel (PROV-07) — descarta o que a sonda já achou em cada
+/// distro, para a varredura seguinte olhar o disco em vez de repetir a
+/// resposta anterior. `wsl_probe_cache` vive o processo inteiro (é o que faz
+/// escolher uma pasta dentro da distro não pagar um `wsl.exe`), então sem
+/// isto o botão "Atualizar" de Configurações › Provedores não atualizaria
+/// nada: um CLI instalado depois do boot continuaria invisível até o app
+/// reiniciar.
+pub fn clear_wsl_probe_cache() {
+    clear_probe_cache(wsl_probe_cache());
+}
+
+/// Núcleo testável de `clear_wsl_probe_cache`: o mapa é parâmetro, para o
+/// teste provar o efeito sem tocar o cache global — que é compartilhado por
+/// todos os testes do binário e os tornaria dependentes da ordem de execução.
+fn clear_probe_cache(cache: &Mutex<HashMap<String, WslFound>>) {
+    cache.lock().unwrap().clear();
+}
+
 /// SPEC: wsl-terminal-profile (WSLP-04) — caminho absoluto do CLI de
 /// `agent_id` dentro de `profile`, quando o perfil exige um. `None` no host:
 /// lá o nome nu do descritor é resolvido pelo `PATH` do processo, como
@@ -544,6 +563,30 @@ mod tests {
         assert!(apply_installed(&first)
             .iter()
             .any(|status| status.agent.id == "claude-code" && status.installed));
+    }
+
+    // SPEC: providers-panel (PROV-07) — sem limpar, a segunda varredura
+    // devolveria a resposta da primeira, e "Atualizar" não atualizaria nada.
+    #[test]
+    fn limpar_o_cache_faz_a_sonda_rodar_de_novo() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let calls = AtomicUsize::new(0);
+        let cache: Mutex<HashMap<String, WslFound>> = Mutex::new(HashMap::new());
+        let probe = |_: &str| {
+            calls.fetch_add(1, Ordering::SeqCst);
+            "/usr/bin/codex\n".to_string()
+        };
+
+        wsl_found_with("Ubuntu-24.04", &cache, probe);
+        wsl_found_with("Ubuntu-24.04", &cache, probe);
+        assert_eq!(calls.load(Ordering::SeqCst), 1, "a segunda leitura veio do cache");
+
+        clear_probe_cache(&cache);
+        let depois = wsl_found_with("Ubuntu-24.04", &cache, probe);
+
+        assert_eq!(calls.load(Ordering::SeqCst), 2, "depois do clear a sonda roda de novo");
+        assert_eq!(depois, vec![("codex-cli", "/usr/bin/codex".to_string())]);
     }
 
     // SPEC: wsl-terminal-profile (WSLP-04) — o host segue lançando pelo nome

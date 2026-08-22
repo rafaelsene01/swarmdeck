@@ -10,9 +10,10 @@ pub mod catalog;
 pub mod launch;
 pub mod prefs;
 
+// SPEC: providers-panel (PROV-07) — `clear_wsl_probe_cache`
 pub use catalog::{
-    catalog, detect_installed, detect_installed_in, is_valid_permission_mode, AgentDescriptor,
-    AgentStatus, PERMISSION_MODES,
+    catalog, clear_wsl_probe_cache, detect_installed, detect_installed_in,
+    is_valid_permission_mode, AgentDescriptor, AgentStatus, PERMISSION_MODES,
 };
 pub use launch::{resolve_launch_command, LaunchResolution, SessionLaunch};
 pub use prefs::{default_agent, resolve_effective_default, set_default_agent, EffectiveDefault};

@@ -5,6 +5,8 @@ pub mod agents;
 // SPEC: editor-launch (EDITOR-02, EDITOR-04)
 pub mod editors;
 pub mod projects;
+// SPEC: providers-panel (PROV-06, PROV-09, PROV-05)
+pub mod providers;
 // SPEC: quota-indicator (QUOTA-09, QUOTA-10, QUOTA-11)
 pub mod quota;
 // SPEC: terminal-screenshot (SHOT-16)

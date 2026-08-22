@@ -1,4 +1,4 @@
-// SPEC: terminal-boot-loading (BOOT-10, BOOT-11)
+// SPEC: terminal-boot-loading (BOOT-10, BOOT-11), providers-panel (PROV-01)
 
 /**
  * Contrato de dados do catálogo de agentes — espelha
@@ -10,7 +10,29 @@
  * cópia.
  */
 
-import type { AgentDescriptor } from '../routes/settings/AgentPanel'
+/**
+ * Um agente do catálogo, como o Rust o descreve — espelha
+ * `AgentDescriptor` de `src-tauri/src/agents/catalog.rs`.
+ *
+ * AD-036: morava em `routes/settings/AgentPanel.tsx`, que deixou de ser a
+ * grade de cards do catálogo e passou a listar preferências por provedor. O
+ * contrato do catálogo é deste arquivo, como o resto das formas de IPC.
+ */
+export interface AgentDescriptor {
+  id: string
+  name: string
+  vendor: string
+  command: string
+  beta: boolean
+  /**
+   * SPEC: agent-permission-mode (PERM-03) — modos que o CLI deste agente
+   * aceita em `--permission-mode`, na ordem de exibição. Vetor vazio (ou
+   * ausente) = o CLI não expõe esse controle, e o passo AGENT não mostra o
+   * seletor. Vem de `agent_catalog`, que o deriva de `permission_mode_flag`
+   * no catálogo Rust — o frontend nunca decide por id.
+   */
+  permissionModes?: string[]
+}
 
 /** O que `agent_catalog` devolve: o descritor mais o status de instalação. */
 export interface AgentCatalogEntry extends AgentDescriptor {
@@ -25,7 +47,7 @@ export interface ProfileCatalogEntry {
   /** `"host"` ou `"wsl:<distro>"` — a forma de `TerminalProfile::id()`, a
    * mesma que `shell_profile_for_path` devolve. */
   profileId: string
-  /** Rótulo de exibição: "Windows (padrão)", "Ubuntu-24.04", "… (WSL1)". */
+  /** Rótulo de exibição: "Windows", "Ubuntu-24.04", "… (WSL1)". */
   label: string
   wsl1: boolean
   agents: AgentCatalogEntry[]

@@ -7,7 +7,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import ProjectStep from './ProjectStep'
 import AgentStep, { DEFAULT_PERMISSION_MODE } from './AgentStep'
 import ProjectFormModal, { type ProjectFormValues } from '../project/ProjectFormModal'
-import type { AgentDescriptor } from '../../routes/settings/AgentPanel'
+import type { AgentDescriptor } from '../../types/agents'
 import type { ProfileCatalogEntry } from '../../types/agents'
 import { filterProjects, type ProjectRow } from '../../routes/settings/ProjectsPanel'
 
@@ -52,6 +52,10 @@ export interface PaneWizardProps {
   /** Catálogo do perfil padrão — fallback de `profileCatalogs`. */
   agents: AgentDescriptor[]
   installedIds: Set<string>
+  /** SPEC: providers-panel (PROV-14) — ids habilitados em Configurações ›
+   * Provedores. Repassado sem interpretação: quem decide o que fica clicável
+   * é `AgentStep`. */
+  enabledIds: Set<string>
   /**
    * SPEC: terminal-boot-loading (BOOT-10, BOOT-12) — catálogo por perfil,
    * varrido no boot. A etapa AGENT usa a entrada do perfil que o **caminho
@@ -100,6 +104,7 @@ interface Selection {
 export default function PaneWizard({
   agents,
   installedIds,
+  enabledIds,
   profileCatalogs,
   onConfirm,
   onCancel,
@@ -115,7 +120,8 @@ export default function PaneWizard({
    * primeiro instalado na ordem do catálogo*. Num Windows com o `claude`
    * dentro da distro e o Antigravity no host, esse primeiro era
    * `antigravity-cli` — um ladrilho que a grade nem deixa escolher
-   * (`AgentStep.SELECTABLE`). Pré-marcar shell puro nunca erra: ele não
+   * (na época, uma lista fixa dentro de `AgentStep`; hoje o switch de
+   * Configurações › Provedores, PROV-14). Pré-marcar shell puro nunca erra: ele não
    * depende de comando nenhum estar instalado.
    *
    * O envelope `{ id }` continua separando "não escolheu" de "escolheu
@@ -267,6 +273,7 @@ export default function PaneWizard({
         selection={{ name: selection.name, path: selection.path, color: selection.color }}
         agents={stepAgents}
         installedIds={stepInstalledIds}
+        enabledIds={enabledIds}
         terminalLabel={profile?.label}
         selectedAgentId={selectedAgentId}
         onSelectAgent={(id) => setChosen({ id })}

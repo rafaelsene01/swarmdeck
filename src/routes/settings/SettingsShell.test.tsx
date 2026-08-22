@@ -1,3 +1,4 @@
+// SPEC: providers-panel (PROV-05, PROV-06, PROV-08, PROV-09)
 // SPEC: update-toast (TOAST-06, TOAST-08, TOAST-09), settings-shell (SET-03, SET-04, SET-05, SET-06, SET-07, SET-08, SET-09, SET-10), projects (PROJ-19, PROJ-23, PROJ-24)
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -35,12 +36,109 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({
   open: () => Promise.resolve('/home/user/dev'),
 }))
 
+describe('SettingsShell — seção Provedores (PROV-05/06/08/09)', () => {
+  const CLAUDE = { id: 'claude-code', enabled: true, foundIn: ['Windows', 'Ubuntu-24.04'] }
+  const CODEX = { id: 'codex-cli', enabled: false, foundIn: [] }
+
+  function mockProviders(rows: unknown[] = [CLAUDE, CODEX]) {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === 'provider_prefs_get') return Promise.resolve(rows)
+      if (command === 'provider_scan') return Promise.resolve([{ ...CODEX, foundIn: ['Windows'], enabled: true }])
+      if (command === 'project_list') return Promise.resolve([])
+      if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
+      return Promise.resolve(null)
+    })
+  }
+
+  const openSection = async () => {
+    render(<SettingsShell />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('provider_prefs_get'))
+    fireEvent.click(screen.getByRole('button', { name: /Provedores/ }))
+  }
+
+  beforeEach(() => {
+    invokeMock.mockClear()
+  })
+
+  // PROV-09: abrir a seção mostra o gravado; a varredura é do boot e do botão.
+  it('abre a seção com o gravado, sem varrer', async () => {
+    mockProviders()
+    await openSection()
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-provider="claude-code"]')).not.toBeNull(),
+    )
+    expect(invokeMock).not.toHaveBeenCalledWith('provider_scan')
+    expect(
+      document.querySelectorAll('[data-provider="claude-code"] .providers-panel__place'),
+    ).toHaveLength(2)
+  })
+
+  // PROV-06: "Atualizar" varre e repõe a lista com o resultado gravado.
+  it('o botão Atualizar varre e substitui a lista pelo resultado', async () => {
+    mockProviders()
+    await openSection()
+    await waitFor(() =>
+      expect(document.querySelector('[data-provider="claude-code"]')).not.toBeNull(),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /Atualizar|Buscando/ }))
+
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('provider_scan'))
+    await waitFor(() =>
+      expect(document.querySelector('[data-provider="claude-code"]')).toBeNull(),
+    )
+    const switchInput = document.querySelector(
+      '[data-provider="codex-cli"] input',
+    ) as HTMLInputElement
+    expect(switchInput.checked).toBe(true)
+  })
+
+  // PROV-05: alternar persiste com id e valor novo.
+  it('alternar o switch persiste via provider_enabled_set', async () => {
+    mockProviders()
+    await openSection()
+    await waitFor(() =>
+      expect(document.querySelector('[data-provider="claude-code"]')).not.toBeNull(),
+    )
+
+    fireEvent.click(document.querySelector('[data-provider="claude-code"] input') as HTMLElement)
+
+    expect(invokeMock).toHaveBeenCalledWith('provider_enabled_set', {
+      id: 'claude-code',
+      enabled: false,
+    })
+    const switchInput = document.querySelector(
+      '[data-provider="claude-code"] input',
+    ) as HTMLInputElement
+    expect(switchInput.checked).toBe(false)
+  })
+
+  // Caso de borda da spec: leitura que falha registra e deixa a lista vazia.
+  it('falha de leitura deixa a lista vazia e registra no console', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    invokeMock.mockImplementation((command: string) => {
+      if (command === 'provider_prefs_get') return Promise.reject(new Error('sem banco'))
+      if (command === 'project_list') return Promise.resolve([])
+      if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
+      return Promise.resolve(null)
+    })
+
+    await openSection()
+
+    await waitFor(() =>
+      expect(screen.getByText('Nenhum provedor varrido ainda.')).toBeInTheDocument(),
+    )
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+})
+
 describe('SettingsShell — fechar a janela (SET-03/04/05)', () => {
   beforeEach(() => {
     closeMock.mockClear()
     invokeMock.mockImplementation((command: string) => {
-      if (command === 'agent_catalog') return Promise.resolve([])
-      if (command === 'agent_default') return Promise.resolve(null)
+      if (command === 'provider_prefs_get') return Promise.resolve([])
       if (command === 'project_list') return Promise.resolve([])
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
       return Promise.resolve(null)
@@ -49,14 +147,14 @@ describe('SettingsShell — fechar a janela (SET-03/04/05)', () => {
 
   it('clique no X chama close() da janela atual', async () => {
     render(<SettingsShell />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('provider_prefs_get'))
     fireEvent.click(screen.getByRole('button', { name: 'Fechar Configurações' }))
     expect(closeMock).toHaveBeenCalledTimes(1)
   })
 
   it('clique em "Fechar" chama close() da janela atual', async () => {
     render(<SettingsShell />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('provider_prefs_get'))
     fireEvent.click(screen.getByRole('button', { name: 'Fechar' }))
     expect(closeMock).toHaveBeenCalledTimes(1)
   })
@@ -65,8 +163,7 @@ describe('SettingsShell — fechar a janela (SET-03/04/05)', () => {
 describe('SettingsShell — sidebar com ícones e trilho (SET-06/07/08)', () => {
   beforeEach(() => {
     invokeMock.mockImplementation((command: string) => {
-      if (command === 'agent_catalog') return Promise.resolve([])
-      if (command === 'agent_default') return Promise.resolve(null)
+      if (command === 'provider_prefs_get') return Promise.resolve([])
       if (command === 'project_list') return Promise.resolve([])
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
       return Promise.resolve(null)
@@ -75,7 +172,7 @@ describe('SettingsShell — sidebar com ícones e trilho (SET-06/07/08)', () => 
 
   it('trilho mostra a seção ativa e troca ao navegar, sem alterar a navegação existente', async () => {
     render(<SettingsShell />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('provider_prefs_get'))
 
     // QUOTA-08: "Geral" passou a ser a seção padrão da janela.
     expect(screen.getByText('Configurações › Geral')).toBeInTheDocument()
@@ -90,7 +187,7 @@ describe('SettingsShell — sidebar com ícones e trilho (SET-06/07/08)', () => 
 
   it('cada um dos 4 itens da sidebar tem ícone', async () => {
     render(<SettingsShell />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('provider_prefs_get'))
 
     for (const label of ['Geral', 'Provedores', 'Projetos', 'Atualizações']) {
       const item = screen.getByRole('button', { name: new RegExp(label) })
@@ -111,8 +208,7 @@ const READY_STATUS = {
 describe('SettingsShell — persistência do toggle de auto-check (SET-09/10)', () => {
   beforeEach(() => {
     invokeMock.mockImplementation((command: string) => {
-      if (command === 'agent_catalog') return Promise.resolve([])
-      if (command === 'agent_default') return Promise.resolve(null)
+      if (command === 'provider_prefs_get') return Promise.resolve([])
       if (command === 'project_list') return Promise.resolve([])
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
       if (command === 'update_auto_check_get') return Promise.resolve(false)
@@ -123,7 +219,7 @@ describe('SettingsShell — persistência do toggle de auto-check (SET-09/10)', 
 
   it('mount da seção Atualizações chama update_auto_check_get e usa o valor retornado', async () => {
     render(<SettingsShell />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('provider_prefs_get'))
     fireEvent.click(screen.getByRole('button', { name: /Atualizações/ }))
 
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_auto_check_get'))
@@ -133,7 +229,7 @@ describe('SettingsShell — persistência do toggle de auto-check (SET-09/10)', 
 
   it('alternar o toggle chama update_auto_check_set com o novo valor', async () => {
     render(<SettingsShell />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('provider_prefs_get'))
     fireEvent.click(screen.getByRole('button', { name: /Atualizações/ }))
     const toggle = await screen.findByRole('checkbox', { name: 'Verificar atualizações automaticamente' })
     await waitFor(() => expect(toggle).not.toBeChecked())
@@ -145,8 +241,7 @@ describe('SettingsShell — persistência do toggle de auto-check (SET-09/10)', 
 
   it('se update_auto_check_get falhar, o toggle mantém o valor padrão (true) sem travar a seção', async () => {
     invokeMock.mockImplementation((command: string) => {
-      if (command === 'agent_catalog') return Promise.resolve([])
-      if (command === 'agent_default') return Promise.resolve(null)
+      if (command === 'provider_prefs_get') return Promise.resolve([])
       if (command === 'project_list') return Promise.resolve([])
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
       if (command === 'update_auto_check_get') return Promise.reject(new Error('boom'))
@@ -155,7 +250,7 @@ describe('SettingsShell — persistência do toggle de auto-check (SET-09/10)', 
     })
 
     render(<SettingsShell />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('provider_prefs_get'))
     fireEvent.click(screen.getByRole('button', { name: /Atualizações/ }))
 
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_auto_check_get'))
@@ -167,8 +262,7 @@ describe('SettingsShell — persistência do toggle de auto-check (SET-09/10)', 
 describe('SettingsShell — seção Geral do indicador de cota (QUOTA-08/09/10)', () => {
   beforeEach(() => {
     invokeMock.mockImplementation((command: string) => {
-      if (command === 'agent_catalog') return Promise.resolve([])
-      if (command === 'agent_default') return Promise.resolve(null)
+      if (command === 'provider_prefs_get') return Promise.resolve([])
       if (command === 'project_list') return Promise.resolve([])
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
       if (command === 'quota_prefs_set') return Promise.resolve(undefined)
@@ -178,7 +272,7 @@ describe('SettingsShell — seção Geral do indicador de cota (QUOTA-08/09/10)'
 
   it('"Geral" é o primeiro item do menu e a seção selecionada na abertura', async () => {
     render(<SettingsShell />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('provider_prefs_get'))
 
     expect(screen.getByText('Configurações › Geral')).toBeInTheDocument()
     const navButtons = screen.getAllByRole('button', {
@@ -204,8 +298,7 @@ describe('SettingsShell — seção Geral do indicador de cota (QUOTA-08/09/10)'
 
   it('escolher "Ambos" persiste window: "both"', async () => {
     invokeMock.mockImplementation((command: string) => {
-      if (command === 'agent_catalog') return Promise.resolve([])
-      if (command === 'agent_default') return Promise.resolve(null)
+      if (command === 'provider_prefs_get') return Promise.resolve([])
       if (command === 'project_list') return Promise.resolve([])
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'five_hour' })
       if (command === 'quota_prefs_set') return Promise.resolve(undefined)
@@ -232,8 +325,7 @@ describe('SettingsShell — sem seletor de perfil de terminal (AD-035)', () => {
   beforeEach(() => {
     invokeMock.mockClear()
     invokeMock.mockImplementation((command: string) => {
-      if (command === 'agent_catalog') return Promise.resolve([])
-      if (command === 'agent_default') return Promise.resolve(null)
+      if (command === 'provider_prefs_get') return Promise.resolve([])
       if (command === 'project_list') return Promise.resolve([])
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
       return Promise.resolve(null)
@@ -255,8 +347,7 @@ describe('SettingsShell — sem seletor de perfil de terminal (AD-035)', () => {
 describe('SettingsShell — seção Atualizações ligada ao fluxo confirmado (SILENT-09/13/25)', () => {
   function baseMock(overrides: Record<string, () => Promise<unknown>> = {}) {
     invokeMock.mockImplementation((command: string) => {
-      if (command === 'agent_catalog') return Promise.resolve([])
-      if (command === 'agent_default') return Promise.resolve(null)
+      if (command === 'provider_prefs_get') return Promise.resolve([])
       if (command === 'project_list') return Promise.resolve([])
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
       if (command === 'update_auto_check_get') return Promise.resolve(true)
@@ -280,7 +371,7 @@ describe('SettingsShell — seção Atualizações ligada ao fluxo confirmado (S
     })
 
     render(<SettingsShell />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('provider_prefs_get'))
     fireEvent.click(screen.getByRole('button', { name: /Atualizações/ }))
 
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_status'))
@@ -297,7 +388,7 @@ describe('SettingsShell — seção Atualizações ligada ao fluxo confirmado (S
     })
 
     render(<SettingsShell />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('provider_prefs_get'))
     fireEvent.click(screen.getByRole('button', { name: /Atualizações/ }))
 
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_status'))
@@ -322,7 +413,7 @@ describe('SettingsShell — seção Atualizações ligada ao fluxo confirmado (S
     })
 
     render(<SettingsShell />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('provider_prefs_get'))
     fireEvent.click(screen.getByRole('button', { name: /Atualizações/ }))
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_status'))
 
@@ -351,7 +442,7 @@ describe('SettingsShell — seção Atualizações ligada ao fluxo confirmado (S
     })
 
     render(<SettingsShell />)
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog'))
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('provider_prefs_get'))
     fireEvent.click(screen.getByRole('button', { name: /Atualizações/ }))
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('update_status'))
 
@@ -386,8 +477,7 @@ describe('SettingsShell — criar e excluir projeto (PROJ-19, PROJ-23, PROJ-24)'
         const value = overrides[command]
         return typeof value === 'function' ? (value as () => unknown)() : Promise.resolve(value)
       }
-      if (command === 'agent_catalog') return Promise.resolve([])
-      if (command === 'agent_default') return Promise.resolve(null)
+      if (command === 'provider_prefs_get') return Promise.resolve([])
       if (command === 'project_list') return Promise.resolve([PROJETO])
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
       if (command === 'update_status') return Promise.resolve({ status: 'idle' })
@@ -494,8 +584,7 @@ describe('SettingsShell — atalho e preferência do toast (update-toast)', () =
   beforeEach(() => {
     invokeMock.mockReset()
     invokeMock.mockImplementation((command: string) => {
-      if (command === 'agent_catalog') return Promise.resolve([])
-      if (command === 'agent_default') return Promise.resolve(null)
+      if (command === 'provider_prefs_get') return Promise.resolve([])
       if (command === 'project_list') return Promise.resolve([])
       if (command === 'quota_prefs_get') return Promise.resolve({ enabled: true, window: 'both' })
       if (command === 'update_auto_check_get') return Promise.resolve(true)
@@ -554,7 +643,7 @@ describe('SettingsShell — atalho e preferência do toast (update-toast)', () =
   it('falha de `update_toast_get` mantém o switch ligado', async () => {
     invokeMock.mockImplementation((command: string) => {
       if (command === 'update_toast_get') return Promise.reject(new Error('sem banco'))
-      if (command === 'agent_catalog') return Promise.resolve([])
+      if (command === 'provider_prefs_get') return Promise.resolve([])
       if (command === 'project_list') return Promise.resolve([])
       if (command === 'update_auto_check_get') return Promise.resolve(true)
       if (command === 'update_status') {

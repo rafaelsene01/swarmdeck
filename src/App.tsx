@@ -38,7 +38,7 @@ import RestoreSessionDialog, {
 import TerminalPane from './components/terminal/TerminalPane'
 import TerminalHeader from './components/terminal/TerminalHeader'
 import PaneWizard, { lastSegment, normalizePath } from './components/terminal/PaneWizard'
-import type { AgentDescriptor } from './routes/settings/AgentPanel'
+import type { AgentDescriptor } from './types/agents'
 import type { ProfileCatalog, ProfileCatalogEntry } from './types/agents'
 import SettingsShell from './routes/settings/SettingsShell'
 import UpdateToast from './components/shell/UpdateToast'
@@ -225,6 +225,11 @@ export default function App() {
    * **nele**. Repassado ao wizard, que escolhe a entrada pelo caminho da pasta
    * em vez de usar sempre a do perfil padrão (BOOT-12). */
   const [profileCatalogs, setProfileCatalogs] = useState<ProfileCatalogEntry[]>([])
+  /** SPEC: providers-panel (PROV-11, PROV-14) — ids habilitados em
+   * Configurações › Provedores, do resultado da varredura do boot. É o que o
+   * wizard usa, junto do que está instalado no perfil daquele caminho, para
+   * decidir quais ladrilhos ficam clicáveis. */
+  const [enabledProviderIds, setEnabledProviderIds] = useState<Set<string>>(new Set())
   // Agente escolhido por sessão (AGT-03): sobrescreve o padrão só para o
   // terminal criado com aquela escolha, sem tocar a preferência global.
   const [agentByTerminalId, setAgentByTerminalId] = useState<Record<string, string | null>>({})
@@ -640,7 +645,24 @@ export default function App() {
     // Os três estados abaixo continuam sendo a visão do **perfil padrão** —
     // é ela que o modal de restauração (SESS-15) e o padrão do wizard usam.
     // A visão por caminho vive em `profileCatalogs`, consumida pelo wizard.
-    void invoke<ProfileCatalog>('agent_catalog_all')
+    // SPEC: providers-panel (PROV-11) — varredura completa a cada abertura do
+    // app, e **antes** de `agent_catalog_all`: `provider_scan` descarta o
+    // cache de sondagem por distro (PROV-07), então a ordem inversa faria o
+    // boot pagar dois `wsl.exe` por distro em vez de um. Encadeada, e não
+    // disparada em paralelo, pelo mesmo motivo.
+    //
+    // O `.catch` devolve lista vazia em vez de propagar: uma varredura que
+    // falha não pode impedir o catálogo de carregar nem prender o overlay de
+    // boot — o wizard então oferece só o ladrilho "Terminal" (PROV-16).
+    void invoke<{ id: string; enabled: boolean }[]>('provider_scan')
+      .then((rows) => {
+        if (cancelled) return
+        setEnabledProviderIds(
+          new Set((rows ?? []).filter((row) => row.enabled).map((row) => row.id)),
+        )
+      })
+      .catch((error) => console.error('falha ao varrer os provedores', error))
+      .then(() => invoke<ProfileCatalog>('agent_catalog_all'))
       .then((catalog) => {
         if (cancelled) return
         setProfileCatalogs(catalog.profiles)
@@ -1020,6 +1042,8 @@ export default function App() {
                         // SPEC: terminal-boot-loading (BOOT-12) — a etapa
                         // AGENT escolhe o catálogo pelo caminho da pasta.
                         profileCatalogs={profileCatalogs}
+                        // SPEC: providers-panel (PROV-14)
+                        enabledIds={enabledProviderIds}
                         onConfirm={(cwd, agentId, _projectId, permissionMode) =>
                           handleWizardConfirm(terminal.id, cwd, agentId, permissionMode)
                         }

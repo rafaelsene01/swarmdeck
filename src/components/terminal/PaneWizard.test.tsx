@@ -4,7 +4,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import PaneWizard from './PaneWizard'
-import type { AgentDescriptor } from '../../routes/settings/AgentPanel'
+import type { AgentDescriptor } from '../../types/agents'
 
 const { invokeMock, openMock } = vi.hoisted(() => ({
   invokeMock: vi.fn(),
@@ -47,6 +47,7 @@ function renderWizard(props: Partial<Parameters<typeof PaneWizard>[0]> = {}) {
     <PaneWizard
       agents={CATALOG}
       installedIds={new Set(CATALOG.map((a) => a.id))}
+      enabledIds={new Set(CATALOG.map((a) => a.id))}
       onConfirm={vi.fn()}
       onCancel={vi.fn()}
       {...props}
@@ -422,7 +423,7 @@ describe('PaneWizard — agentes do terminal do caminho', () => {
   const PROFILES = [
     {
       profileId: 'host',
-      label: 'Windows (padrão)',
+      label: 'Windows',
       wsl1: false,
       agents: CATALOG.map((agent) => ({ ...agent, installed: false })),
     },
@@ -471,7 +472,7 @@ describe('PaneWizard — agentes do terminal do caminho', () => {
     fireEvent.click(await screen.findByRole('button', { name: /api/ }))
     await waitFor(() => expect(activeStep()).toBe('2'))
 
-    expect(screen.getByText('Windows (padrão)')).toBeInTheDocument()
+    expect(screen.getByText('Windows')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Claude Code' })).toBeNull()
     expect(screen.getByRole('button', { name: /^Terminal$/ })).toBeInTheDocument()
   })

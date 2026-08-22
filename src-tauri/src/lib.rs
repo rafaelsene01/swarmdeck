@@ -190,6 +190,10 @@ pub fn run() {
             commands::agents::agent_default,
             // SPEC: terminal-boot-loading (BOOT-10)
             commands::agents::agent_catalog_all,
+            // SPEC: providers-panel (PROV-05, PROV-06, PROV-09)
+            commands::providers::provider_prefs_get,
+            commands::providers::provider_scan,
+            commands::providers::provider_enabled_set,
             // SPEC: editor-launch (EDITOR-02, EDITOR-04)
             commands::editors::editor_catalog,
             commands::editors::editor_open,
