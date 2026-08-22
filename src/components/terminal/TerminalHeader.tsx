@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-05, TERM-12, TERM-13), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02, CHROME-04), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01, SHOT-23), minimized-tray (MIN-13), projects (PROJ-11, PROJ-12), agent-permission-mode (PERM-07)
+// SPEC: multi-terminal (TERM-05, TERM-12, TERM-13), terminal-statuses (STAT-01, STAT-06), terminal-chrome (CHROME-02, CHROME-04), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01, SHOT-23), minimized-tray (MIN-13), projects (PROJ-11, PROJ-12), agent-permission-mode (PERM-07), terminal-header-accent (HACC-01, HACC-03)
 
 import { Camera, CopyPlus, GripVertical, Maximize2, Minimize2, Moon, RotateCcw, X } from 'lucide-react'
 import EditorMenu from './EditorMenu'
@@ -14,6 +14,13 @@ export interface TerminalHeaderProps {
    * manual do cabeçalho saiu (AD-020). */
   title: string | null
   agent?: string | null
+  /**
+   * SPEC: terminal-header-accent (HACC-01, HACC-03) — cor cadastrada do projeto
+   * deste terminal, aplicada como borda do cabeçalho para diferenciar os
+   * painéis sem ler o título. `undefined`/`null` mantém `var(--border)`: pasta
+   * fora do cadastro não vira contorno transparente (HACC-03).
+   */
+  accentColor?: string | null
   /**
    * SPEC: agent-permission-mode (PERM-07) — modo de permissão com que o
    * agente **desta** sessão foi lançado. `undefined`/`null` não renderiza
@@ -81,6 +88,7 @@ export default function TerminalHeader({
   index,
   title,
   agent,
+  accentColor,
   permissionMode,
   status,
   statusColor,
@@ -129,7 +137,13 @@ export default function TerminalHeader({
   }
 
   return (
-    <header className="terminal-header" title={latestActivity}>
+    <header
+      className="terminal-header"
+      title={latestActivity}
+      // HACC-01: a borda do CSS já é 1px nos quatro lados; aqui só a cor muda,
+      // e `undefined` deixa a regra base valer (HACC-03).
+      style={{ borderColor: accentColor ?? undefined }}
+    >
       {/* Alça de arrasto. Com `onDragStartReorder` ela é a origem do arrasto
           de reordenação (LAYOUT-17); sem a prop segue puramente visual — é
           ela que dá ao cabeçalho a leitura de "barra de título de janela" —

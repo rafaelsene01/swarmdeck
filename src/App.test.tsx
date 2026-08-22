@@ -1793,6 +1793,49 @@ describe('App - projects: painel de rascunho', () => {
 })
 
 // SPEC: terminal-boot-loading (BOOT-04, BOOT-05, BOOT-06, BOOT-07)
+describe('App — cor do projeto no header do terminal (terminal-header-accent)', () => {
+  // SPEC: terminal-header-accent (HACC-01, HACC-02) — a cor sai do mesmo
+  // `project_list` que já dá o nome ao cabeçalho; nenhum comando novo.
+  it('passa a cor do projeto ao header do terminal', async () => {
+    const base = invokeMock.getMockImplementation()
+    invokeMock.mockImplementation((command: string, args?: Record<string, unknown>) => {
+      if (command === 'project_list') {
+        return Promise.resolve([
+          { id: 'p1', name: 'alpha', path: '/home/user/projeto', color: '#22c55e', last_used: null },
+        ])
+      }
+      return base?.(command, args) ?? Promise.resolve(undefined)
+    })
+
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog_all'))
+
+    fireEvent.click(screen.getByLabelText('new terminal'))
+    await createTerminalViaWizard('/home/user/projeto')
+
+    const header = await screen.findByText('alpha')
+    const bar = header.closest('.terminal-header') as HTMLElement
+    expect(bar.style.borderColor).toBe('rgb(34, 197, 94)')
+
+    // HACC-02: uma fonte só — o cabeçalho não inventou um comando de cor.
+    const commands = invokeMock.mock.calls.map((call) => call[0])
+    expect(commands.filter((command) => String(command).includes('color'))).toEqual([])
+  })
+
+  // SPEC: terminal-header-accent (HACC-03) — pasta sem projeto cadastrado
+  // mantém a borda padrão do CSS.
+  it('pasta fora do cadastro deixa a borda do header sem cor inline', async () => {
+    render(<App />)
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('agent_catalog_all'))
+
+    fireEvent.click(screen.getByLabelText('new terminal'))
+    await createTerminalViaWizard('/home/user/solta')
+
+    const bar = document.querySelector('.terminal-header') as HTMLElement
+    expect(bar.style.borderColor).toBe('')
+  })
+})
+
 describe('App - terminal-boot-loading: overlay de boot', () => {
   /** Forma completa que `quota_claude` devolve (`QuotaSnapshot`) — `windows`
    * sempre presente, mesmo em estado sem dado. Um snapshot parcial aqui

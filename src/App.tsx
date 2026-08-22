@@ -1,4 +1,4 @@
-// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), editor-launch (EDITOR-02), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), settings-shell (SET-01, SET-04, SET-05), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), window-chrome (WIN-01, WIN-02, WIN-03), minimized-tray (MIN-01, MIN-02, MIN-04, MIN-05, MIN-06, MIN-07), projects (PROJ-11, PROJ-12, PROJ-13, PROJ-14, PROJ-16), terminal-boot-loading (BOOT-04, BOOT-05, BOOT-06, BOOT-07, BOOT-09, BOOT-10, BOOT-12), update-toast (TOAST-01, TOAST-02, TOAST-03, TOAST-04, TOAST-06, TOAST-07, TOAST-09, TOAST-10)
+// SPEC: multi-terminal (TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-07, TERM-08, TERM-12, TERM-13), terminal-tabs (TAB-01, TAB-02, TAB-03, TAB-04, TAB-05, TAB-06), terminal-chrome (CHROME-01, CHROME-02, CHROME-03), editor-launch (EDITOR-02), agent-selection (AGT-01, AGT-03, AGT-04), release-distribution (REL-52), quota-indicator (QUOTA-11), terminal-layout-options (LAYOUT-15, LAYOUT-16, LAYOUT-17, LAYOUT-19, LAYOUT-20, LAYOUT-21, LAYOUT-22, LAYOUT-23, LAYOUT-24, LAYOUT-25, LAYOUT-26), settings-shell (SET-01, SET-04, SET-05), session-restore (SESS-01, SESS-02, SESS-06, SESS-07, SESS-08, SESS-10, SESS-11, SESS-15, SESS-16, SESS-17), terminal-screenshot (SHOT-01, SHOT-13, SHOT-14, SHOT-16, SHOT-23), window-chrome (WIN-01, WIN-02, WIN-03), minimized-tray (MIN-01, MIN-02, MIN-04, MIN-05, MIN-06, MIN-07), projects (PROJ-11, PROJ-12, PROJ-13, PROJ-14, PROJ-16), terminal-boot-loading (BOOT-04, BOOT-05, BOOT-06, BOOT-07, BOOT-09, BOOT-10, BOOT-12), update-toast (TOAST-01, TOAST-02, TOAST-03, TOAST-04, TOAST-06, TOAST-07, TOAST-09, TOAST-10), terminal-header-accent (HACC-01, HACC-02, HACC-03)
 
 import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
@@ -165,13 +165,29 @@ function evenWidths(terminals: TerminalState[]): TerminalState[] {
   return terminals.map((t) => ({ ...t, fracW }))
 }
 
-/** SPEC: projects (PROJ-11) — lê o cadastro de projetos para o cabeçalho poder
- * chamar cada terminal pelo nome do projeto. Falha só custa o rótulo: o
- * cabeçalho cai no último segmento do `cwd`. */
-function fetchProjectNames(apply: (byPath: Record<string, string>) => void) {
-  void invoke<{ name: string; path: string }[]>('project_list')
+/** Nome e cor cadastrados de um projeto, indexados pelo caminho normalizado. */
+interface ProjectIdentity {
+  name: string
+  color: string | null
+}
+
+/** SPEC: projects (PROJ-11), terminal-header-accent (HACC-02) — lê o cadastro
+ * de projetos para o cabeçalho poder chamar cada terminal pelo nome do projeto
+ * e pintar a borda com a cor cadastrada. A cor vem na mesma resposta do nome:
+ * `project_list` já a devolve, então não há segunda ida ao backend. Falha só
+ * custa o rótulo e a cor: o cabeçalho cai no último segmento do `cwd` e na
+ * borda padrão. */
+function fetchProjects(apply: (byPath: Record<string, ProjectIdentity>) => void) {
+  void invoke<{ name: string; path: string; color?: string | null }[]>('project_list')
     .then((records) =>
-      apply(Object.fromEntries(records.map((record) => [normalizePath(record.path), record.name]))),
+      apply(
+        Object.fromEntries(
+          records.map((record) => [
+            normalizePath(record.path),
+            { name: record.name, color: record.color ?? null },
+          ]),
+        ),
+      ),
     )
     .catch((error) => console.error('falha ao ler os projetos', error))
 }
@@ -239,11 +255,12 @@ export default function App() {
   const [permissionModeByTerminalId, setPermissionModeByTerminalId] = useState<
     Record<string, string | null>
   >({})
-  /** SPEC: projects (PROJ-11) — nome do projeto por caminho normalizado, para
-   * o cabeçalho de cada terminal mostrar o projeto em que ele roda. O `cwd` é
-   * o que o terminal guarda; o nome cadastrado pode diferir da pasta, por isso
-   * vem de `project_list` e não do último segmento. */
-  const [projectNameByPath, setProjectNameByPath] = useState<Record<string, string>>({})
+  /** SPEC: projects (PROJ-11), terminal-header-accent (HACC-01) — nome e cor do
+   * projeto por caminho normalizado, para o cabeçalho de cada terminal mostrar
+   * o projeto em que ele roda e levar a borda na cor dele. O `cwd` é o que o
+   * terminal guarda; o nome cadastrado pode diferir da pasta, por isso vem de
+   * `project_list` e não do último segmento. */
+  const [projectByPath, setProjectByPath] = useState<Record<string, ProjectIdentity>>({})
   // Contador de reinícios por terminal. Entra na `key` do `TerminalPane`:
   // incrementar remonta o painel, e é a limpeza do próprio efeito que chama
   // `pty_kill` e o mount seguinte que chama `pty_spawn` com o mesmo `cwd` e
@@ -634,7 +651,7 @@ export default function App() {
   useEffect(() => {
     let cancelled = false
 
-    fetchProjectNames(setProjectNameByPath)
+    fetchProjects(setProjectByPath)
 
     // SPEC: terminal-boot-loading (BOOT-10) — uma varredura só: quais perfis
     // de terminal existem e, em cada um, quais agentes estão instalados. É o
@@ -915,7 +932,12 @@ export default function App() {
   // terminal vivo seria tarde demais.
   /** Nome do projeto deste `cwd`; pasta sem projeto cadastrado (a sandbox do
    * "Sem projeto", por exemplo) cai no último segmento do caminho. */
-  const projectNameFor = (cwd: string) => projectNameByPath[normalizePath(cwd)] ?? lastSegment(cwd)
+  const projectNameFor = (cwd: string) =>
+    projectByPath[normalizePath(cwd)]?.name ?? lastSegment(cwd)
+  /** SPEC: terminal-header-accent (HACC-01, HACC-03) — cor cadastrada do
+   * projeto que ocupa este `cwd`. `null` para pasta fora do cadastro: o
+   * cabeçalho mantém `var(--border)`. */
+  const projectColorFor = (cwd: string) => projectByPath[normalizePath(cwd)]?.color ?? null
 
   const handleWizardConfirm = (
     id: string,
@@ -929,7 +951,7 @@ export default function App() {
     setAgentByTerminalId((prev) => ({ ...prev, [id]: agentId }))
     // O wizard pode ter acabado de criar/importar um projeto: relê o cadastro
     // para o cabeçalho já mostrar o nome certo (PROJ-11).
-    fetchProjectNames(setProjectNameByPath)
+    fetchProjects(setProjectByPath)
     // SPEC: agent-permission-mode (PERM-01) — guardado antes de `TerminalPane`
     // montar, porque é o mount que dispara `pty_spawn`.
     setPermissionModeByTerminalId((prev) => ({ ...prev, [id]: permissionMode }))
@@ -1009,6 +1031,8 @@ export default function App() {
                     // reiniciar nem minimizar.
                     draft={terminal.draft}
                     title={projectNameFor(terminal.cwd)}
+                    // SPEC: terminal-header-accent (HACC-01)
+                    accentColor={projectColorFor(terminal.cwd)}
                     // SPEC: agent-permission-mode (PERM-07)
                     permissionMode={permissionModeByTerminalId[terminal.id] ?? null}
                     cwd={terminal.cwd}
@@ -1178,7 +1202,10 @@ export default function App() {
           padding: var(--gap);
         }
 
-        /* SPEC: terminal-chrome (CHROME-02) — barra de título da janela. */
+        /* SPEC: terminal-chrome (CHROME-02) — barra de título da janela.
+           SPEC: terminal-header-accent (HACC-01, HACC-03) — a barra leva borda
+           nos quatro lados; a cor vem inline, do projeto, e cai no var(--border)
+           daqui quando a pasta não é de um projeto cadastrado. */
         .terminal-header {
           display: flex;
           align-items: center;
@@ -1187,7 +1214,7 @@ export default function App() {
           height: 34px;
           padding: 0 0.3rem 0 0.4rem;
           background: var(--surface);
-          border-bottom: 1px solid var(--border);
+          border: 1px solid var(--border);
           color: var(--muted);
           font-size: 11px;
           user-select: none;

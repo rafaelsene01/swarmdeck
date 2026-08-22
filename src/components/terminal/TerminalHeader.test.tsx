@@ -1,4 +1,4 @@
-// SPEC: terminal-chrome (CHROME-02, CHROME-04), minimized-tray (MIN-13), multi-terminal (TERM-05, TERM-12, TERM-13), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01), projects (PROJ-11, PROJ-12)
+// SPEC: terminal-chrome (CHROME-02, CHROME-04), minimized-tray (MIN-13), multi-terminal (TERM-05, TERM-12, TERM-13), terminal-layout-options (LAYOUT-17), editor-launch (EDITOR-01), terminal-screenshot (SHOT-01), projects (PROJ-11, PROJ-12), terminal-header-accent (HACC-01, HACC-03)
 
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -7,6 +7,24 @@ import TerminalHeader from './TerminalHeader'
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
 
 describe('TerminalHeader — barra de título da janela (CHROME-02)', () => {
+  // SPEC: terminal-header-accent (HACC-01) — quatro terminais, quatro cores:
+  // a borda do cabeçalho é o que os diferencia sem ler o título.
+  it('pinta a borda do header com a cor do projeto', () => {
+    const { container } = render(<TerminalHeader index={1} title="alpha" accentColor="#ef4444" />)
+
+    const header = container.querySelector('.terminal-header') as HTMLElement
+    expect(header.style.borderColor).toBe('rgb(239, 68, 68)')
+  })
+
+  // SPEC: terminal-header-accent (HACC-03) — pasta fora do cadastro não vira
+  // contorno transparente: o inline sai e a regra do CSS vale.
+  it('sem cor de projeto mantém a borda padrão', () => {
+    const { container } = render(<TerminalHeader index={1} title={null} accentColor={null} />)
+
+    const header = container.querySelector('.terminal-header') as HTMLElement
+    expect(header.style.borderColor).toBe('')
+  })
+
   it('sem título vindo do backend, identifica o terminal pelo número em vez de "sem título"', () => {
     render(<TerminalHeader index={2} title={null} />)
 
