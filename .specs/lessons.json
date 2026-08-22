@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "promote_threshold": 2,
+  "window_days": 45,
+  "quarantine_threshold": 2,
+  "next_id": 5,
+  "lessons": [
+    {
+      "id": "L-001",
+      "key": "surviving_mutant::a boundary predicate with one comparison per side needs one test per side covering a single edge left three inverted comparisons alive in the discrimination sensor",
+      "text": "A boundary predicate with one comparison per side needs one test per side: covering a single edge left three inverted comparisons alive in the discrimination sensor.",
+      "signal": "surviving_mutant",
+      "scope": "rust/geometry",
+      "status": "candidate",
+      "features": [
+        "window-geometry"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src-tauri/src/windows/geometry.rs:104 (rust/geometry)"
+      ],
+      "created": "2026-08-22T00:15:13Z",
+      "last_seen": "2026-08-22T00:15:13Z"
+    },
+    {
+      "id": "L-002",
+      "key": "spec_precision_gap::when an ac says a rectangle intersects or contains state whether touching the edge counts otherwise the half open choice lives only in the implementation",
+      "text": "When an AC says a rectangle 'intersects' or 'contains', state whether touching the edge counts — otherwise the half-open choice lives only in the implementation.",
+      "signal": "spec_precision_gap",
+      "scope": "spec",
+      "status": "candidate",
+      "features": [
+        "window-geometry"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "WGEO-03 (spec)"
+      ],
+      "created": "2026-08-22T00:15:13Z",
+      "last_seen": "2026-08-22T00:15:13Z"
+    },
+    {
+      "id": "L-003",
+      "key": "spec_precision_gap::an ac that says a token is expired must name the comparison including the clock skew or the margin ends up living only in a constant",
+      "text": "An AC that says a token is 'expired' must name the comparison, including the clock skew, or the margin ends up living only in a constant.",
+      "signal": "spec_precision_gap",
+      "scope": "spec",
+      "status": "candidate",
+      "features": [
+        "quota-token-refresh"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "QTR-01 (spec)"
+      ],
+      "created": "2026-08-22T01:36:31Z",
+      "last_seen": "2026-08-22T01:36:31Z"
+    },
+    {
+      "id": "L-004",
+      "key": "gate_fail::a single large advancetimersbytimeasync does not re enter a setinterval created inside a microtask advance in steps the size of the interval or the test measures the fake clock instead of the component",
+      "text": "A single large advanceTimersByTimeAsync does not re-enter a setInterval created inside a microtask: advance in steps the size of the interval, or the test measures the fake clock instead of the component.",
+      "signal": "gate_fail",
+      "scope": "vitest/timers",
+      "status": "candidate",
+      "features": [
+        "quota-token-refresh"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src/components/shell/QuotaIndicator.test.tsx (vitest/timers)"
+      ],
+      "created": "2026-08-22T01:36:31Z",
+      "last_seen": "2026-08-22T01:36:31Z"
+    }
+  ]
+}
